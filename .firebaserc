@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "styleai-footwear"
+  },
+  "targets": {
+    "styleai-footwear": {
+      "hosting": {
+        "sk-styleai-footwear-us-cen1": [
+          "sk-styleai-footwear-us-cen1"
+        ]
+      }
+    }
+  }
+}

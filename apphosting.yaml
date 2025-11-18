@@ -1,0 +1,16 @@
+
+# This file is used to configure the App Hosting backend.
+# It is not required for local development, but is best practice to have.
+# For more information, see https://firebase.google.com/docs/app-hosting/build-and-deploy
+run:
+  # The command to start the web server.
+  # The environment variable `PORT` is automatically set by App Hosting.
+  command: npm run start
+# The list of files and directories to ignore when uploading the source code.
+# This can be used to exclude large files or directories that are not needed
+# by the build process.
+ignore:
+  - .firebase
+  - .git
+  - node_modules
+  - dataconnect/.dataconnect

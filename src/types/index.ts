@@ -1,0 +1,116 @@
+/**
+ * @fileOverview This file contains shared TypeScript type definitions used across the application,
+ * particularly for data structures passed between server actions and client components. It also
+ * includes utility functions for type-safe data handling.
+ */
+import type { z } from "zod";
+import { Timestamp } from "firebase/firestore"; // For type checking
+import type {
+  AnalyzeClothingItemOutputSchema,
+  AnalyzeStyleDNAInputSchema,
+  AnalyzeStyleDNAOutputSchema,
+  AccuWeatherSchema as AccuWeatherSchemaInternal, // Import with an alias
+  GoogleCalendarEventSchema,
+  GenerateEventStyleAdviceInputSchema,
+  GenerateEventStyleAdviceOutputSchema,
+  ProcessOutfitFeedbackInputSchema,
+  ProcessOutfitFeedbackOutputSchema,
+  RecommendOutfitInputSchema,
+  OutfitSchema,
+} from "./schemas";
+import type { AnalyzeClothingItemInput } from "@/ai/flows/analyze-clothing-item";
+
+// The primary data structure for a clothing item in Firestore and the app.
+export type AnalyzedItem = z.infer<typeof AnalyzeClothingItemOutputSchema> & {
+  id: string; // Firestore document ID
+  imageUrl: string; // Firebase Storage download URL
+  imagePath?: string; // Firebase Storage path
+  createdAt: number; // Timestamp in milliseconds for sorting/tracking
+};
+
+// Re-exporting other types for client component use
+export type GoogleCalendarEvent = z.infer<typeof GoogleCalendarEventSchema>;
+
+export interface UpcomingEventStyleAdvice {
+  eventName: string;
+  eventStartDateTime: string;
+  eventEndDateTime: string;
+  eventType: string;
+  eventLocation?: string;
+  temperature: number;
+  weatherCondition: string;
+  advice: string;
+}
+
+// AI Flow Types
+export type { AnalyzeClothingItemInput };
+export type AnalyzeClothingItemOutput = z.infer<
+  typeof AnalyzeClothingItemOutputSchema
+>;
+
+export type AnalyzeStyleDNAInput = z.infer<typeof AnalyzeStyleDNAInputSchema>;
+export type AnalyzeStyleDNAOutput = z.infer<typeof AnalyzeStyleDNAOutputSchema>;
+
+// Correctly re-export AccuWeatherSchema
+export type AccuWeatherSchema = z.infer<typeof AccuWeatherSchemaInternal>;
+
+export type GenerateEventStyleAdviceInput = z.infer<
+  typeof GenerateEventStyleAdviceInputSchema
+>;
+export type GenerateEventStyleAdviceOutput = z.infer<
+  typeof GenerateEventStyleAdviceOutputSchema
+>;
+
+export type ProcessOutfitFeedbackInput = z.infer<
+  typeof ProcessOutfitFeedbackInputSchema
+>;
+export type ProcessOutfitFeedbackOutput = z.infer<
+  typeof ProcessOutfitFeedbackOutputSchema
+>;
+
+export type RecommendOutfitInput = z.infer<typeof RecommendOutfitInputSchema>;
+export type OutfitOutput = z.infer<typeof OutfitSchema>;
+export type SingleOutfitOutput = z.infer<typeof OutfitSchema>;
+
+/**
+ * Safely converts various date formats to milliseconds since epoch.
+ * It handles Firestore Timestamps, JavaScript Date objects, and numbers.
+ * @param dateValue The value to convert.
+ * @returns The timestamp in milliseconds, or the current time as a fallback.
+ */
+export const safeToMillis = (dateValue: any): number => {
+  if (!dateValue) {
+    return Date.now();
+  }
+  // Firestore Timestamp
+  if (dateValue instanceof Timestamp) {
+    return dateValue.toMillis();
+  }
+  // Admin SDK Timestamp (duck-typing)
+  if (
+    typeof dateValue === "object" &&
+    dateValue !== null &&
+    "toMillis" in dateValue &&
+    typeof dateValue.toMillis === "function"
+  ) {
+    return dateValue.toMillis();
+  }
+  // JavaScript Date
+  if (dateValue instanceof Date) {
+    return dateValue.getTime();
+  }
+  // Already a number
+  if (typeof dateValue === "number") {
+    return dateValue;
+  }
+  // Fallback for null, undefined, or unhandled types
+  return Date.now();
+};
+
+// These types are for the processOutfitFeedbackAction, ensuring compatibility
+// between the AI flow's internal schema and what the client-side action receives.
+// They are derived from the main schemas but kept here for clarity in the action's context.
+export type OutfitForFeedbackAction = z.infer<typeof OutfitSchema>;
+export type EventDetailsForFeedbackAction = z.infer<
+  typeof GoogleCalendarEventSchema
+>;
