@@ -34,7 +34,7 @@ const prompt = ai.definePrompt({
   name: "processOutfitFeedbackPrompt",
   input: { schema: ProcessOutfitFeedbackInputSchema },
   output: { schema: ProcessOutfitFeedbackOutputSchema },
-  model: "googleai/gemini-2.5-flash",
+  model: "googleai/gemini-1.5-pro-latest",
   prompt: `You are a sophisticated and empathetic AI personal stylist, SkoMiDora.
   A user has just provided feedback on an outfit you previously recommended for an event.
   Your goal is to generate a concise, helpful, and context-aware 'followUpMessage' in British English.

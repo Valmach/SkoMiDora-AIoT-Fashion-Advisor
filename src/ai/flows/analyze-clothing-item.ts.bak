@@ -90,7 +90,7 @@ const promptObject = ai.definePrompt({
   name: "analyzeClothingItemPrompt_Full",
   input: { schema: AnalyzeClothingItemInputSchema },
   output: { schema: AnalyzeClothingItemOutputSchema },
-  model: "googleai/gemini-2.5-flash",
+  model: "googleai/gemini-2.5-flash-latest",
   prompt: `You are an expert fashion item analyst and cataloguer.
   Your task is to meticulously examine the provided image of a clothing item or accessory and return a structured JSON object with the following details.
   Be precise, objective, and use contemporary, sophisticated fashion terminology suitable for a fashion-conscious audience (Gen X, Y, Z).

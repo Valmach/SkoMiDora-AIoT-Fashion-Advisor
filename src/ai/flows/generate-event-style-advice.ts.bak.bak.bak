@@ -23,7 +23,7 @@ const prompt = ai.definePrompt({
   name: "generateEventStyleAdvicePrompt",
   input: { schema: GenerateEventStyleAdviceInputSchema },
   output: { schema: GenerateEventStyleAdviceOutputSchema },
-  model: "googleai/gemini-2.5-flash",
+  model: "googleai/gemini-1.5-pro-latest",
   prompt: `You are a sophisticated personal stylist catering to fashion-forward clients with a taste for middle to upper-class aesthetics, including designer and high-quality brands.
   Use British English terminology and spelling throughout your response (e.g., "trousers" instead of "pants", "jumper" instead of "sweater", "colour" instead of "color", "trainers" instead of "sneakers").
   The style advice should be phrased using contemporary, sophisticated fashion terminology suitable for Gen X, Y, and Z. For example, suggest 'a chic top' or 'a modern shirt' rather than just 'a blouse'.

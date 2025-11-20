@@ -25,7 +25,7 @@ const textGenerationPrompt = ai.definePrompt({
   name: "generateOutfitTextPrompt",
   input: { schema: RecommendOutfitInputSchema },
   output: { schema: OutfitSchema.omit({ outfitImageDataUri: true }) },
-  model: "googleai/gemini-2.5-flash",
+  model: "googleai/gemini-1.5-pro-latest",
   prompt: `You are an elite personal stylist for fashionistas who appreciate luxury, quality,and cutting-edge style. Your client has provided details of their actual shoe collection and wardrobe items.
 Use British English terminology and spelling throughout your response (e.g., "trousers" instead of "pants", "jumper" instead of "sweater", "colour" instead of "color", "trainers" instead of "sneakers").
 Your language should be sophisticated yet contemporary, appealing to Gen X, Y, and Z fashion enthusiasts. For example, use terms like 'top' or 'shirt' instead of 'blouse' where appropriate, and consider modern terms for outerwear and ensembles (e.g., 'a cool jacket', 'a sharp look', 'a great kit').

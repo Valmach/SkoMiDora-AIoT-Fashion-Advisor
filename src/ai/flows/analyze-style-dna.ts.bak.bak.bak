@@ -23,7 +23,7 @@ const prompt = ai.definePrompt({
   name: "analyzeStyleDNAPrompt",
   input: { schema: AnalyzeStyleDNAInputSchema },
   output: { schema: AnalyzeStyleDNAOutputSchema },
-  model: "googleai/gemini-2.5-flash",
+  model: "googleai/gemini-1.5-pro-latest",
   prompt: `You are a personal stylist for discerning, fashion-forward clients who have a taste for middle to upper-class fashion, including designer and high-quality brands.
   These clients often appreciate designers known for sustainable luxury, modern tailoring, and timeless appeal, such as Gabriella Hearst, The Row, or Brunello Cucinelli, reflecting sophisticated tastes that resonate across Gen X, Y, and Z.
   Use British English terminology and spelling throughout your response (e.g., "trousers" instead of "pants", "jumper" instead of "sweater", "colour" instead of "color", "trainers" instead of "sneakers").
