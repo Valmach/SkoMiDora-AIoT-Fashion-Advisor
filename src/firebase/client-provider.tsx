@@ -4,7 +4,8 @@
 "use client";
 
 import { ReactNode, useEffect, useState } from "react";
-import { FirebaseProvider } from "./provider";
+// FIX: Changed relative path to alias path for correct bundling
+import { FirebaseProvider } from "@/firebase/provider";
 
 /**
  * A provider that ensures Firebase is initialized only on the client.
