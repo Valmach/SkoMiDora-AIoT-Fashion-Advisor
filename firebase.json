@@ -27,7 +27,10 @@
         ".git",
         "firebase-debug.log",
         "firebase-debug.*.log",
-        "*.local"
+        "*.local",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        ".runtimeconfig.json"
       ]
     }
   ],
@@ -40,6 +43,7 @@
       "firebase-debug.log",
       "firebase-debug.*.log",
       "functions"
-    ]
+    ],
+    "alwaysDeployFromSource": false
   }
 }
