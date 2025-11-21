@@ -1,16 +1,35 @@
+# Firebase App Hosting configuration
+# This configures your backend service running on Cloud Run.
+# Docs: https://firebase.google.com/docs/app-hosting/configure#cloud-run
 
-# This file is used to configure the App Hosting backend.
-# It is not required for local development, but is best practice to have.
-# For more information, see https://firebase.google.com/docs/app-hosting/build-and-deploy
-run:
-  # The command to start the web server.
-  # The environment variable `PORT` is automatically set by App Hosting.
-  command: npm run start
-# The list of files and directories to ignore when uploading the source code.
-# This can be used to exclude large files or directories that are not needed
-# by the build process.
-ignore:
-  - .firebase
-  - .git
-  - node_modules
-  - dataconnect/.dataconnect
+runConfig:
+  runtime: nodejs20
+  minInstances: 0
+  maxInstances: 10
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 512
+
+# -------------------------------------------------------
+# Environment Variables (optional — uncomment to use)
+# -------------------------------------------------------
+# env:
+#   - variable: MESSAGE
+#     value: "Hello from SkoMiDora!"
+#     availability:
+#       - BUILD
+#       - RUNTIME
+
+# -------------------------------------------------------
+# Secrets from Google Cloud Secret Manager
+# Replace with your actual secret names (they already exist)
+# -------------------------------------------------------
+# secrets:
+#   - variable: ADMIN_PRIVATE_KEY
+#     secret: ADMIN_PRIVATE_KEY
+#     availability:
+#       - RUNTIME
+#   - variable: ADMIN_CLIENT_EMAIL
+#     secret: ADMIN_CLIENT_EMAIL
+#     availability:
+#       - RUNTIME

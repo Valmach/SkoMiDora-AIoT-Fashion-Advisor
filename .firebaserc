@@ -1,6 +1,7 @@
 {
   "projects": {
-    "default": "styleai-footwear"
+    "default": "styleai-footwear",
+    "styleaiot-footwear": "styleai-footwear"
   },
   "targets": {
     "styleai-footwear": {
@@ -10,5 +11,6 @@
         ]
       }
     }
-  }
+  },
+  "etags": {}
 }
