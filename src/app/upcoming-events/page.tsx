@@ -332,12 +332,12 @@ export default function UpcomingEventsPage() {
  {!isLoading && upcomingEventsAdvice.length > 0 && (
  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
  {upcomingEventsAdvice.map((adviceItem, index) => (
- <UpcomingEventAdviceCard event={adviceItem} advice={adviceItem}
- key={`${adviceItem.eventStartDateTime}-${index}-${adviceItem.eventName}`}
- event={adviceItem} advice={adviceItem}
- index={index}
- 
- />
+                <UpcomingEventAdviceCard key={`advice-${index}-${adviceItem.eventStartDateTime}`}
+                  event={adviceItem}
+                  advice={adviceItem}
+                  index={index}
+                  analyzedItems={wardrobeItems}
+                />
  ))}
  </div>
  )}
