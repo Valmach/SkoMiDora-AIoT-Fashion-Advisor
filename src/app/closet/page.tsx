@@ -1,6 +1,10 @@
 
 "use client";
 
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
+
 import { useEffect, useState, useCallback, useRef, useTransition } from "react";
 import Image from "next/image";
 import {

@@ -4,8 +4,8 @@
  * @fileOverview Server actions for interacting with AI flows and Firestore.
  */
 
-import { db, storage } from '@/lib/firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
+
+
 
 // Import AI flow types and functions
 import type { AnalyzeClothingItemInput, AnalyzeClothingItemOutput } from '@/ai/flows/analyze-clothing-item';

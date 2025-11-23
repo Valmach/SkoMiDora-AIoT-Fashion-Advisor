@@ -1,12 +1,13 @@
+import { getAdmin } from "@/lib/firebase-admin-loader";
 // app/api/user/shoeboxes/route.ts
 import { NextResponse } from "next/server";
-import { db as adminDB } from "@/lib/firebase-admin";
+
 
 export const runtime = 'nodejs'; // Ensure this runs in a Node.js environment
 
 export async function GET() {
   try {
-    const shoeboxesRef = adminDB.collection("shoeboxes");
+    const shoeboxesRef = admin.firestore().collection("shoeboxes");
     const snapshot = await shoeboxesRef.get();
 
     const shoeboxes = snapshot.docs.map((doc) => ({

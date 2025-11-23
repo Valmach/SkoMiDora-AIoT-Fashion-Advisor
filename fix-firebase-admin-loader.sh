@@ -1,0 +1,56 @@
+#!/bin/bash
+set -e
+
+echo "🔧 Rewriting firebase-admin-loader.ts with a clean, correct version..."
+
+cat << 'FILE' > src/lib/firebase-admin-loader.ts
+// src/lib/firebase-admin-loader.ts
+
+export async function getAdmin() {
+  const admin = (await import("firebase-admin")).default;
+
+  if (admin.apps.length > 0) {
+    return admin;
+  }
+
+  try {
+    admin.initializeApp({
+      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    });
+
+    console.log("✅ Admin initialized via Default Credentials");
+    return admin;
+
+  } catch (errDefault) {
+    console.log("⚠️ Default credential init failed:", errDefault.message);
+  }
+
+  try {
+    if (
+      !process.env.FIREBASE_ADMIN_PRIVATE_KEY ||
+      !process.env.FIREBASE_ADMIN_CLIENT_EMAIL ||
+      !process.env.FIREBASE_ADMIN_PROJECT_ID
+    ) {
+      throw new Error("Missing explicit admin credentials");
+    }
+
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY.replace(/\\n/g, "\n"),
+      }),
+      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    });
+
+    console.log("✅ Admin initialized via Service Account");
+    return admin;
+
+  } catch (errExplicit) {
+    console.error("🔥 Firebase Admin initialization FAILED:", errExplicit);
+    throw errExplicit;
+  }
+}
+FILE
+
+echo "🎉 firebase-admin-loader.ts repaired successfully!"
