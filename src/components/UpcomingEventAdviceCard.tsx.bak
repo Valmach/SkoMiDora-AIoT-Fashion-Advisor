@@ -11,20 +11,17 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CalendarDays, Sparkles } from "lucide-react";
-import type { AnalyzedItem } from "@/types";
 
 type UpcomingEventAdviceCardProps = {
   event: any;
   advice: any;
   index: number;
-  analyzedItems?: AnalyzedItem[];   // ✅ FIX: add optional prop
 };
 
 export default function UpcomingEventAdviceCard({
   event,
   advice,
   index,
-  analyzedItems,  // ✅ FIX: accept the prop
 }: UpcomingEventAdviceCardProps) {
   const title =
     event?.summary ||
