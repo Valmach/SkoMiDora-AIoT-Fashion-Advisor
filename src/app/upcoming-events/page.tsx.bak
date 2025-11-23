@@ -334,9 +334,9 @@ export default function UpcomingEventsPage() {
               {upcomingEventsAdvice.map((adviceItem, index) => (
                 <UpcomingEventAdviceCard
                   key={`${adviceItem.eventStartDateTime}-${index}-${adviceItem.eventName}`}
-                  event={adviceItem.eventDetails ?? adviceItem} advice={adviceItem}
-                  index={index}
-                  
+                  eventAdvice={adviceItem}
+                  cardIndex={index}
+                  analyzedItems={wardrobeItems}
                 />
               ))}
             </div>
