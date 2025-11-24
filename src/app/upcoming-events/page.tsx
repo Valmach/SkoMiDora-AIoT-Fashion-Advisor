@@ -336,7 +336,7 @@ export default function UpcomingEventsPage() {
                   event={adviceItem}
                   advice={adviceItem}
                   index={index}
-                  analyzedItems={wardrobeItems}
+                  
                 />
  ))}
  </div>

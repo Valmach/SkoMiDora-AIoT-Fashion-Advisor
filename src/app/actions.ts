@@ -1,6 +1,7 @@
 'use server';
+import { getAdmin } from "@/lib/firebase-admin-loader";
 
-import { db, storage, Timestamp } from "@/lib/firebase-admin";
+
 
 // FLOW IMPORTS
 import type { AnalyzeClothingItemInput, AnalyzeClothingItemOutput } from "@/ai/flows/analyze-clothing-item";
@@ -43,7 +44,7 @@ export async function analyzeAndSaveClothingItem(
     const imagePath = `public_wardrobe_items/${uniqueFileName}`;
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const bucket = storage.bucket();
+    const bucket = (await getAdmin()).storage().bucket();
     const upload = bucket.file(imagePath);
 
     await upload.save(buffer, { metadata: { contentType: file.type } });
@@ -58,10 +59,10 @@ export async function analyzeAndSaveClothingItem(
       ...analysisResult,
       imageUrl: downloadURL,
       imagePath,
-      createdAt: Timestamp.now()
+      createdAt: (await getAdmin()).firestore.FieldValue.serverTimestamp()
     };
 
-    const docRef = await db.collection("publicWardrobeItems").add(newItemData);
+    const docRef = await (await getAdmin()).firestore().collection("publicWardrobeItems").add(newItemData);
 
     return {
       ...(analysisResult as AnalyzeClothingItemOutput),
@@ -85,10 +86,10 @@ export async function deleteClothingItem(
   imagePath?: string
 ) {
   try {
-    await db.collection("publicWardrobeItems").doc(itemId).delete();
+    await (await getAdmin()).firestore().collection("publicWardrobeItems").doc(itemId).delete();
 
     if (imagePath) {
-      await storage.bucket().file(imagePath).delete().catch(() => null);
+      await (await getAdmin()).storage().bucket().file(imagePath).delete().catch(() => null);
     }
 
     return { success: true };
@@ -104,7 +105,7 @@ export async function deleteClothingItem(
 /* -------------------------------------------------------------------------- */
 export async function analyzeStyleDNAAction() {
   try {
-    const snapshot = await db.collection("publicWardrobeItems").get();
+    const snapshot = await (await getAdmin()).firestore().collection("publicWardrobeItems").get();
 
     const items: AnalyzedItem[] = snapshot.docs.map((doc) => ({
       id: doc.id,

@@ -1,3 +1,16 @@
+#!/bin/bash
+set -e
+
+FILE="src/app/layout.tsx"
+
+echo "🔧 Backing up existing layout to ${FILE}.bak..."
+if [ -f "$FILE" ]; then
+  cp "$FILE" "${FILE}.bak"
+fi
+
+echo "🔧 Replacing layout.tsx with minimal safe layout..."
+
+cat << 'LAYOUT' > "$FILE"
 import type { Metadata } from "next";
 import "./globals.css";
 import React from "react";
@@ -20,3 +33,7 @@ export default function RootLayout({
     </html>
   );
 }
+LAYOUT
+
+echo "✅ Minimal RootLayout written to $FILE"
+echo "   Original version saved at ${FILE}.bak"
