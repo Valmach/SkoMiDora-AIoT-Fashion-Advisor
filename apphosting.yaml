@@ -1,6 +1,5 @@
 # Firebase App Hosting configuration
 # This configures your backend service running on Cloud Run.
-# Docs: https://firebase.google.com/docs/app-hosting/configure#cloud-run
 
 runConfig:
   runtime: nodejs20
@@ -11,25 +10,29 @@ runConfig:
   memoryMiB: 512
 
 # -------------------------------------------------------
-# Environment Variables (optional — uncomment to use)
+# Secrets from Google Cloud Secret Manager (CRITICAL FIX)
 # -------------------------------------------------------
-# env:
-#   - variable: MESSAGE
-#     value: "Hello from SkoMiDora!"
-#     availability:
-#       - BUILD
-#       - RUNTIME
-
-# -------------------------------------------------------
-# Secrets from Google Cloud Secret Manager
-# Replace with your actual secret names (they already exist)
-# -------------------------------------------------------
-# secrets:
-#   - variable: ADMIN_PRIVATE_KEY
-#     secret: ADMIN_PRIVATE_KEY
-#     availability:
-#       - RUNTIME
-#   - variable: ADMIN_CLIENT_EMAIL
-#     secret: ADMIN_CLIENT_EMAIL
-#     availability:
-#       - RUNTIME
+# These must match the secret names you created in Secret Manager.
+secrets:
+   # Firebase Admin SDK Credentials
+   - variable: FIREBASE_ADMIN_PRIVATE_KEY
+     secret: FIREBASE_ADMIN_PRIVATE_KEY
+     availability:
+       - RUNTIME
+   - variable: FIREBASE_ADMIN_CLIENT_EMAIL
+     secret: FIREBASE_ADMIN_CLIENT_EMAIL
+     availability:
+       - RUNTIME
+   # External API Keys
+   - variable: GEMINI_API_KEY
+     secret: GEMINI_API_KEY
+     availability:
+       - RUNTIME
+   - variable: GOOGLE_API_KEY
+     secret: GOOGLE_API_KEY
+     availability:
+       - RUNTIME
+   - variable: ACCUWEATHER_API_KEY
+     secret: ACCUWEATHER_API_KEY
+     availability:
+       - RUNTIME
