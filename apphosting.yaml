@@ -10,9 +10,53 @@ runConfig:
   memoryMiB: 512
 
 # -------------------------------------------------------
-# Secrets from Google Cloud Secret Manager (CRITICAL FIX)
+# Public Environment Variables (Fixes "Firebase is not available")
 # -------------------------------------------------------
-# These must match the secret names you created in Secret Manager.
+env:
+   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+     value: AIzaSyB6TKlJLqnIzJltKM1jHmugZFhoSu-RpCI
+     availability:
+       - BUILD
+       - RUNTIME
+   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+     value: styleai-footwear.firebaseapp.com
+     availability:
+       - BUILD
+       - RUNTIME
+   - variable: NEXT_PUBLIC_FIREBASE_DATABASE_URL
+     value: https://styleai-footwear-default-rtdb.firebaseio.com
+     availability:
+       - BUILD
+       - RUNTIME
+   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+     value: styleai-footwear
+     availability:
+       - BUILD
+       - RUNTIME
+   - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+     value: styleai-footwear.appspot.com
+     availability:
+       - BUILD
+       - RUNTIME
+   - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+     value: 855662411333
+     availability:
+       - BUILD
+       - RUNTIME
+   - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+     value: 1:855662411333:web:568ed8c5925da1bc50ed2c
+     availability:
+       - BUILD
+       - RUNTIME
+   - variable: NEXT_PUBLIC_ACCUWEATHER_API_BASE_URL
+     value: https://dataservice.accuweather.com
+     availability:
+       - BUILD
+       - RUNTIME
+
+# -------------------------------------------------------
+# Secrets from Google Cloud Secret Manager (Server-side Keys)
+# -------------------------------------------------------
 secrets:
    # Firebase Admin SDK Credentials
    - variable: FIREBASE_ADMIN_PRIVATE_KEY
