@@ -77,11 +77,11 @@ export const AccuWeatherSchema = z.object({
 
 export const GoogleCalendarEventSchema = z.object({
   eventName: z.string().describe("The name of the event."),
-  eventStartDateTime: z.coerce
-    .date()
+  eventStartDateTime: z
+    .string()
     .describe("The start date and time of the event (ISO format)."),
-  eventEndDateTime: z.coerce
-    .date()
+  eventEndDateTime: z
+    .string()
     .describe("The end date and time of the event (ISO format)."),
   eventType: z.string().describe("The type of event (e.g., business, social)."),
   eventLocation: z.string().optional().describe("The location of the event."),
@@ -91,12 +91,12 @@ export const AnalyzeStyleDNAInputSchema = z.object({
   wardrobeData: z
     .string()
     .describe(
-      "RFID/NFC data representing the user's wardrobe collection. These users are fashion-forward and appreciate high-quality, stylish items, often from well-known designers or high-end brands. Their wardrobe reflects a sophisticated taste and a keen eye for current trends as well as timeless pieces. Example: \"Item_1_Burberry_TrenchCoat_Beige_SizeM, Item_2_Gucci_SilkBlouse_Cream_SizeS\"",
+      'RFID/NFC data representing the user\'s wardrobe collection. These users are fashion-forward and appreciate high-quality, stylish items, often from well-known designers or high-end brands. Their wardrobe reflects a sophisticated taste and a keen eye for current trends as well as timeless pieces. Example: "Item_1_Burberry_TrenchCoat_Beige_SizeM, Item_2_Gucci_SilkBlouse_Cream_SizeS"',
     ),
   shoeCollectionData: z
     .string()
     .describe(
-      "RFID/NFC data representing the user's shoe collection. Shoes are a statement for these users, ranging from designer heels and boots to exclusive trainers and elegant flats. Collection emphasizes style, craftsmanship, and brand prestige. Example: \"Shoe_1_Chanel_Slingbacks_BeigeBlack_Size39, Shoe_2_ManoloBlahnik_HangisiPumps_BlueSatin_Size39\"",
+      'RFID/NFC data representing the user\'s shoe collection. Shoes are a statement for these users, ranging from designer heels and boots to exclusive trainers and elegant flats. Collection emphasizes style, craftsmanship, and brand prestige. Example: "Shoe_1_Chanel_Slingbacks_BeigeBlack_Size39, Shoe_2_ManoloBlahnik_HangisiPumps_BlueSatin_Size39"',
     ),
   accuWeatherInfo: AccuWeatherSchema.describe("Data from the AccuWeather API."),
   googleCalendarEvents: z
@@ -159,7 +159,7 @@ export const ProcessOutfitFeedbackInputSchema = z.object({
   userStyleDNA: z
     .string()
     .describe(
-      "The user's current style DNA profile. Example: 'Based on their collection of Burberry trench coats and Gucci silk tops, the user's style is characterized by a blend of classic British tailoring and Italian luxury...'",
+      "The user's current style DNA profile. Example: 'Based on their collection of Burberry trench coats and Gucci silk tops, the user\\'s style is characterized by a blend of classic British tailoring and Italian luxury...'",
     ),
   userReason: z
     .string()
@@ -199,10 +199,9 @@ export const RecommendOutfitInputSchema = z.object({
     .describe(
       "Weather conditions from AccuWeather, including temperature, humidity, and precipitation.",
     ),
-
   stylePreferences: z // This is the Style DNA output from the previous flow
     .string()
     .describe(
-      "User style DNA summary, reflecting their specific fashion profile derived from their actual wardrobe and shoes. This might include their preferred designers, silhouettes, materials, and a general aesthetic that leans towards middle to upper-class fashion trends and timeless elegance. Use British English in descriptions. Example: \"Based on their collection of Burberry trench coats and Gucci silk blouses, the user's style is characterized by a blend of classic British tailoring and Italian luxury...\"",
+      'User style DNA summary, reflecting their specific fashion profile derived from their actual wardrobe and shoes. This might include their preferred designers, silhouettes, materials, and a general aesthetic that leans towards middle to upper-class fashion trends and timeless elegance. Use British English in descriptions. Example: "Based on their collection of Burberry trench coats and Gucci silk blouses, the user\'s style is characterized by a blend of classic British tailoring and Italian luxury..."',
     ),
 });
