@@ -1,4 +1,3 @@
-
 import type { Metadata } from "next";
 import { Dosis, IBM_Plex_Mono, Kaushan_Script } from "next/font/google";
 import "./globals.css";
@@ -20,7 +19,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 const kaushanScript = Kaushan_Script({
-  subsets: ["latin"], 
+  subsets: ["latin"],
   weight: "400",
   variable: "--font-kaushan-script",
 });
@@ -42,7 +41,7 @@ export default function RootLayout({
           "min-h-screen bg-background font-sans antialiased flex",
           dosis.variable,
           ibmPlexMono.variable,
-          kaushanScript.variable
+          kaushanScript.variable,
         )}
       >
         <ThemeProvider storageKey="skomidora-theme" defaultTheme="dark">
