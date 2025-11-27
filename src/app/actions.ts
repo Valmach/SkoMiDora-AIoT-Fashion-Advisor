@@ -11,13 +11,7 @@ import { analyzeStyleDNA } from "@/ai/flows/analyze-style-dna";
 
 import type {
   RecommendOutfitInput,
-  SingleOutfitOutput as SingleOutfitOutputType,
-  GoogleCalendarEvent,
   AnalyzedItem,
-  AccuWeatherSchema,
-  OutfitForFeedbackAction,
-  EventDetailsForFeedbackAction,
-  UpcomingEventStyleAdvice
 } from "@/types";
 
 import { generateOutfitForEvent } from "@/ai/flows/recommend-outfit";

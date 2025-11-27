@@ -19,7 +19,7 @@ export const AnalyzeClothingItemOutputSchema = z.object({
   itemName: z
     .string()
     .describe(
-      "A concise, descriptive name for the item (e.g., 'Blue Denim Jacket', 'Chanel Classic Flap Bag'). Aim for 3-5 words. If a brand is highly prominent and part of the item\'s common name (e.g., 'Gucci Horsebit Loafers'), it can be included here.",
+      "A concise, descriptive name for the item (e.g., 'Blue Denim Jacket', 'Chanel Classic Flap Bag'). Aim for 3-5 words. If a brand is highly prominent and part of the item's common name (e.g., 'Gucci Horsebit Loafers'), it can be included here.",
     ),
   itemType: z
     .enum([
@@ -91,24 +91,24 @@ export const AnalyzeStyleDNAInputSchema = z.object({
   wardrobeData: z
     .string()
     .describe(
-      'RFID/NFC data representing the user\'s wardrobe collection. These users are fashion-forward and appreciate high-quality, stylish items, often from well-known designers or high-end brands. Their wardrobe reflects a sophisticated taste and a keen eye for current trends as well as timeless pieces. Example: "Item_1_Burberry_TrenchCoat_Beige_SizeM, Item_2_Gucci_SilkBlouse_Cream_SizeS"',
+      "RFID/NFC data representing the user's wardrobe collection. These users are fashion-forward and appreciate high-quality, stylish items, often from well-known designers or high-end brands. Their wardrobe reflects a sophisticated taste and a keen eye for current trends as well as timeless pieces. Example: \"Item_1_Burberry_TrenchCoat_Beige_SizeM, Item_2_Gucci_SilkBlouse_Cream_SizeS\"",
     ),
   shoeCollectionData: z
     .string()
     .describe(
-      'RFID/NFC data representing the user\'s shoe collection. Shoes are a statement for these users, ranging from designer heels and boots to exclusive trainers and elegant flats. Collection emphasizes style, craftsmanship, and brand prestige. Example: "Shoe_1_Chanel_Slingbacks_BeigeBlack_Size39, Shoe_2_ManoloBlahnik_HangisiPumps_BlueSatin_Size39"',
+      "RFID/NFC data representing the user's shoe collection. Shoes are a statement for these users, ranging from designer heels and boots to exclusive trainers and elegant flats. Collection emphasizes style, craftsmanship, and brand prestige. Example: \"Shoe_1_Chanel_Slingbacks_BeigeBlack_Size39, Shoe_2_ManoloBlahnik_HangisiPumps_BlueSatin_Size39\"",
     ),
   accuWeatherInfo: AccuWeatherSchema.describe("Data from the AccuWeather API."),
   googleCalendarEvents: z
     .array(GoogleCalendarEventSchema)
-    .describe("Events from the user\'s Google Calendar."),
+    .describe("Events from the user's Google Calendar."),
 });
 
 export const AnalyzeStyleDNAOutputSchema = z.object({
   styleDNA: z
     .string()
     .describe(
-      "CRITICAL: This field MUST contain a single, plain text summary paragraph (approximately 3-4 lines) describing the user\'s style DNA. It should use British English and contemporary fashion language. It MUST NOT be a JSON object. It MUST NOT be a string representation of a JSON object. It MUST NOT echo or replicate the input JSON structure. It must be ONLY the descriptive paragraph text itself.",
+      "CRITICAL: This field MUST contain a single, plain text summary paragraph (approximately 3-4 lines) describing the user's style DNA. It should use British English and contemporary fashion language. It MUST NOT be a JSON object. It MUST NOT be a string representation of a JSON object. It MUST NOT echo or replicate the input JSON structure. It must be ONLY the descriptive paragraph text itself.",
     ),
 });
 
@@ -116,7 +116,7 @@ export const AnalyzeStyleDNAOutputSchema = z.object({
 export const GenerateEventStyleAdviceInputSchema = z.object({
   event: GoogleCalendarEventSchema.describe("Details of the upcoming event."),
   weather: AccuWeatherSchema.describe(
-    "Current weather conditions for the event\'s timing/location.",
+    "Current weather conditions for the event's timing/location.",
   ),
 });
 
@@ -130,7 +130,7 @@ export const GenerateEventStyleAdviceOutputSchema = z.object({
 
 // Schemas for: src/ai/flows/process-outfit-feedback.ts
 // This schema is defined within recommend-outfit but is used here.
-// For simplicity in sharing, we can redefine a compatible version or ensure it\'s imported.
+// For simplicity in sharing, we can redefine a compatible version or ensure it's imported.
 const DesignerLinkSchema = z.object({
   designerName: z.string(),
   designerUrl: z.string(),
@@ -152,14 +152,14 @@ export const ProcessOutfitFeedbackInputSchema = z.object({
   ),
   userAction: z
     .enum(["accepted", "rejected", "modified"])
-    .describe("The user\'s action regarding the outfit."),
+    .describe("The user's action regarding the outfit."),
   eventDetails: GoogleCalendarEventSchema.describe(
     "The details of the event for which the outfit was recommended.",
   ),
   userStyleDNA: z
     .string()
     .describe(
-      "The user\'s current style DNA profile. Example: 'Based on their collection of Burberry trench coats and Gucci silk tops, the user\\\'s style is characterized by a blend of classic British tailoring and Italian luxury...'",
+      "The user's current style DNA profile. Example: 'Based on their collection of Burberry trench coats and Gucci silk tops, the user's style is characterized by a blend of classic British tailoring and Italian luxury...'",
     ),
   userReason: z
     .string()
@@ -173,7 +173,7 @@ export const ProcessOutfitFeedbackOutputSchema = z.object({
   followUpMessage: z
     .string()
     .describe(
-      "A helpful and context-aware follow-up message in British English based on the user\'s feedback. This message will be displayed to the user and should use contemporary, sophisticated language.",
+      "A helpful and context-aware follow-up message in British English based on the user's feedback. This message will be displayed to the user and should use contemporary, sophisticated language.",
     ),
 });
 
@@ -182,12 +182,12 @@ export const RecommendOutfitInputSchema = z.object({
   shoeCollection: z
     .string()
     .describe(
-      "A comma-separated list of the user\'s actual shoe names (e.g., 'Chanel Slingbacks, Manolo Blahnik Hangisi Pumps, Gucci Princetown Loafers'). Assume a high-end collection featuring designer names, quality craftsmanship, and fashionable pieces (e.g., trainers, heels, boots). This is a list of the user\'s ACTUAL shoes from their Digital Closet.",
+      "A comma-separated list of the user's actual shoe names (e.g., 'Chanel Slingbacks, Manolo Blahnik Hangisi Pumps, Gucci Princetown Loafers'). Assume a high-end collection featuring designer names, quality craftsmanship, and fashionable pieces (e.g., trainers, heels, boots). This is a list of the user's ACTUAL shoes from their Digital Closet.",
     ),
   wardrobeData: z
     .string()
     .describe(
-      "A comma-separated list of the user\'s actual clothing item names or brief descriptions (e.g., 'Burberry Trench Coat, Gucci Silk Blouse, Black Tailored Trousers'). This is a list of the user\'s ACTUAL clothing items from their Digital Closet.",
+      "A comma-separated list of the user's actual clothing item names or brief descriptions (e.g., 'Burberry Trench Coat, Gucci Silk Blouse, Black Tailored Trousers'). This is a list of the user's ACTUAL clothing items from their Digital Closet.",
     ),
   eventDetails: z
     .string()
@@ -203,6 +203,6 @@ export const RecommendOutfitInputSchema = z.object({
   stylePreferences: z // This is the Style DNA output from the previous flow
     .string()
     .describe(
-      'User style DNA summary, reflecting their specific fashion profile derived from their actual wardrobe and shoes. This might include their preferred designers, silhouettes, materials, and a general aesthetic that leans towards middle to upper-class fashion trends and timeless elegance. Use British English in descriptions. Example: "Based on their collection of Burberry trench coats and Gucci silk blouses, the user\'s style is characterized by a blend of classic British tailoring and Italian luxury..."',
+      "User style DNA summary, reflecting their specific fashion profile derived from their actual wardrobe and shoes. This might include their preferred designers, silhouettes, materials, and a general aesthetic that leans towards middle to upper-class fashion trends and timeless elegance. Use British English in descriptions. Example: \"Based on their collection of Burberry trench coats and Gucci silk blouses, the user's style is characterized by a blend of classic British tailoring and Italian luxury...\"",
     ),
 });

@@ -8,7 +8,7 @@ export async function GET() {
     try {
         // FIX: Import the Admin DB inside the function scope to defer loading
         //      This prevents the Next.js build process from crashing.
-        const admin = await getAdmin(); const adminDB = admin.firestore();
+        const admin = await getAdmin();
 
         const snapshot = await admin.firestore().collection("publicWardrobeItems").orderBy("createdAt", "desc").get();
 
