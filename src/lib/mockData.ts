@@ -18,8 +18,8 @@ export const mockAnalyzeStyleDNAInput: AnalyzeStyleDNAInput = {
   googleCalendarEvents: [
     {
       eventName: "Team Sync Meeting",
-      eventStartDateTime: new Date(now + oneDay).toISOString(),
-      eventEndDateTime: new Date(now + oneDay + oneHour).toISOString(),
+      eventStartDateTime: new Date(now + oneDay),
+      eventEndDateTime: new Date(now + oneDay + oneHour),
       eventType: "business",
       eventLocation: "10 Downing Street, London",
     },
@@ -27,8 +27,8 @@ export const mockAnalyzeStyleDNAInput: AnalyzeStyleDNAInput = {
       eventName: "Art Gallery Opening",
       eventStartDateTime: new Date(
         now + 2 * oneDay + 2 * oneHour,
-      ).toISOString(),
-      eventEndDateTime: new Date(now + 2 * oneDay + 4 * oneHour).toISOString(),
+      ),
+      eventEndDateTime: new Date(now + 2 * oneDay + 4 * oneHour),
       eventType: "social chic",
       eventLocation: "Museum of Modern Art, New York",
     },
@@ -36,8 +36,8 @@ export const mockAnalyzeStyleDNAInput: AnalyzeStyleDNAInput = {
       eventName: "Weekend Charity Gala",
       eventStartDateTime: new Date(
         now + 3 * oneDay + 19 * oneHour,
-      ).toISOString(),
-      eventEndDateTime: new Date(now + 3 * oneDay + 23 * oneHour).toISOString(),
+      ),
+      eventEndDateTime: new Date(now + 3 * oneDay + 23 * oneHour),
       eventType: "formal black-tie",
       eventLocation: "The Plaza Hotel, New York City",
     },
@@ -45,10 +45,10 @@ export const mockAnalyzeStyleDNAInput: AnalyzeStyleDNAInput = {
       eventName: "Client Presentation",
       eventStartDateTime: new Date(
         now + 4 * oneDay + 10 * oneHour,
-      ).toISOString(),
+      ),
       eventEndDateTime: new Date(
         now + 4 * oneDay + 11 * oneHour + 30 * 60000,
-      ).toISOString(),
+      ),
       eventType: "business professional",
       eventLocation: "Salesforce Tower, San Francisco",
     },
@@ -56,8 +56,8 @@ export const mockAnalyzeStyleDNAInput: AnalyzeStyleDNAInput = {
       eventName: "Fashion Week Show",
       eventStartDateTime: new Date(
         now + 5 * oneDay + 15 * oneHour,
-      ).toISOString(),
-      eventEndDateTime: new Date(now + 5 * oneDay + 16 * oneHour).toISOString(),
+      ),
+      eventEndDateTime: new Date(now + 5 * oneDay + 16 * oneHour),
       eventType: "fashion event",
       eventLocation: "Spring Studios, NYC",
     },
@@ -65,8 +65,8 @@ export const mockAnalyzeStyleDNAInput: AnalyzeStyleDNAInput = {
       eventName: "Weekend Brunch with Friends",
       eventStartDateTime: new Date(
         now + 6 * oneDay + 11 * oneHour,
-      ).toISOString(),
-      eventEndDateTime: new Date(now + 6 * oneDay + 13 * oneHour).toISOString(),
+      ),
+      eventEndDateTime: new Date(now + 6 * oneDay + 13 * oneHour),
       eventType: "social brunch",
       eventLocation: "The Ivy Chelsea Garden, London",
     },
