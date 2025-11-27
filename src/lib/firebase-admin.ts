@@ -9,7 +9,7 @@ if (!admin.apps.length) {
 
         console.log("✅ Firebase Admin SDK initialized successfully (via Default Credentials)");
 
-    } catch (_) {
+    } catch (errDefault) {
         // 2. If default initialization fails, fall back to using explicit Service Account credentials (from .env file).
         try {
             if (!process.env.FIREBASE_ADMIN_PRIVATE_KEY || !process.env.FIREBASE_ADMIN_PROJECT_ID) {
@@ -27,7 +27,7 @@ if (!admin.apps.length) {
             });
             console.log("✅ Firebase Admin SDK initialized successfully (via Service Account)");
 
-        } catch (errExplicit: unknown) {
+        } catch (errExplicit) {
             console.error("🔥 Firebase Admin Init Error (Default and Explicit Failed):", errExplicit);
             // Re-throw the error so the build process is aware of the failure
             throw errExplicit;
