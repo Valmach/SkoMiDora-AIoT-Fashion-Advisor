@@ -19,7 +19,7 @@ export const AnalyzeClothingItemOutputSchema = z.object({
   itemName: z
     .string()
     .describe(
-      "A concise, descriptive name for the item (e.g., 'Blue Denim Jacket', 'Chanel Classic Flap Bag'). Aim for 3-5 words. If a brand is highly prominent and part of the item's common name (e.g., 'Gucci Horsebit Loafers'), it can be included here.",
+      "A concise, descriptive name for the item (e.g., 'Blue Denim Jacket', 'Chanel Classic Flap Bag'). Aim for 3-5 words. If a brand is highly prominent and part of the item\'s common name (e.g., 'Gucci Horsebit Loafers'), it can be included here.",
     ),
   itemType: z
     .enum([
@@ -77,11 +77,11 @@ export const AccuWeatherSchema = z.object({
 
 export const GoogleCalendarEventSchema = z.object({
   eventName: z.string().describe("The name of the event."),
-  eventStartDateTime: z
-    .string()
+  eventStartDateTime: z.coerce
+    .date()
     .describe("The start date and time of the event (ISO format)."),
-  eventEndDateTime: z
-    .string()
+  eventEndDateTime: z.coerce
+    .date()
     .describe("The end date and time of the event (ISO format)."),
   eventType: z.string().describe("The type of event (e.g., business, social)."),
   eventLocation: z.string().optional().describe("The location of the event."),
@@ -101,14 +101,14 @@ export const AnalyzeStyleDNAInputSchema = z.object({
   accuWeatherInfo: AccuWeatherSchema.describe("Data from the AccuWeather API."),
   googleCalendarEvents: z
     .array(GoogleCalendarEventSchema)
-    .describe("Events from the user's Google Calendar."),
+    .describe("Events from the user\'s Google Calendar."),
 });
 
 export const AnalyzeStyleDNAOutputSchema = z.object({
   styleDNA: z
     .string()
     .describe(
-      "CRITICAL: This field MUST contain a single, plain text summary paragraph (approximately 3-4 lines) describing the user's style DNA. It should use British English and contemporary fashion language. It MUST NOT be a JSON object. It MUST NOT be a string representation of a JSON object. It MUST NOT echo or replicate the input JSON structure. It must be ONLY the descriptive paragraph text itself.",
+      "CRITICAL: This field MUST contain a single, plain text summary paragraph (approximately 3-4 lines) describing the user\'s style DNA. It should use British English and contemporary fashion language. It MUST NOT be a JSON object. It MUST NOT be a string representation of a JSON object. It MUST NOT echo or replicate the input JSON structure. It must be ONLY the descriptive paragraph text itself.",
     ),
 });
 
@@ -116,7 +116,7 @@ export const AnalyzeStyleDNAOutputSchema = z.object({
 export const GenerateEventStyleAdviceInputSchema = z.object({
   event: GoogleCalendarEventSchema.describe("Details of the upcoming event."),
   weather: AccuWeatherSchema.describe(
-    "Current weather conditions for the event's timing/location.",
+    "Current weather conditions for the event\'s timing/location.",
   ),
 });
 
@@ -130,7 +130,7 @@ export const GenerateEventStyleAdviceOutputSchema = z.object({
 
 // Schemas for: src/ai/flows/process-outfit-feedback.ts
 // This schema is defined within recommend-outfit but is used here.
-// For simplicity in sharing, we can redefine a compatible version or ensure it's imported.
+// For simplicity in sharing, we can redefine a compatible version or ensure it\'s imported.
 const DesignerLinkSchema = z.object({
   designerName: z.string(),
   designerUrl: z.string(),
@@ -152,14 +152,14 @@ export const ProcessOutfitFeedbackInputSchema = z.object({
   ),
   userAction: z
     .enum(["accepted", "rejected", "modified"])
-    .describe("The user's action regarding the outfit."),
+    .describe("The user\'s action regarding the outfit."),
   eventDetails: GoogleCalendarEventSchema.describe(
     "The details of the event for which the outfit was recommended.",
   ),
   userStyleDNA: z
     .string()
     .describe(
-      "The user's current style DNA profile. Example: 'Based on their collection of Burberry trench coats and Gucci silk tops, the user\\'s style is characterized by a blend of classic British tailoring and Italian luxury...'",
+      "The user\'s current style DNA profile. Example: 'Based on their collection of Burberry trench coats and Gucci silk tops, the user\\\'s style is characterized by a blend of classic British tailoring and Italian luxury...'",
     ),
   userReason: z
     .string()
@@ -173,7 +173,7 @@ export const ProcessOutfitFeedbackOutputSchema = z.object({
   followUpMessage: z
     .string()
     .describe(
-      "A helpful and context-aware follow-up message in British English based on the user's feedback. This message will be displayed to the user and should use contemporary, sophisticated language.",
+      "A helpful and context-aware follow-up message in British English based on the user\'s feedback. This message will be displayed to the user and should use contemporary, sophisticated language.",
     ),
 });
 
@@ -182,12 +182,12 @@ export const RecommendOutfitInputSchema = z.object({
   shoeCollection: z
     .string()
     .describe(
-      "A comma-separated list of the user's actual shoe names (e.g., 'Chanel Slingbacks, Manolo Blahnik Hangisi Pumps, Gucci Princetown Loafers'). Assume a high-end collection featuring designer names, quality craftsmanship, and fashionable pieces (e.g., trainers, heels, boots). This is a list of the user's ACTUAL shoes from their Digital Closet.",
+      "A comma-separated list of the user\'s actual shoe names (e.g., 'Chanel Slingbacks, Manolo Blahnik Hangisi Pumps, Gucci Princetown Loafers'). Assume a high-end collection featuring designer names, quality craftsmanship, and fashionable pieces (e.g., trainers, heels, boots). This is a list of the user\'s ACTUAL shoes from their Digital Closet.",
     ),
   wardrobeData: z
     .string()
     .describe(
-      "A comma-separated list of the user's actual clothing item names or brief descriptions (e.g., 'Burberry Trench Coat, Gucci Silk Blouse, Black Tailored Trousers'). This is a list of the user's ACTUAL clothing items from their Digital Closet.",
+      "A comma-separated list of the user\'s actual clothing item names or brief descriptions (e.g., 'Burberry Trench Coat, Gucci Silk Blouse, Black Tailored Trousers'). This is a list of the user\'s ACTUAL clothing items from their Digital Closet.",
     ),
   eventDetails: z
     .string()
@@ -199,6 +199,7 @@ export const RecommendOutfitInputSchema = z.object({
     .describe(
       "Weather conditions from AccuWeather, including temperature, humidity, and precipitation.",
     ),
+
   stylePreferences: z // This is the Style DNA output from the previous flow
     .string()
     .describe(
