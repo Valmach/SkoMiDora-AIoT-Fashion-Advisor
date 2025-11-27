@@ -71,10 +71,12 @@ secrets:
    - variable: GEMINI_API_KEY
      secret: GEMINI_API_KEY
      availability:
+       - BUILD
        - RUNTIME
    - variable: GOOGLE_API_KEY
      secret: GOOGLE_API_KEY
      availability:
+       - BUILD
        - RUNTIME
    - variable: ACCUWEATHER_API_KEY
      secret: ACCUWEATHER_API_KEY

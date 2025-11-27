@@ -13,7 +13,7 @@ import { googleAI } from "@genkit-ai/google-genai";
 // GOOGLE_API_KEY MUST be set as an environment variable in that function's/backend's configuration.
 // For local development, this config ensures the GOOGLE_API_KEY is loaded from your .env file.
 const plugins = [
-  googleAI(), // Enabled Google AI plugin
+  googleAI({ apiKey: process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY }), // Enabled Google AI plugin
 ];
 
 // If plugins array is empty, Genkit will initialize without specific model providers.
