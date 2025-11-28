@@ -1,165 +1,256 @@
+
 'use server';
-import { getAdmin } from "@/lib/firebase-admin-loader";
+/**
+ * @fileOverview Server actions for interacting with AI flows and Firestore.
+ */
 
 
 
-// FLOW IMPORTS
-import type { AnalyzeClothingItemInput, AnalyzeClothingItemOutput } from "@/ai/flows/analyze-clothing-item";
-import { analyzeClothingItem } from "@/ai/flows/analyze-clothing-item";
 
-import { analyzeStyleDNA } from "@/ai/flows/analyze-style-dna";
+// Import AI flow types and functions
+import type { AnalyzeClothingItemInput, AnalyzeClothingItemOutput } from '@/ai/flows/analyze-clothing-item';
+import { analyzeClothingItem } from '@/ai/flows/analyze-clothing-item';
 
-import type {
-  RecommendOutfitInput,
+// ... other action imports ...
+import { analyzeStyleDNA } from '@/ai/flows/analyze-style-dna';
+import type { RecommendOutfitInput, SingleOutfitOutput as SingleOutfitOutputType, GoogleCalendarEvent, AnalyzedItem, AccuWeatherSchema, OutfitForFeedbackAction, EventDetailsForFeedbackAction, UpcomingEventStyleAdvice } from '@/types';
+import { generateOutfitForEvent } from '@/ai/flows/recommend-outfit';
+import type { GenerateEventStyleAdviceInput } from '@/types';
+import { generateEventStyleAdvice } from '@/ai/flows/generate-event-style-advice';
+import type { ProcessOutfitFeedbackInput, ProcessOutfitFeedbackOutput } from '@/types';
+import { processOutfitFeedback } from '@/ai/flows/process-outfit-feedback';
+import { getCurrentWeather } from '@/services/accuweather';
+import { mockAnalyzeStyleDNAInput } from '@/lib/mockData';
+import { generateSpeechFromText } from '@/ai/flows/generate-speech-from-text';
+import { FieldValue } from 'firebase-admin/firestore';
+import { db, storage } from '@/lib/firebase-admin';
+
+// Re-exporting other types for client component use
+export type {
+  GoogleCalendarEvent as GoogleCalendarEventSchema,
+  AccuWeatherSchema,
+  OutfitForFeedbackAction,
+  EventDetailsForFeedbackAction,
   AnalyzedItem,
-} from "@/types";
+  UpcomingEventStyleAdvice,
+};
 
-import { generateOutfitForEvent } from "@/ai/flows/recommend-outfit";
-
-import type { ProcessOutfitFeedbackInput, ProcessOutfitFeedbackOutput } from "@/types";
-import { processOutfitFeedback } from "@/ai/flows/process-outfit-feedback";
-
-import { generateSpeechFromText } from "@/ai/flows/generate-speech-from-text";
-import { mockAnalyzeStyleDNAInput } from "@/lib/mockData";
+// Re-export SingleOutfitOutput with a different name if needed, or just export it
+export type SingleOutfitOutput = SingleOutfitOutputType;
 
 
-/* -------------------------------------------------------------------------- */
-/*  ANALYZE & SAVE ITEM                                                       */
-/* -------------------------------------------------------------------------- */
+export interface RecommendOutfitOutput {
+  outfits: SingleOutfitOutputType[];
+  eventsForOutfits: GoogleCalendarEvent[];
+}
+
+/**
+ * Takes image file data via FormData, uploads it to Firebase Storage,
+ * analyzes it with AI, and saves the result to Firestore.
+ * This server-centric approach avoids client-side permission issues and payload limits.
+ */
 export async function analyzeAndSaveClothingItem(
   formData: FormData
 ): Promise<{ error: string } | AnalyzedItem> {
+  console.log("ACTION: analyzeAndSaveClothingItem started.");
 
   try {
-    const file = formData.get("file") as File;
-    if (!file) throw new Error("No file found.");
+    const file = formData.get('file') as File;
+    if (!file) {
+      console.error("ACTION_ERROR: No file found in form data.");
+      throw new Error("No file found in the form data.");
+    }
+    console.log(`ACTION_INFO: File received: ${file.name}, type: ${file.type}, size: ${file.size}`);
 
-    const uniqueFileName = `${Date.now()}-${file.name.replace(/\s+/g, "_")}`;
+    // Step 1: Upload the image to Firebase Storage from the server action
+    const uniqueFileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
     const imagePath = `public_wardrobe_items/${uniqueFileName}`;
+    
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const bucket = (await getAdmin()).storage().bucket();
-    const upload = bucket.file(imagePath);
+    const bucket = storage.bucket();
+    const fileUpload = bucket.file(imagePath);
 
-    await upload.save(buffer, { metadata: { contentType: file.type } });
-    await upload.makePublic();
+    console.log("ACTION_INFO: Attempting to upload bytes to Storage...");
+    await fileUpload.save(buffer, {
+        metadata: {
+            contentType: file.type,
+        },
+    });
+    console.log("ACTION_SUCCESS: uploadBytes completed successfully.");
+    
+    await fileUpload.makePublic();
+    const downloadURL = fileUpload.publicUrl();
 
-    const downloadURL = upload.publicUrl();
+    console.log(`ACTION_SUCCESS: Got public URL: ${downloadURL}`);
 
+    if (!downloadURL) {
+      console.error("ACTION_ERROR: Image uploaded, but getDownloadURL returned nothing.");
+      throw new Error("Image uploaded, but failed to get a download URL.");
+    }
+    
+    console.log("ACTION_INFO: Upload successful. Proceeding with AI analysis.");
     const aiInput: AnalyzeClothingItemInput = { imageUri: downloadURL };
     const analysisResult = await analyzeClothingItem(aiInput);
+
+    if (!analysisResult || typeof analysisResult.itemName !== 'string') {
+        throw new Error('AI analysis failed to return valid data.');
+    }
+    console.log("ACTION_INFO: AI analysis successful. Proceeding with Firestore write.");
 
     const newItemData = {
       ...analysisResult,
       imageUrl: downloadURL,
-      imagePath,
-      createdAt: (await getAdmin()).firestore.FieldValue.serverTimestamp()
+      imagePath: imagePath,
+      createdAt: FieldValue.serverTimestamp(),
     };
-
-    const docRef = await (await getAdmin()).firestore().collection("publicWardrobeItems").add(newItemData);
-
+    const docRef = await db.collection('publicWardrobeItems').add(newItemData);
+    console.log(`ACTION_SUCCESS: Data saved to Firestore with ID: ${docRef.id}`);
+    
     return {
       ...(analysisResult as AnalyzeClothingItemOutput),
       id: docRef.id,
       imageUrl: downloadURL,
-      imagePath,
-      createdAt: Date.now(),
+      imagePath: imagePath,
+      createdAt: Date.now(), // Return current time for immediate client-side use
     };
-
+    
   } catch (e: any) {
-    return { error: e.message || "Server error." };
+    console.error("CRITICAL ERROR in analyzeAndSaveClothingItem action:", e);
+    const detailedMessage = `Action Error: ${e.message || "An unknown error occurred during server-side processing."}`;
+    return { error: detailedMessage };
   }
 }
 
 
-/* -------------------------------------------------------------------------- */
-/*  DELETE ITEM                                                               */
-/* -------------------------------------------------------------------------- */
+/**
+ * Deletes a clothing item from Firestore and its corresponding image from Firebase Storage.
+ * This function prioritizes deleting the Firestore document to ensure the UI updates correctly.
+ */
 export async function deleteClothingItem(
   itemId: string,
-  imagePath?: string
-) {
+  imagePath: string | undefined
+): Promise<{ success: true } | { error: string }> {
+  console.log(`ACTION: Attempting to delete item: ${itemId}`);
+
+  // First, delete the Firestore document. This is the source of truth for the UI.
   try {
-    await (await getAdmin()).firestore().collection("publicWardrobeItems").doc(itemId).delete();
-
-    if (imagePath) {
-      await (await getAdmin()).storage().bucket().file(imagePath).delete().catch(() => null);
-    }
-
-    return { success: true };
-
+    await db.collection('publicWardrobeItems').doc(itemId).delete();
+    console.log(`ACTION_SUCCESS: Firestore document ${itemId} deleted.`);
   } catch (e: any) {
-    return { error: e.message || "Delete failed." };
+    console.error(`CRITICAL_ERROR: Could not delete Firestore document ${itemId}. Error: ${e.message}`, e);
+    return { error: `Database error: Could not remove item. (${e.code || e.message})` };
   }
+
+  // If Firestore deletion was successful, then try to delete the storage file.
+  if (imagePath) {
+    try {
+      const bucket = storage.bucket();
+      await bucket.file(imagePath).delete();
+      console.log(`ACTION_SUCCESS: Storage file ${imagePath} deleted.`);
+    } catch (e: any) {
+      // This is a non-critical error. The item is gone from the UI.
+      // We log a warning that the file might be orphaned.
+      console.warn(`ACTION_WARN: Item deleted from database, but storage file '${imagePath}' could not be removed. It may be orphaned. Error: ${e.message}`);
+    }
+  }
+
+  return { success: true };
 }
 
 
-/* -------------------------------------------------------------------------- */
-/*  STYLE DNA                                                                 */
-/* -------------------------------------------------------------------------- */
-export async function analyzeStyleDNAAction() {
+// --- Other existing actions (updated) ---
+
+/**
+ * Analyzes the user's style DNA.
+ * This action now fetches wardrobe data directly from Firestore for accuracy and robustness.
+ */
+export async function analyzeStyleDNAAction(): Promise<{ styleDNA: string } | { error:string }> {
   try {
-    const snapshot = await (await getAdmin()).firestore().collection("publicWardrobeItems").get();
+    console.log("ACTION: analyzeStyleDNAAction started. Fetching items from Firestore...");
+    const itemsCollectionRef = db.collection('publicWardrobeItems');
+    const querySnapshot = await itemsCollectionRef.get();
+    
+    const allItems: AnalyzedItem[] = [];
+    querySnapshot.forEach(doc => {
+        const data = doc.data();
+        allItems.push({
+            id: doc.id,
+            itemName: data.itemName,
+            itemType: data.itemType,
+            imageUrl: data.imageUrl,
+            imagePath: data.imagePath,
+            createdAt: 0, // Placeholder, not used in this action
+            // Add other fields from AnalyzeClothingItemOutput if they exist
+            ...data
+        } as AnalyzedItem);
+    });
 
-    const items: AnalyzedItem[] = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as AnalyzedItem[];
+    console.log(`ACTION: Found ${allItems.length} items in Firestore.`);
 
-    const clothingNames = items.map((i) => i.itemName).join(", ");
+    const shoeItems = allItems.filter(item => item.itemType === 'Shoes');
+    const clothingItems = allItems.filter(item => item.itemType !== 'Shoes');
+
+    // Use fetched data if available, otherwise fall back to mock data
+    const wardrobeData = clothingItems.length > 0 
+        ? clothingItems.map(item => item.itemName).join(', ')
+        : "";
+        
+    const shoeCollectionData = shoeItems.length > 0
+        ? shoeItems.map(item => item.itemName).join(', ')
+        : "";
+
+    console.log(`ACTION: wardrobeData for AI: ${wardrobeData.substring(0, 100)}...`);
+    console.log(`ACTION: shoeCollectionData for AI: ${shoeCollectionData.substring(0, 100)}...`);
 
     const aiInput = {
-      ...mockAnalyzeStyleDNAInput,
-      wardrobeData: clothingNames,
-      shoeCollectionData: clothingNames,
+      ...mockAnalyzeStyleDNAInput, // This provides calendar and weather mocks
+      wardrobeData,
+      shoeCollectionData,
     };
 
     const result = await analyzeStyleDNA(aiInput);
-    return { styleDNA: result.styleDNA };
-
+    // Ensure result is not null and has the styleDNA property
+    if (result && typeof result.styleDNA === 'string') {
+        return { styleDNA: result.styleDNA };
+    } else {
+        throw new Error("AI analysis did not return the expected styleDNA string.");
+    }
   } catch (e: any) {
-    return { error: e.message };
+    console.error("Error in analyzeStyleDNAAction:", e);
+    return { error: e.message || "Failed to analyze style DNA." };
   }
 }
 
-
-/* -------------------------------------------------------------------------- */
-/*  OUTFIT GENERATION                                                         */
-/* -------------------------------------------------------------------------- */
 export async function generateOutfitForEventAction(
   input: RecommendOutfitInput
-) {
+): Promise<SingleOutfitOutputType | { error: string }> {
   try {
     return await generateOutfitForEvent(input);
   } catch (e: any) {
-    return { error: e.message };
+    console.error("Error in generateOutfitForEventAction:", e);
+    return { error: e.message || "Failed to generate outfit recommendation." };
   }
 }
 
-
-/* -------------------------------------------------------------------------- */
-/*  FEEDBACK PROCESSING                                                       */
-/* -------------------------------------------------------------------------- */
 export async function processOutfitFeedbackAction(
   input: ProcessOutfitFeedbackInput
 ): Promise<ProcessOutfitFeedbackOutput | { error: string }> {
-
   try {
     return await processOutfitFeedback(input);
   } catch (e: any) {
-    return { error: e.message };
+    console.error("Error in processOutfitFeedbackAction:", e);
+    return { error: e.message || "Failed to process outfit feedback." };
   }
 }
 
-
-/* -------------------------------------------------------------------------- */
-/*  SPEECH GENERATION                                                         */
-/* -------------------------------------------------------------------------- */
-export async function generateSpeechFromTextAction(text: string) {
-  try {
-    const result = await generateSpeechFromText(text);
-    return { media: result.media };
-  } catch (e: any) {
-    return { error: e.message };
-  }
+export async function generateSpeechFromTextAction(text: string): Promise<{ media?: string; error?: string }> {
+    try {
+        const result = await generateSpeechFromText(text);
+        return { media: result.media };
+    } catch (e: any) {
+        console.error("Error in generateSpeechFromTextAction:", e);
+        return { error: e.message || "Failed to generate speech." };
+    }
 }

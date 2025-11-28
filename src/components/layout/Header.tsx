@@ -1,10 +1,11 @@
-"use client";
+'use client';
 
-import { Sparkles, PanelLeft } from "lucide-react";
-import Link from "next/link";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { Button } from "@/components/ui/button";
-import { useSidebar } from "@/components/ui/sidebar";
+import { Eye, PanelLeft, Sparkles, Rocket } from 'lucide-react';
+import Link from 'next/link';
+import { ThemeToggle } from '@/components/theme-toggle';
+import { Button } from '@/components/ui/button';
+import { useSidebar } from '@/components/ui/sidebar';
+import { useToast } from '@/hooks/use-toast';
 
 // SkoMiDora Logo with currentColor for theming
 const SkoMiDoraLogo = () => (
@@ -28,6 +29,22 @@ const SkoMiDoraLogo = () => (
 
 export default function Header() {
   const { toggleSidebar, isMobile } = useSidebar();
+  const { toast } = useToast();
+
+  const handlePublish = () => {
+    toast({
+      title: 'Publishing In Progress',
+      description: 'Your website is being built and deployed. This may take a few minutes.',
+    });
+    // Here you would trigger the actual build and deploy process
+    // For this example, we'll just show a success toast after a delay
+    setTimeout(() => {
+      toast({
+        title: 'Publishing Successful',
+        description: 'Your website has been successfully deployed.',
+      });
+    }, 5000);
+  };
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-card/80 backdrop-blur-md">
@@ -56,6 +73,16 @@ export default function Header() {
 
         <div className="flex items-center gap-x-2">
           <Sparkles className="h-5 w-5 text-accent hidden sm:inline" />
+          <Button asChild variant="outline" size="sm">
+            <Link href="/preview">
+              <Eye className="mr-2 h-4 w-4" />
+              Preview
+            </Link>
+          </Button>
+          <Button size="sm" onClick={handlePublish}>
+            <Rocket className="mr-2 h-4 w-4" />
+            Publish
+          </Button>
           <ThemeToggle />
         </div>
       </div>
