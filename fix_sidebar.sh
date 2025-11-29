@@ -1,3 +1,12 @@
+#!/bin/bash
+
+# This script fixes all sidebar menu features by replacing the AppSidebar.tsx file with a corrected version.
+
+# Create a backup of the original file
+cp src/components/layout/AppSidebar.tsx src/components/layout/AppSidebar.tsx.bak
+
+# Create a new version of the file with the corrected code
+cat > src/components/layout/AppSidebar.tsx << EOL
 "use client";
 
 import Link from "next/link";
@@ -73,6 +82,12 @@ export default function AppSidebar() {
       label: "Outfits",
       icon: Lightbulb,
       color: "text-yellow-400",
+    },
+        {
+      href: "/style-dna",
+      label: "Analyse My Style",
+      icon: BrainCircuit,      
+      color: "text-purple-400",
     },
     {
       href: "/settings",
@@ -170,3 +185,13 @@ export default function AppSidebar() {
     </Sidebar>
   );
 }
+EOL
+
+# Make the script executable
+chmod +x fix_sidebar.sh
+
+# Run the script
+./fix_sidebar.sh
+
+# Inform the user that the script has been run
+echo "Sidebar menu features have been fixed."

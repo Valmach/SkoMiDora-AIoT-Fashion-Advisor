@@ -115,48 +115,14 @@ export default function DashboardPage() {
       <Card className="shadow-xl border-primary/20">
         <CardHeader>
           <CardTitle className="text-3xl font-bold text-foreground font-calligraphy">
-            Welcome to SkoMiDora
+            Upcoming Events
           </CardTitle>
           <CardDescription className="text-muted-foreground font-sans">
-            Your personal AI-powered stylist for footwear and fashion.
-            Let&apos;s discover your unique style.
+            Manage your upcoming events and get style advice.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {analysisCompleted && styleDNA && <StyleDnaDisplay styleDNA={styleDNA} />}
-          <div className="flex flex-col sm:flex-row gap-4">
-            <Button
-              asChild
-              variant="destructive"
-              className="flex-1 font-calligraphy text-lg"
-            >
-              <Link href="/closet">
-                <Archive className="mr-2 h-4 w-4" /> My Digital Closet
-              </Link>
-            </Button>
-            <Button
-              onClick={handleAnalyzeDNA}
-              disabled={isLoading}
-              className="flex-1 font-calligraphy text-lg bg-black hover:bg-destructive text-white"
-              variant="secondary"
-            >
-              {isLoading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Brain className="mr-2 h-4 w-4" />
-              )}
-              {isAnalyzing
-                ? "Analyzing..."
-                : isDataLoading
-                  ? "Loading Closet..."
-                  : "Analyse My Style."}
-            </Button>
-          </div>
-          {error && (
-            <div className="text-center py-2 text-destructive-foreground bg-destructive/20 p-2 rounded-md text-sm flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4" /> <p>{error}</p>
-            </div>
-          )}
+         <p> Events content will go here. </p>
         </CardContent>
       </Card>
     </div>

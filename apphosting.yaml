@@ -39,7 +39,7 @@ env:
        - BUILD
        - RUNTIME
    - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-     value: 855662411333
+     value: '855662411333'
      availability:
        - BUILD
        - RUNTIME
@@ -62,10 +62,12 @@ secrets:
    - variable: FIREBASE_ADMIN_PRIVATE_KEY
      secret: FIREBASE_ADMIN_PRIVATE_KEY
      availability:
+       - BUILD
        - RUNTIME
    - variable: FIREBASE_ADMIN_CLIENT_EMAIL
      secret: FIREBASE_ADMIN_CLIENT_EMAIL
      availability:
+       - BUILD
        - RUNTIME
    # External API Keys
    - variable: GEMINI_API_KEY
@@ -81,4 +83,5 @@ secrets:
    - variable: ACCUWEATHER_API_KEY
      secret: ACCUWEATHER_API_KEY
      availability:
+       - BUILD
        - RUNTIME

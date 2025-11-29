@@ -74,6 +74,12 @@ export default function AppSidebar() {
       icon: Lightbulb,
       color: "text-yellow-400",
     },
+        {
+      href: "/style-dna",
+      label: "Analyse My Style",
+      icon: BrainCircuit,      
+      color: "text-purple-400",
+    },
     {
       href: "/settings",
       label: "Settings",
