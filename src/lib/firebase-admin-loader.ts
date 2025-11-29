@@ -16,7 +16,11 @@ export async function getAdmin() {
     return admin;
 
   } catch (errDefault) {
-    console.log("⚠️ Default credential init failed:", errDefault.message);
+    if (errDefault instanceof Error) {
+        console.log("⚠️ Default credential init failed:", errDefault.message);
+    } else {
+        console.log("⚠️ Default credential init failed with an unknown error:", errDefault);
+    }
   }
 
   try {
@@ -40,7 +44,11 @@ export async function getAdmin() {
       return admin;
 
     } catch (errExplicit) {
-      console.error("🔥 Firebase Admin initialization FAILED:", errExplicit);
+        if (errExplicit instanceof Error) {
+            console.error("🔥 Firebase Admin initialization FAILED:", errExplicit.message);
+        } else {
+            console.error("🔥 Firebase Admin initialization FAILED with an unknown error:", errExplicit);
+        }
       throw errExplicit;
     }
 }
