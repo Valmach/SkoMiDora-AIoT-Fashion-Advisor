@@ -4,7 +4,6 @@
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
-
 import { useState, useEffect, useTransition } from "react";
 import {
   Card,
@@ -65,6 +64,7 @@ export default function DashboardPage() {
     return () => unsubscribe();
   }, [firebase]);
 
+
   const handleAnalyzeDNA = () => {
     if (wardrobeItemCount === 0) {
       toast({
@@ -75,7 +75,7 @@ export default function DashboardPage() {
       });
       return;
     }
-
+  
     startAnalyzingTransition(async () => {
       setAnalysisError(null);
       setAnalysisCompleted(false);
@@ -86,10 +86,8 @@ export default function DashboardPage() {
       });
       try {
         const result = await analyzeStyleDNAAction();
-        if ("error" in result) {
-          throw new Error(result.error);
-        }
-        if (result.styleDNA) {
+  
+        if (result && 'styleDNA' in result && result.styleDNA) {
           setStyleDNA(result.styleDNA);
           setAnalysisCompleted(true);
           toast({
@@ -97,14 +95,18 @@ export default function DashboardPage() {
             description: "Your personalized fashion profile is ready.",
           });
         } else {
-            throw new Error("Analysis did not return a valid Style DNA.");
+          let errorMessage = "Analysis did not return a valid Style DNA.";
+          if (result && 'error' in result) {
+            errorMessage = result.error; // Use the error from the action result
+          }
+          throw new Error(errorMessage);
         }
       } catch (e: any) {
-        const errorMessage = `Analysis Failed: ${e.message || "An unknown error occurred."}`;
-        setAnalysisError(errorMessage);
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        setAnalysisError(`Analysis Failed: ${errorMessage}`);
         toast({
           title: "Analysis Failed",
-          description: e.message || "Could not analyze Style DNA.",
+          description: errorMessage || "Could not analyze Style DNA.", // Fallback description
           variant: "destructive",
         });
       }

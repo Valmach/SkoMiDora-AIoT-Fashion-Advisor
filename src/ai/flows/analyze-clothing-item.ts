@@ -1,5 +1,5 @@
 
-"use server";
+'use server';
 /**
  * @fileOverview Analyzes an image of a clothing item or accessory,
  * generating a detailed, structured description.
@@ -9,88 +9,40 @@
  * - AnalyzeClothingItemOutput - The return type for the analyzeClothingItem function.
  */
 
-import { ai } from "@/ai/genkit";
-import { z } from "genkit";
+import {ai} from '@/ai/genkit';
+import {z} from 'genkit';
 
 const AnalyzeClothingItemInputSchema = z.object({
   imageUri: z
     .string()
     .describe(
-      "A photo of a clothing item or accessory, as a public URL or a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>' or 'https://...'",
+      "A photo of a clothing item or accessory, as a public URL or a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>' or 'https://...'"
     ),
 });
-export type AnalyzeClothingItemInput = z.infer<
-  typeof AnalyzeClothingItemInputSchema
->;
+export type AnalyzeClothingItemInput = z.infer<typeof AnalyzeClothingItemInputSchema>;
 
 const AnalyzeClothingItemOutputSchema = z.object({
-  itemName: z
-    .string()
-    .describe(
-      "A concise, descriptive name for the item (e.g., 'Blue Denim Jacket', 'Chanel Classic Flap Bag'). Aim for 3-5 words. If a brand is highly prominent and part of the item's common name (e.g., 'Gucci Horsebit Loafers'), it can be included here.",
-    ),
-  itemType: z
-    .enum([
-      "Top",
-      "Bottom",
-      "Outerwear",
-      "Dress",
-      "Shoes",
-      "Accessory",
-      "Bag",
-      "Other",
-    ])
-    .describe("The general category of the clothing item or accessory."),
-  designerName: z
-    .string()
-    .optional()
-    .describe(
-      "The designer or brand name, if identifiable from the image (e.g., logos, distinct brand markers). Otherwise omit. Do not guess if unsure.",
-    ),
-  color: z
-    .string()
-    .describe(
-      "The dominant color(s) of the item. Be specific (e.g., 'Navy Blue', 'Cream White', 'Multicolor Floral Print', 'Metallic Gold').",
-    ),
-  generalMaterial: z
-    .string()
-    .describe(
-      "The primary material perceived from the image (e.g., 'Cotton', 'Silk', 'Leather', 'Denim', 'Wool Blend', 'Knit', 'Patent Leather').Avoid overly technical terms unless essential and clearly visible.",
-    ),
-  styleKeywords: z
-    .array(z.string())
-    .describe(
-      "Up to 5 relevant style keywords describing its aesthetic (e.g., 'vintage', 'minimalist', 'bohemian', 'streetwear', 'formal', 'casual', 'sporty', 'athleisure', 'avant-garde', 'classic').",
-    ),
-  narrativeDescription: z
-    .string()
-    .describe(
-      "A brief (2-3 sentences) engaging narrative description of the item, highlighting its key features and overall style impression. Use fashion-conscious language suitable for a discerning audience.",
-    ),
-  detailedSpecifications: z
-    .string()
-    .optional()
-    .describe(
-      "Additional notable visual details like pattern (e.g., 'Striped', 'Polka Dot'), print, fit (e.g., 'Slim Fit', 'Oversized', 'A-Line'), embellishments (e.g., 'Embroidery', 'Sequins'), hardware, or specific design features (e.g., 'Notched lapel', 'Quilted texture', 'Distressed details'). If you can discern or reasonably infer the country of origin (e.g., 'Made in Italy' for many luxury goods), include it as 'Made in [Country]'. List as bullet points if multiple details are present, separated by newlines within the string.",
-    ),
+  itemName: z.string().describe("A concise, descriptive name for the item (e.g., 'Blue Denim Jacket', 'Chanel Classic Flap Bag'). Aim for 3-5 words. If a brand is highly prominent and part of the item's common name (e.g., 'Gucci Horsebit Loafers'), it can be included here."),
+  itemType: z.enum(["Top", "Bottom", "Outerwear", "Dress", "Shoes", "Accessory", "Bag", "Other"]).describe("The general category of the clothing item or accessory."),
+  designerName: z.string().optional().describe("The designer or brand name, if identifiable from the image (e.g., logos, distinct brand markers). Otherwise omit. Do not guess if unsure."),
+  color: z.string().describe("The dominant color(s) of the item. Be specific (e.g., 'Navy Blue', 'Cream White', 'Multicolor Floral Print', 'Metallic Gold')."),
+  generalMaterial: z.string().describe("The primary material perceived from the image (e.g., 'Cotton', 'Silk', 'Leather', 'Denim', 'Wool Blend', 'Knit', 'Patent Leather'). Avoid overly technical terms unless essential and clearly visible."),
+  styleKeywords: z.array(z.string()).describe("Up to 5 relevant style keywords describing its aesthetic (e.g., 'vintage', 'minimalist', 'bohemian', 'streetwear', 'formal', 'casual', 'sporty', 'athleisure', 'avant-garde', 'classic')."),
+  narrativeDescription: z.string().describe("A brief (2-3 sentences) engaging narrative description of the item, highlighting its key features and overall style impression. Use fashion-conscious language suitable for a discerning audience."),
+  detailedSpecifications: z.string().optional().describe("Additional notable visual details like pattern (e.g., 'Striped', 'Polka Dot'), print, fit (e.g., 'Slim Fit', 'Oversized', 'A-Line'), embellishments (e.g., 'Embroidery', 'Sequins'), hardware, or specific design features (e.g., 'Notched lapel', 'Quilted texture', 'Distressed details'). If you can discern or reasonably infer the country of origin (e.g., 'Made in Italy' for many luxury goods), include it as 'Made in [Country]'. List as bullet points if multiple details are present, separated by newlines within the string."),
 });
-export type AnalyzeClothingItemOutput = z.infer<
-  typeof AnalyzeClothingItemOutputSchema
->;
+export type AnalyzeClothingItemOutput = z.infer<typeof AnalyzeClothingItemOutputSchema>;
 
-export async function analyzeClothingItem(
-  input: AnalyzeClothingItemInput,
-): Promise<AnalyzeClothingItemOutput> {
+export async function analyzeClothingItem(input: AnalyzeClothingItemInput): Promise<AnalyzeClothingItemOutput> {
   // This function now directly calls the flow.
   // The flow itself handles the AI call and returns the structured output.
   return analyzeClothingItemFlow(input);
 }
 
 const promptObject = ai.definePrompt({
-  name: "analyzeClothingItemPrompt_Full",
-  input: { schema: AnalyzeClothingItemInputSchema },
-  output: { schema: AnalyzeClothingItemOutputSchema },
-  model: "googleai/gemini-1.5-pro-latest",
+  name: 'analyzeClothingItemPrompt_Full',
+  input: {schema: AnalyzeClothingItemInputSchema},
+  output: {schema: AnalyzeClothingItemOutputSchema},
   prompt: `You are an expert fashion item analyst and cataloguer.
   Your task is to meticulously examine the provided image of a clothing item or accessory and return a structured JSON object with the following details.
   Be precise, objective, and use contemporary, sophisticated fashion terminology suitable for a fashion-conscious audience (Gen X, Y, Z).
@@ -116,41 +68,28 @@ const promptObject = ai.definePrompt({
 
 const analyzeClothingItemFlow = ai.defineFlow(
   {
-    name: "analyzeClothingItemFlow_Full",
+    name: 'analyzeClothingItemFlow_Full',
     inputSchema: AnalyzeClothingItemInputSchema,
     outputSchema: AnalyzeClothingItemOutputSchema,
   },
   async (input: AnalyzeClothingItemInput) => {
     // Add a log to confirm this version of the flow is being called
-    console.log(
-      "analyzeClothingItemFlow (FULL VERSION): Received input. Image URI:",
-      input.imageUri.substring(0, 100) + "...",
-    );
+    console.log("analyzeClothingItemFlow (FULL VERSION): Received input. Image URI:", input.imageUri.substring(0, 100) + "...");
     try {
-      const { output } = await promptObject(input); // Call the prompt object
+      const {output} = await promptObject(input); // Call the prompt object
       if (!output) {
-        console.error(
-          "analyzeClothingItemFlow (FULL VERSION): AI model returned null output.",
-        );
+        console.error("analyzeClothingItemFlow (FULL VERSION): AI model returned null output.");
         throw new Error("AI model's response was null in full analysis flow.");
       }
       // Log the successful output structure for debugging
-      console.log(
-        "analyzeClothingItemFlow (FULL VERSION): AI analysis successful. Returning output:",
-        JSON.stringify(output, null, 2),
-      );
+      console.log("analyzeClothingItemFlow (FULL VERSION): AI analysis successful. Returning output:", JSON.stringify(output, null, 2));
       return output;
     } catch (error: any) {
-      console.error(
-        "analyzeClothingItemFlow (FULL VERSION): Error during AI processing:",
-        error.message || error,
-      );
+      console.error("analyzeClothingItemFlow (FULL VERSION): Error during AI processing:", error.message || error);
       // Re-throw the error so it can be caught by the calling action
       throw new Error(
-        `AI processing failed in full analysis flow: ${error.message || "Unknown error"}`,
+        `AI processing failed in full analysis flow: ${error.message || 'Unknown error'}`
       );
     }
-  },
+  }
 );
-
-    

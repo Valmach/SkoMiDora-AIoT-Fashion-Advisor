@@ -1,114 +1,59 @@
-
 'use client';
 
-import { useState, useEffect, useTransition } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Brain, Loader2, AlertTriangle, Archive } from "lucide-react";
-import Link from "next/link";
-import { analyzeStyleDNAAction } from "@/app/actions";
-import { useToast } from "@/hooks/use-toast";
-import { useLocalStorage } from "@/hooks/use-local-storage";
-import StyleDnaDisplay from "@/components/StyleDnaDisplay";
-import { collection, query, onSnapshot } from "firebase/firestore";
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import UpcomingEventAdviceCard from "@/components/UpcomingEventAdviceCard";
 import { useFirebase } from "@/firebase/provider";
+import { collection, query, onSnapshot } from "firebase/firestore";
+import type { UpcomingEventStyleAdvice } from '@/types';
 
-const STYLE_DNA_LOCAL_STORAGE_KEY = "skomidoraStyleDNA";
+const DUMMY_EVENTS_DATA: UpcomingEventStyleAdvice[] = [
+  {
+    eventName: "Fallback Event: AI Fashion Summit",
+    eventStartDateTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+    eventEndDateTime: new Date(Date.now() + (2 * 24 * 60 * 60 * 1000) + (2 * 60 * 60 * 1000)).toISOString(),
+    eventType: "Tech Conference",
+    eventLocation: "Virtual",
+    temperature: 21,
+    weatherCondition: "Data not available",
+    advice: "When data is unavailable, a classic and versatile outfit is your best bet. Consider a well-fitted blazer, a simple top, and dark trousers or a skirt."
+  }
+];
 
-export default function DashboardPage() {
+export default function UpcomingEventsPage() {
   const firebase = useFirebase();
-  const [styleDNA, setStyleDNA] = useLocalStorage<string | null>(
-    STYLE_DNA_LOCAL_STORAGE_KEY,
-    null,
-  );
-  const [isAnalyzing, startAnalyzingTransition] = useTransition();
-  const [analysisError, setAnalysisError] = useState<string | null>(null);
-  const { toast } = useToast();
-
-  const [wardrobeItemCount, setWardrobeItemCount] = useState(0);
-  const [isDataLoading, setIsDataLoading] = useState(true);
-  const [analysisCompleted, setAnalysisCompleted] = useState(false);
+  const [events, setEvents] = useState<UpcomingEventStyleAdvice[]>(DUMMY_EVENTS_DATA);
 
   useEffect(() => {
     if (!firebase) {
-      setIsDataLoading(false);
-      setAnalysisError("Could not connect to the wardrobe service. Firebase is not available.");
+      setEvents(DUMMY_EVENTS_DATA);
       return;
     }
-    setIsDataLoading(true);
-    const itemsCollectionRef = collection(firebase.firestore, "publicWardrobeItems");
-    const q = query(itemsCollectionRef);
+    const eventsCollectionRef = collection(firebase.firestore, "upcomingEvents");
+    const q = query(eventsCollectionRef);
 
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        setWardrobeItemCount(snapshot.size);
-        setIsDataLoading(false);
-      },
-      (err) => {
-        console.error("Error fetching wardrobe count on dashboard:", err);
-        setIsDataLoading(false);
-        setAnalysisError("Could not connect to the wardrobe service.");
-      },
-    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const eventsData: UpcomingEventStyleAdvice[] = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          eventName: data.eventName || "",
+          eventStartDateTime: data.eventStartDateTime || "",
+          eventEndDateTime: data.eventEndDateTime || "",
+          eventType: data.eventType || "",
+          eventLocation: data.eventLocation || "",
+          temperature: data.temperature || 0,
+          weatherCondition: data.weatherCondition || "",
+          advice: data.advice || ""
+        };
+      });
+      setEvents(eventsData.length > 0 ? eventsData : DUMMY_EVENTS_DATA);
+    }, (err) => {
+      console.error("Error fetching upcoming events:", err);
+      setEvents(DUMMY_EVENTS_DATA);
+    });
 
     return () => unsubscribe();
   }, [firebase]);
-
-  const handleAnalyzeDNA = () => {
-    if (wardrobeItemCount === 0) {
-      toast({
-        title: "Your Closet is Empty",
-        description:
-          "Please add some items to your Digital Closet before analyzing your Style DNA.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    startAnalyzingTransition(async () => {
-      setAnalysisError(null);
-      setAnalysisCompleted(false);
-      toast({
-        title: "Analyzing Your Style DNA...",
-        description:
-          "The AI is looking at your collection. This might take a moment.",
-      });
-      try {
-        const result = await analyzeStyleDNAAction();
-        if ("error" in result) {
-          throw new Error(result.error);
-        }
-        if (result.styleDNA) {
-          setStyleDNA(result.styleDNA);
-          setAnalysisCompleted(true);
-          toast({
-            title: "Style DNA Updated!",
-            description: "Your personalized fashion profile is ready.",
-          });
-        } else {
-            throw new Error("Analysis did not return a valid Style DNA.");
-        }
-      } catch (e: any) {
-        const errorMessage = `Analysis Failed: ${e.message || "An unknown error occurred."}`;
-        setAnalysisError(errorMessage);
-        toast({
-          title: "Analysis Failed",
-          description: e.message || "Could not analyze Style DNA.",
-          variant: "destructive",
-        });
-      }
-    });
-  };
-
-  const isLoading = isAnalyzing || isDataLoading;
-  const error = analysisError;
 
   return (
     <div className="container mx-auto space-y-8">
@@ -118,11 +63,13 @@ export default function DashboardPage() {
             Upcoming Events
           </CardTitle>
           <CardDescription className="text-muted-foreground font-sans">
-            Manage your upcoming events and get style advice.
+            Here are your upcoming events and style advice for each.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-         <p> Events content will go here. </p>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {events.map((event, index) => (
+            <UpcomingEventAdviceCard key={index} eventAdvice={event} cardIndex={index} />
+          ))}
         </CardContent>
       </Card>
     </div>

@@ -1,11 +1,10 @@
-
 'use server';
 /**
  * @fileOverview Server actions for interacting with AI flows and Firestore.
  */
 
-
-
+import { getAdmin } from '@/lib/firebase-admin-loader';
+import { FieldValue } from 'firebase-admin/firestore';
 
 // Import AI flow types and functions
 import type { AnalyzeClothingItemInput, AnalyzeClothingItemOutput } from '@/ai/flows/analyze-clothing-item';
@@ -22,8 +21,6 @@ import { processOutfitFeedback } from '@/ai/flows/process-outfit-feedback';
 import { getCurrentWeather } from '@/services/accuweather';
 import { mockAnalyzeStyleDNAInput } from '@/lib/mockData';
 import { generateSpeechFromText } from '@/ai/flows/generate-speech-from-text';
-import { FieldValue } from 'firebase-admin/firestore';
-import { db, storage } from '@/lib/firebase-admin';
 
 // Re-exporting other types for client component use
 export type {
@@ -55,6 +52,10 @@ export async function analyzeAndSaveClothingItem(
   console.log("ACTION: analyzeAndSaveClothingItem started.");
 
   try {
+    const admin = await getAdmin();
+    const db = admin.firestore();
+    const storage = admin.storage();
+
     const file = formData.get('file') as File;
     if (!file) {
       console.error("ACTION_ERROR: No file found in form data.");
@@ -133,6 +134,10 @@ export async function deleteClothingItem(
   imagePath: string | undefined
 ): Promise<{ success: true } | { error: string }> {
   console.log(`ACTION: Attempting to delete item: ${itemId}`);
+  
+  const admin = await getAdmin();
+  const db = admin.firestore();
+  const storage = admin.storage();
 
   // First, delete the Firestore document. This is the source of truth for the UI.
   try {
@@ -168,6 +173,9 @@ export async function deleteClothingItem(
  */
 export async function analyzeStyleDNAAction(): Promise<{ styleDNA: string } | { error:string }> {
   try {
+    const admin = await getAdmin();
+    const db = admin.firestore();
+
     console.log("ACTION: analyzeStyleDNAAction started. Fetching items from Firestore...");
     const itemsCollectionRef = db.collection('publicWardrobeItems');
     const querySnapshot = await itemsCollectionRef.get();
@@ -195,11 +203,11 @@ export async function analyzeStyleDNAAction(): Promise<{ styleDNA: string } | { 
     // Use fetched data if available, otherwise fall back to mock data
     const wardrobeData = clothingItems.length > 0 
         ? clothingItems.map(item => item.itemName).join(', ')
-        : "";
+        : mockAnalyzeStyleDNAInput.wardrobeData;
         
     const shoeCollectionData = shoeItems.length > 0
         ? shoeItems.map(item => item.itemName).join(', ')
-        : "";
+        : mockAnalyzeStyleDNAInput.shoeCollectionData;
 
     console.log(`ACTION: wardrobeData for AI: ${wardrobeData.substring(0, 100)}...`);
     console.log(`ACTION: shoeCollectionData for AI: ${shoeCollectionData.substring(0, 100)}...`);

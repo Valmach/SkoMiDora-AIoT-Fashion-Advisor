@@ -4,15 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Computer, Smartphone } from "lucide-react";
 
-const IframeLoader = () => (
-  <div className="w-full h-full flex items-center justify-center bg-background/50">
-    <div className="text-center">
-      <p className="mb-2 text-muted-foreground">Loading Preview...</p>
-      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-    </div>
-  </div>
-);
-
 export default function PreviewPage() {
   return (
     <div className="container mx-auto py-8">
@@ -42,7 +33,6 @@ export default function PreviewPage() {
                   sandbox="allow-scripts allow-same-origin"
                   loading="lazy"
                 />
-                <IframeLoader />
               </div>
             </TabsContent>
             <TabsContent value="mobile">
@@ -53,7 +43,6 @@ export default function PreviewPage() {
                   sandbox="allow-scripts allow-same-origin"
                   loading="lazy"
                 />
-                <IframeLoader />
               </div>
             </TabsContent>
           </Tabs>

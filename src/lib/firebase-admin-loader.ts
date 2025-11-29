@@ -15,8 +15,8 @@ export async function getAdmin() {
     console.log("✅ Admin initialized via Default Credentials");
     return admin;
 
-  } catch (errDefault: unknown) {
-    console.log("⚠️ Default credential init failed:", errDefault instanceof Error ? errDefault.message : errDefault);
+  } catch (errDefault) {
+    console.log("⚠️ Default credential init failed:", errDefault.message);
   }
 
   try {
@@ -27,21 +27,20 @@ export async function getAdmin() {
     ) {
       throw new Error("Missing explicit admin credentials");
     }
-
     admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY.replace(/\\n/g, "\n"),
-      }),
-      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-    });
+        credential: admin.credential.cert({
+          projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
+          clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+          privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY.replace(/\\n/g, "\n"),
+        }),
+        storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+      });
 
-    console.log("✅ Admin initialized via Service Account");
-    return admin;
+      console.log("✅ Admin initialized via Service Account");
+      return admin;
 
-  } catch (errExplicit: unknown) {
-    console.error("🔥 Firebase Admin initialization FAILED:", errExplicit);
-    throw errExplicit;
-  }
+    } catch (errExplicit) {
+      console.error("🔥 Firebase Admin initialization FAILED:", errExplicit);
+      throw errExplicit;
+    }
 }

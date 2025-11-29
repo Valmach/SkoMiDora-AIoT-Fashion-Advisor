@@ -1,5 +1,5 @@
 
-"use server";
+'use server';
 /**
  * @fileOverview Generates style advice for a specific event, considering weather conditions.
  *
@@ -8,22 +8,45 @@
  * - GenerateEventStyleAdviceOutput - The return type for the generateEventStyleAdvice function.
  */
 
-import { ai } from "@/ai/genkit";
-// Import types, not schemas
-import type { GenerateEventStyleAdviceInput, GenerateEventStyleAdviceOutput } from "@/types";
-import { GenerateEventStyleAdviceInputSchema, GenerateEventStyleAdviceOutputSchema } from "@/types/schemas";
+import {ai} from '@/ai/genkit';
+import {z} from 'genkit';
+// Import types, not schemas, from analyze-style-dna
+import type { AccuWeatherSchema as ImportedAccuWeatherSchemaType, GoogleCalendarEventSchema as ImportedGoogleCalendarEventSchemaType } from './analyze-style-dna';
 
-export async function generateEventStyleAdvice(
-  input: GenerateEventStyleAdviceInput,
-): Promise<GenerateEventStyleAdviceOutput> {
+// Define local Zod schemas for this flow's specific needs
+const AccuWeatherSchemaInternal = z.object({
+  temperature: z.number().describe('The current temperature in Celsius.'),
+  condition: z.string().describe('The current weather condition (e.g., sunny, rainy).'),
+});
+
+const GoogleCalendarEventSchemaInternal = z.object({
+  eventName: z.string().describe('The name of the event.'),
+  eventStartDateTime: z.string().describe('The start date and time of the event (ISO format).'),
+  eventEndDateTime: z.string().describe('The end date and time of the event (ISO format).'),
+  eventType: z.string().describe('The type of event (e.g., business, social, formal).'),
+  eventLocation: z.string().optional().describe('The location of the event.'),
+});
+
+
+const GenerateEventStyleAdviceInputSchema = z.object({
+  event: GoogleCalendarEventSchemaInternal.describe("Details of the upcoming event."),
+  weather: AccuWeatherSchemaInternal.describe("Current weather conditions for the event's timing/location."),
+});
+export type GenerateEventStyleAdviceInput = z.infer<typeof GenerateEventStyleAdviceInputSchema>;
+
+const GenerateEventStyleAdviceOutputSchema = z.object({
+  advice: z.string().describe("Concise (2-3 sentences) style advice for the event, considering the weather, event type, and a fashion-forward, middle to upper-class aesthetic. Suggest specific garment types or styles. Use British English and contemporary fashion language."),
+});
+export type GenerateEventStyleAdviceOutput = z.infer<typeof GenerateEventStyleAdviceOutputSchema>;
+
+export async function generateEventStyleAdvice(input: GenerateEventStyleAdviceInput): Promise<GenerateEventStyleAdviceOutput> {
   return generateEventStyleAdviceFlow(input);
 }
 
 const prompt = ai.definePrompt({
-  name: "generateEventStyleAdvicePrompt",
-  input: { schema: GenerateEventStyleAdviceInputSchema },
-  output: { schema: GenerateEventStyleAdviceOutputSchema },
-  model: "googleai/gemini-2.5-flash",
+  name: 'generateEventStyleAdvicePrompt',
+  input: {schema: GenerateEventStyleAdviceInputSchema},
+  output: {schema: GenerateEventStyleAdviceOutputSchema},
   prompt: `You are a sophisticated personal stylist catering to fashion-forward clients with a taste for middle to upper-class aesthetics, including designer and high-quality brands.
   Use British English terminology and spelling throughout your response (e.g., "trousers" instead of "pants", "jumper" instead of "sweater", "colour" instead of "color", "trainers" instead of "sneakers").
   The style advice should be phrased using contemporary, sophisticated fashion terminology suitable for Gen X, Y, and Z. For example, suggest 'a chic top' or 'a modern shirt' rather than just 'a blouse'.
@@ -49,17 +72,15 @@ const prompt = ai.definePrompt({
 
 const generateEventStyleAdviceFlow = ai.defineFlow(
   {
-    name: "generateEventStyleAdviceFlow",
+    name: 'generateEventStyleAdviceFlow',
     inputSchema: GenerateEventStyleAdviceInputSchema,
     outputSchema: GenerateEventStyleAdviceOutputSchema,
   },
-  async (input) => {
-    const { output } = await prompt(input);
+  async input => {
+    const {output} = await prompt(input);
     if (!output) {
-      throw new Error(
-        "Failed to get a response from the AI model for event style advice.",
-      );
+      throw new Error("Failed to get a response from the AI model for event style advice.");
     }
     return output;
-  },
+  }
 );
