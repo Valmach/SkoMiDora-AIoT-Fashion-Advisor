@@ -77,6 +77,7 @@ const prompt = ai.definePrompt({
   
   CRITICAL INSTRUCTION FOR 'styleDNA' FIELD:
   The value for the 'styleDNA' field in your output MUST be a single, concise, plain text summary paragraph, approximately 3-4 lines long.
+  YOUR FINAL OUTPUT FOR THE 'styleDNA' FIELD MUST BE RAW, UNWRAPPED, UNESCAPED TEXT. DO NOT WRAP IT IN A JSON STRUCTURE.
   - It MUST use British English and contemporary fashion terms.
   - It MUST NOT be a JSON object.
   - It MUST NOT be a string representation of a JSON object.
@@ -94,12 +95,45 @@ const analyzeStyleDNAFlow = ai.defineFlow(
     outputSchema: AnalyzeStyleDNAOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    if (!output || typeof output.styleDNA !== 'string' || output.styleDNA.trim().startsWith('{') || output.styleDNA.trim().length < 20) {
-      console.error("AI did not return suitable plain text for styleDNA, or output was null/too short:", output);
-      // This is a safeguard; the primary fix should be the prompt.
-      return { styleDNA: "The client possesses a refined and fashion-conscious approach to their wardrobe, favouring high-quality pieces and designer labels that suggest an appreciation for sophisticated and timeless elegance. Their collection hints at a penchant for luxurious materials and classic silhouettes, often found in middle to upper-class fashion circles." };
+    const { output } = await prompt(input);
+
+    // Default fallback text
+    const fallbackOutput = { styleDNA: "The client possesses a refined and fashion-conscious approach to their wardrobe, favouring high-quality pieces and designer labels that suggest an appreciation for sophisticated and timeless elegance. Their collection hints at a penchant for luxurious materials and classic silhouettes, often found in middle to upper-class fashion circles." };
+
+    // Initial check for a valid output object
+    if (!output || typeof output.styleDNA !== 'string') {
+        console.error("AI returned null or invalid type for styleDNA:", output);
+        return fallbackOutput;
     }
-    return output;
+
+    let styleDNAText = output.styleDNA.trim();
+
+    // Enhanced Safeguard: Check if the AI returned a stringified JSON and attempt to parse it.
+    if (styleDNAText.startsWith('{') && styleDNAText.endsWith('}')) {
+        try {
+            const parsed = JSON.parse(styleDNAText);
+            // If parsing is successful and contains the nested field, extract it.
+            if (parsed && typeof parsed.styleDNA === 'string' && parsed.styleDNA.trim()) {
+                console.warn("Warning: AI returned a stringified JSON. Extracting nested 'styleDNA' value.");
+                styleDNAText = parsed.styleDNA.trim();
+            } else {
+                // The string looked like JSON but didn't contain the data we need.
+                console.error("Error: AI output was a JSON-like string but did not contain a valid nested 'styleDNA' field.", output);
+                return fallbackOutput;
+            }
+        } catch (e) {
+            // The string was not valid JSON, treat it as plain text but log a warning.
+            console.warn("Warning: AI output starts and ends with braces but failed to parse as JSON. Treating as plain text.", e);
+        }
+    }
+
+    // Final validation on the resulting text.
+    if (styleDNAText.length < 20) {
+        console.error("Error: Final styleDNA text is too short or empty after processing.", output);
+        return fallbackOutput;
+    }
+
+    // Return the cleaned, valid output.
+    return { styleDNA: styleDNAText };
   }
 );
