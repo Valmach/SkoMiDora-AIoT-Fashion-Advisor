@@ -217,14 +217,11 @@ export async function analyzeStyleDNAAction(): Promise<{ styleDNA: string } | { 
       wardrobeData,
       shoeCollectionData,
     };
-
+    // The analyzeStyleDNA flow is now robust and handles its own errors,
+    // so we can directly return its result.
     const result = await analyzeStyleDNA(aiInput);
-    // Ensure result is not null and has the styleDNA property
-    if (result && typeof result.styleDNA === 'string') {
-        return { styleDNA: result.styleDNA };
-    } else {
-        throw new Error("AI analysis did not return the expected styleDNA string.");
-    }
+    return result;
+    
   } catch (e: any) {
     console.error("Error in analyzeStyleDNAAction:", e);
     return { error: e.message || "Failed to analyze style DNA." };

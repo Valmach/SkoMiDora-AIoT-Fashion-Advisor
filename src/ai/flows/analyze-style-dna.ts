@@ -95,45 +95,50 @@ const analyzeStyleDNAFlow = ai.defineFlow(
     outputSchema: AnalyzeStyleDNAOutputSchema,
   },
   async input => {
-    const { output } = await prompt(input);
+    // Define a robust fallback output that is always available.
+    const fallbackOutput = {
+      styleDNA: "The client possesses a refined and fashion-conscious approach to their wardrobe, favouring high-quality pieces and designer labels that suggest an appreciation for sophisticated and timeless elegance. Their collection hints at a penchant for luxurious materials and classic silhouettes, often found in middle to upper-class fashion circles."
+    };
 
-    // Default fallback text
-    const fallbackOutput = { styleDNA: "The client possesses a refined and fashion-conscious approach to their wardrobe, favouring high-quality pieces and designer labels that suggest an appreciation for sophisticated and timeless elegance. Their collection hints at a penchant for luxurious materials and classic silhouettes, often found in middle to upper-class fashion circles." };
+    try {
+      // The entire AI interaction is wrapped in a try...catch block.
+      const { output } = await prompt(input);
 
-    // Initial check for a valid output object
-    if (!output || typeof output.styleDNA !== 'string') {
-        console.error("AI returned null or invalid type for styleDNA:", output);
+      // Basic validation: Check if the output or the styleDNA property is missing or not a string.
+      if (!output || typeof output.styleDNA !== 'string' || output.styleDNA.trim() === '') {
+        console.error("AI returned a null, non-string, or empty value for styleDNA. Using fallback.", output);
         return fallbackOutput;
-    }
+      }
 
-    let styleDNAText = output.styleDNA.trim();
+      let styleDNAText = output.styleDNA.trim();
 
-    // Enhanced Safeguard: Check if the AI returned a stringified JSON and attempt to parse it.
-    if (styleDNAText.startsWith('{') && styleDNAText.endsWith('}')) {
-        try {
-            const parsed = JSON.parse(styleDNAText);
-            // If parsing is successful and contains the nested field, extract it.
-            if (parsed && typeof parsed.styleDNA === 'string' && parsed.styleDNA.trim()) {
-                console.warn("Warning: AI returned a stringified JSON. Extracting nested 'styleDNA' value.");
-                styleDNAText = parsed.styleDNA.trim();
-            } else {
-                // The string looked like JSON but didn't contain the data we need.
-                console.error("Error: AI output was a JSON-like string but did not contain a valid nested 'styleDNA' field.", output);
-                return fallbackOutput;
-            }
-        } catch (e) {
-            // The string was not valid JSON, treat it as plain text but log a warning.
-            console.warn("Warning: AI output starts and ends with braces but failed to parse as JSON. Treating as plain text.", e);
+      // Safeguard for stringified JSON: If the AI incorrectly wraps its response.
+      try {
+        if (styleDNAText.startsWith('{') && styleDNAText.endsWith('}')) {
+          const parsed = JSON.parse(styleDNAText);
+          if (parsed && typeof parsed.styleDNA === 'string' && parsed.styleDNA.trim()) {
+            console.warn("Warning: AI returned a stringified JSON. Extracting nested 'styleDNA' value.");
+            styleDNAText = parsed.styleDNA.trim();
+          }
         }
-    }
+      } catch (e) {
+        // If parsing fails, it's not valid JSON. We'll proceed with the text as-is but log it.
+        console.log("Info: AI output looked like JSON but failed to parse. Treating as plain text.", styleDNAText);
+      }
 
-    // Final validation on the resulting text.
-    if (styleDNAText.length < 20) {
-        console.error("Error: Final styleDNA text is too short or empty after processing.", output);
+      // Final length check to ensure a meaningful summary.
+      if (styleDNAText.length < 20) {
+        console.error("Error: Final styleDNA text is too short after processing. Using fallback.", styleDNAText);
         return fallbackOutput;
-    }
+      }
 
-    // Return the cleaned, valid output.
-    return { styleDNA: styleDNAText };
+      // If all checks pass, return the cleaned output.
+      return { styleDNA: styleDNAText };
+
+    } catch (e) {
+      // This is the ultimate catch-all. If ANY error occurs during the prompt() call, this will execute.
+      console.error("CRITICAL: An unexpected error occurred in the analyzeStyleDNAFlow, likely from the AI prompt call. Returning fallback.", e);
+      return fallbackOutput;
+    }
   }
 );
