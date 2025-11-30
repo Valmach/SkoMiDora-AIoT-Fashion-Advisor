@@ -1,54 +1,50 @@
-// src/lib/firebase-admin-loader.ts
+import admin from 'firebase-admin';
+
+let app: admin.app.App;
+
+async function initializeAdminApp() {
+  if (admin.apps.length > 0) {
+    return admin.app();
+  }
+
+  const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
+  const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+
+  if (projectId && clientEmail && privateKey) {
+    try {
+      app = admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId,
+          clientEmail,
+          privateKey: privateKey.replace(/\\n/g, '\n'),
+        }),
+        storageBucket,
+      });
+      console.log('✅ Firebase Admin initialized via Service Account');
+      return app;
+    } catch (e: any) {
+      console.error('🔥 Firebase Admin initialization with Service Account FAILED', e);
+      // Fallback to default credentials if service account fails
+    }
+  }
+
+  try {
+    app = admin.initializeApp({
+      storageBucket,
+    });
+    console.log('✅ Firebase Admin initialized via Default Credentials');
+    return app;
+  } catch (e: any) {
+    console.error('🔥 Firebase Admin initialization with Default Credentials FAILED', e);
+    throw new Error('Firebase Admin SDK failed to initialize.');
+  }
+}
 
 export async function getAdmin() {
-  const admin = (await import("firebase-admin")).default;
-
-  if (admin.apps.length > 0) {
-    return admin;
+  if (app) {
+    return app;
   }
-
-  try {
-    admin.initializeApp({
-      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-    });
-
-    console.log("✅ Admin initialized via Default Credentials");
-    return admin;
-
-  } catch (errDefault) {
-    if (errDefault instanceof Error) {
-        console.log("⚠️ Default credential init failed:", errDefault.message);
-    } else {
-        console.log("⚠️ Default credential init failed with an unknown error:", errDefault);
-    }
-  }
-
-  try {
-    if (
-      !process.env.FIREBASE_ADMIN_PRIVATE_KEY ||
-      !process.env.FIREBASE_ADMIN_CLIENT_EMAIL ||
-      !process.env.FIREBASE_ADMIN_PROJECT_ID
-    ) {
-      throw new Error("Missing explicit admin credentials");
-    }
-    admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-          privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY.replace(/\\n/g, "\n"),
-        }),
-        storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-      });
-
-      console.log("✅ Admin initialized via Service Account");
-      return admin;
-
-    } catch (errExplicit) {
-        if (errExplicit instanceof Error) {
-            console.error("🔥 Firebase Admin initialization FAILED:", errExplicit.message);
-        } else {
-            console.error("🔥 Firebase Admin initialization FAILED with an unknown error:", errExplicit);
-        }
-      throw errExplicit;
-    }
+  return await initializeAdminApp();
 }

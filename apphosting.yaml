@@ -9,6 +9,23 @@ runConfig:
   cpu: 1
   memoryMiB: 512
 
+# Next.js build and start commands
+build:
+  command: npm run build
+start:
+  command: npm start
+
+# Redirect all traffic to the Next.js server
+headers:
+  - path: "/*"
+    headers:
+      - key: "Cache-Control"
+        value: "public, max-age=0, must-revalidate"
+
+rewrites:
+  - source: "/*"
+    destination: "/__next/__request_handler"
+
 # -------------------------------------------------------
 # Public Environment Variables (Fixes "Firebase is not available")
 # -------------------------------------------------------
