@@ -1,9 +1,11 @@
-import { db } from "@/lib/firebase-admin";
+import { getAdmin } from "@/lib/firebase-admin-loader";
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
+    const admin = await getAdmin();
+    const db = admin.firestore();
     const snapshot = await db.collection("shoeboxes").get();
     const shoeboxes = snapshot.docs.map((doc) => ({
       id: doc.id,
