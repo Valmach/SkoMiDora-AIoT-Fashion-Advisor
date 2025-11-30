@@ -17,6 +17,26 @@ const DUMMY_EVENTS_DATA: UpcomingEventStyleAdvice[] = [
     temperature: 21,
     weatherCondition: "Data not available",
     advice: "When data is unavailable, a classic and versatile outfit is your best bet. Consider a well-fitted blazer, a simple top, and dark trousers or a skirt."
+  },
+  {
+    eventName: "Placeholder: Weekend Brunch",
+    eventStartDateTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(),
+    eventEndDateTime: new Date(Date.now() + (4 * 24 * 60 * 60 * 1000) + (3 * 60 * 60 * 1000)).toISOString(),
+    eventType: "Social Gathering",
+    eventLocation: "The Breakfast Club, Soho",
+    temperature: 18,
+    weatherCondition: "Partly Cloudy",
+    advice: "For a stylish weekend brunch, opt for smart-casual. A chic knit jumper paired with tailored trousers and stylish trainers would be perfect."
+  },
+  {
+    eventName: "Placeholder: Charity Gala",
+    eventStartDateTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    eventEndDateTime: new Date(Date.now() + (7 * 24 * 60 * 60 * 1000) + (4 * 60 * 60 * 1000)).toISOString(),
+    eventType: "Formal Event",
+    eventLocation: "The Savoy, London",
+    temperature: 15,
+    weatherCondition: "Clear Night",
+    advice: "A formal event calls for elegance. A floor-length gown or a sophisticated cocktail dress from a designer like Stella McCartney would be appropriate. Complement with statement jewellery."
   }
 ];
 
