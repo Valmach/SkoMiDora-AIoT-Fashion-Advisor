@@ -928,30 +928,3 @@ export default function OutfitCard({
     </Card>
   );
 }
-
-
-/* ============================================================
-   SkoMiDora Patch: Robust Image Renderer for AI Outfit Images
-   ============================================================ */
-
-function OutfitImageRenderer({ uri }: { uri?: string }) {
-  if (!uri || uri.length < 20) {
-    return (
-      <div className="w-full bg-muted flex items-center justify-center rounded-md border p-6 text-muted-foreground mt-4">
-        <span>📷 Image unavailable</span>
-      </div>
-    );
-  }
-
-  return (
-    <img
-      src={uri}
-      alt="AI generated outfit"
-      className="w-full rounded-md border mt-4 shadow-lg object-cover"
-    />
-  );
-}
-
-/* ============================================================
-   END PATCH
-   ============================================================ */
