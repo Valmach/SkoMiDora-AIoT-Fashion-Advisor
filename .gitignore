@@ -42,3 +42,8 @@ tsconfig.tsbuildinfo
 /skomiafunctions/lib
 /skomiafunctions/firebase-key.json
 firebase-key.json
+.firebase/
+.next/
+node_modules/
+functions/.next/
+functions/node_modules/
