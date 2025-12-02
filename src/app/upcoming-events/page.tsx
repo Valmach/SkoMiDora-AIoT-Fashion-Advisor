@@ -8,11 +8,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { CalendarDays } from "lucide-react"; // ✅ Needed for heading
+import CalendarConnectButton from "@/components/ui/CalendarConnectButton";
 import UpcomingEventAdviceCard from "@/components/UpcomingEventAdviceCard";
 import { useFirebase } from "@/firebase/provider";
 import { collection, query, onSnapshot } from "firebase/firestore";
 import type { UpcomingEventStyleAdvice } from "@/types";
 
+// --------------------------------------------------------
+//  FALLBACK EVENTS (used before Firebase loads or on error)
+// --------------------------------------------------------
 const DUMMY_EVENTS_DATA: UpcomingEventStyleAdvice[] = [
   {
     id: "dummy-1",
@@ -21,9 +26,7 @@ const DUMMY_EVENTS_DATA: UpcomingEventStyleAdvice[] = [
       Date.now() + 5 * 24 * 60 * 60 * 1000
     ).toISOString(),
     eventEndDateTime: new Date(
-      Date.now() +
-        5 * 24 * 60 * 60 * 1000 +
-        2 * 60 * 60 * 1000
+      Date.now() + 5 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000
     ).toISOString(),
     eventType: "Fashion Show",
     eventLocation: "Grand Palais, Paris",
@@ -39,9 +42,7 @@ const DUMMY_EVENTS_DATA: UpcomingEventStyleAdvice[] = [
       Date.now() + 12 * 24 * 60 * 60 * 1000
     ).toISOString(),
     eventEndDateTime: new Date(
-      Date.now() +
-        12 * 24 * 60 * 60 * 1000 +
-        5 * 60 * 60 * 1000
+      Date.now() + 12 * 24 * 60 * 60 * 1000 + 5 * 60 * 60 * 1000
     ).toISOString(),
     eventType: "Gala",
     eventLocation: "The Metropolitan Museum of Art, New York",
@@ -57,9 +58,7 @@ const DUMMY_EVENTS_DATA: UpcomingEventStyleAdvice[] = [
       Date.now() + 20 * 24 * 60 * 60 * 1000
     ).toISOString(),
     eventEndDateTime: new Date(
-      Date.now() +
-        20 * 24 * 60 * 60 * 1000 +
-        2 * 60 * 60 * 1000
+      Date.now() + 20 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000
     ).toISOString(),
     eventType: "Fashion Show",
     eventLocation: "Fendi HQ, Milan",
@@ -70,6 +69,9 @@ const DUMMY_EVENTS_DATA: UpcomingEventStyleAdvice[] = [
   },
 ];
 
+// --------------------------------------------------------
+//   MAIN PAGE
+// --------------------------------------------------------
 export default function UpcomingEventsPage() {
   const firebase = useFirebase();
   const [events, setEvents] =
@@ -95,7 +97,7 @@ export default function UpcomingEventsPage() {
             const data = doc.data() as any;
 
             return {
-              id: doc.id, // ✅ REQUIRED FIELD
+              id: doc.id, // Always include ID
               eventName: data.eventName || "",
               eventStartDateTime: data.eventStartDateTime || "",
               eventEndDateTime: data.eventEndDateTime || "",
@@ -121,21 +123,37 @@ export default function UpcomingEventsPage() {
     return () => unsubscribe();
   }, [firebase]);
 
+  // --------------------------------------------------------
+  //   RENDER
+  // --------------------------------------------------------
   return (
-    <div className="container mx-auto space-y-8">
+    <div className="container mx-auto space-y-8 pb-10">
+
+      {/* 🔹 HEADER WITH BUTTON */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+          <CalendarDays className="h-7 w-7 text-accent" />
+          Upcoming Events
+        </h1>
+
+        <CalendarConnectButton />
+      </div>
+
+      {/* 🔹 EVENTS GRID */}
       <Card className="shadow-xl border-primary/20">
         <CardHeader>
-          <CardTitle className="text-3xl font-bold text-foreground font-calligraphy">
-            Upcoming Events
+          <CardTitle className="text-2xl font-bold text-foreground">
+            Your Event Style Guidance
           </CardTitle>
-          <CardDescription className="text-muted-foreground font-sans">
-            Here are your upcoming events and style advice for each.
+          <CardDescription className="text-muted-foreground">
+            Synced from Google Calendar or from your saved events.
           </CardDescription>
         </CardHeader>
+
         <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {events.map((event, index) => (
             <UpcomingEventAdviceCard
-              key={event.id ?? index} // ✅ stable key when id exists
+              key={event.id ?? index}
               eventAdvice={event}
               cardIndex={index}
             />
