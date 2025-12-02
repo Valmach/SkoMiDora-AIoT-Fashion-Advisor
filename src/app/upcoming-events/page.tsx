@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { CalendarDays } from "lucide-react"; // ✅ Needed for heading
-import CalendarConnectButton from "@/components/ui/CalendarConnectButton";
+import CalendarConnectButton from "@/components/ui/CalendarConnectButton"; // This component should contain your "Connect Google Calendar" button
 import UpcomingEventAdviceCard from "@/components/UpcomingEventAdviceCard";
 import { useFirebase } from "@/firebase/provider";
 import { collection, query, onSnapshot } from "firebase/firestore";
@@ -32,8 +32,10 @@ const DUMMY_EVENTS_DATA: UpcomingEventStyleAdvice[] = [
     eventLocation: "Grand Palais, Paris",
     temperature: 18,
     weatherCondition: "Cloudy with a chance of rain",
-    advice:
-      "For Paris Fashion Week, channel timeless elegance. A classic tweed jacket paired with tailored trousers or a silk midi skirt is effortlessly chic. Complement with Chanel slingbacks and a quilted leather bag for a nod to the iconic host.",
+    advice: "For Paris Fashion Week, channel timeless elegance. A classic tweed jacket paired with tailored trousers or a silk midi skirt is effortlessly chic. Complement with Chanel slingbacks and a quilted leather bag for a nod to the iconic host.",
+    eventCountry: "France" // Added dummy data for eventCountry
+    ,
+    outfitRecommendation: undefined
   },
   {
     id: "dummy-2",
@@ -48,8 +50,10 @@ const DUMMY_EVENTS_DATA: UpcomingEventStyleAdvice[] = [
     eventLocation: "The Metropolitan Museum of Art, New York",
     temperature: 22,
     weatherCondition: "Clear",
-    advice:
-      "The Met Gala demands avant-garde glamour. Embrace the theme with a sculptural gown from a designer like Iris van Herpen or a dramatic, custom creation. Statement jewellery and artistic make-up are essential to complete this high-fashion look.",
+    advice: "The Met Gala demands avant-garde glamour. Embrace the theme with a sculptural gown from a designer like Iris van Herpen or a dramatic, custom creation. Statement jewellery and artistic make-up are essential to complete this high-fashion look.",
+    eventCountry: "USA" // Added dummy data for eventCountry
+    ,
+    outfitRecommendation: undefined
   },
   {
     id: "dummy-3",
@@ -64,8 +68,10 @@ const DUMMY_EVENTS_DATA: UpcomingEventStyleAdvice[] = [
     eventLocation: "Fendi HQ, Milan",
     temperature: 25,
     weatherCondition: "Sunny",
-    advice:
-      "Embody Italian luxury for Milan. A sophisticated leather dress or a sharply tailored suit from Fendi showcases craftsmanship. Pair with bold, architectural heels and a peek of a colourful silk blouse for a modern, powerful statement.",
+    advice: "Embody Italian luxury for Milan. A sophisticated leather dress or a sharply tailored suit from Fendi showcases craftsmanship. Pair with bold, architectural heels and a peek of a colourful silk blouse for a modern, powerful statement.",
+    eventCountry: "Italy" // Added dummy data for eventCountry
+    ,
+    outfitRecommendation: undefined
   },
 ];
 
@@ -106,6 +112,7 @@ export default function UpcomingEventsPage() {
               temperature: data.temperature ?? 0,
               weatherCondition: data.weatherCondition || "",
               advice: data.advice || "",
+              eventCountry: data.eventCountry || "", // <--- THIS IS THE ADDED FIX
             };
           }
         );
@@ -136,6 +143,7 @@ export default function UpcomingEventsPage() {
           Upcoming Events
         </h1>
 
+        {/* The CalendarConnectButton component will render the actual button */}
         <CalendarConnectButton />
       </div>
 
