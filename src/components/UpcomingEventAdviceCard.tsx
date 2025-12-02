@@ -182,7 +182,7 @@ export default function UpcomingEventAdviceCard({
       ];
       const genericEnglishKeywords = [
         "english female",
-        "english us female",
+        "english uk female",
         "en-us female",
       ];
 

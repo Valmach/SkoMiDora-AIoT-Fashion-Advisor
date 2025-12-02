@@ -32,7 +32,7 @@ export type AnalyzedItem = z.infer<typeof AnalyzeClothingItemOutputSchema> & {
 export type GoogleCalendarEvent = z.infer<typeof GoogleCalendarEventSchema>;
 
 export interface UpcomingEventStyleAdvice {
-  id: string | null | undefined;
+  id: Key | null | undefined;
   eventName: string;
   eventStartDateTime: string;
   eventEndDateTime: string;

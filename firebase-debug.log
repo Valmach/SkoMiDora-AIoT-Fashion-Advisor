@@ -2389,3 +2389,126 @@ info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/d
 [debug] [2025-12-01T23:13:36.567Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/styleai-footwear/secrets/ADMIN_CLIENT_EMAIL/versions/latest {"name":"projects/855662411333/secrets/ADMIN_CLIENT_EMAIL/versions/3","createTime":"2025-11-16T02:57:00.595802Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"1643ad62766e5a\""}
 [error] Error: Failed to load environment variables from .env.:
 [error] - FirebaseError Invalid dotenv file, error on lines: ====================================================================,🔥 PUBLIC FIREBASE CLIENT CONFIG (Browser-Safe),====================================================================,IMPORTANT — STORAGE BUCKET MUST END WITH .appspot.com,====================================================================,🔥 FIREBASE ADMIN SDK (Server Only — Next.js App Router),*** KEYS MOVED TO FIREBASE SECRETS USING firebase functions:config:set ***,*** Remove these from your .env file to resolve the deployment error ***,====================================================================,====================================================================,🔥 GOOGLE + GEMINI + ACCUWEATHER,====================================================================,=======================================================,4. Tooling & Configuration,=======================================================,$$suspicious link removed$$,$$suspicious link removed$$
+[debug] [2025-12-02T00:10:08.851Z] ----------------------------------------------------------------------
+[debug] [2025-12-02T00:10:08.853Z] Command:       /nix/store/ws50yvm6vzlzf7jzz6n7xh4szddrack1-nodejs-20.19.1/bin/node /nix/store/12bms99s479knhxggq0wrjfch7rhy26s-firebase-tools-14.24.1/lib/node_modules/firebase-tools/lib/bin/firebase.js deploy
+[debug] [2025-12-02T00:10:08.853Z] CLI Version:   14.24.1
+[debug] [2025-12-02T00:10:08.853Z] Platform:      linux
+[debug] [2025-12-02T00:10:08.854Z] Node Version:  v20.19.1
+[debug] [2025-12-02T00:10:08.854Z] Time:          Tue Dec 02 2025 00:10:08 GMT+0000 (Coordinated Universal Time)
+[debug] [2025-12-02T00:10:08.854Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-12-02T00:10:09.105Z] Object "/apphosting" in "firebase.json" has unknown property: {"additionalProperty":"environment"}
+[debug] [2025-12-02T00:10:09.105Z] Field "/apphosting" in "firebase.json" is possibly invalid: must be array
+[debug] [2025-12-02T00:10:09.105Z] Field "/apphosting" in "firebase.json" is possibly invalid: must match a schema in anyOf
+[debug] [2025-12-02T00:10:09.108Z] Checked if tokens are valid: false, expires at: 1764632955284
+[debug] [2025-12-02T00:10:09.108Z] Checked if tokens are valid: false, expires at: 1764632955284
+[debug] [2025-12-02T00:10:09.109Z] > refreshing access token with scopes: []
+[debug] [2025-12-02T00:10:09.111Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-12-02T00:10:09.111Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-12-02T00:10:09.211Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-12-02T00:10:09.212Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-12-02T00:10:09.228Z] >>> [apiv2][query] GET https://monospace-pa.googleapis.com/v1/workspaces/skomidora-aiot-29612212 [none]
+[debug] [2025-12-02T00:10:09.693Z] <<< [apiv2][status] GET https://monospace-pa.googleapis.com/v1/workspaces/skomidora-aiot-29612212 200
+[debug] [2025-12-02T00:10:09.693Z] <<< [apiv2][body] GET https://monospace-pa.googleapis.com/v1/workspaces/skomidora-aiot-29612212 {"workspaceId":"skomidora-aiot-29612212","name":"SkoMiDora-AIoT","workspaceRedirectUrl":"firebase-skomidora-aiot-1763488482243.cluster-lr6dwlc2lzbcctqhqorax5zmro.cloudworkstations.dev","status":"WORKSPACE_STATUS_RUNNING","lastAccessDatetime":"2025-12-01T23:57:11.013735Z","workspaceTemplate":"WORKSPACE_TEMPLATE_FLUTTER","owner":"SELF","serviceAccountEmail":"msp-7062561622066257727@monospace-per-ws-sa-2.iam.gserviceaccount.com","enableNix":true,"ownerEmail":"ValXMachi@gmail.com","templateArgs":"{\"signedUrl\":\"https://monospace-local-import-bucket-us.storage.googleapis.com/skomidora-aiot-29612212-SkoMiDora-AI-Fashion-Advisor-skomidora.zip?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=monospace-local-import-manager%40monospace-local-import-bucket.iam.gserviceaccount.com%2F20251118%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20251118T175440Z&X-Goog-Expires=3600&X-Goog-SignedHeaders=host&x-goog-signature=651d280a5ed93aba08ccbf7997cf24ed8889226c05c30d0d03b86efe6f587a823d14c5a06096f373879ee995265c5a183b588a7a936c9496289d90a39e54bede5ccd3c0cd61998d215bfb91cbfb20cf3b4b35dcb5a773049edec8b49a51214e05ee9dfe22834cdede67ac7097f8a7be6682c70ca8c5200310c01fa8b05c17cd1c34090113ea02aeb557567769c6653df8634e7b2a65563b4dc259acf7850391788baaaa3598db0d373549c8fadc579eea27507a2d29ebe4f7b939733d570a582a086ad2fc5451063bb471aa22fd0b1f01ceee20a88fa63fe00847a4367e0bbe478eddb752dd013e91fd0904f19e0710ed2659bd7b2d8b4717eb8df0b12ec4c13\"}","templateRepoUrl":"file:///usr/local/monospace/templates/private/_local_import","workstationAccessToken":"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2Nsb3VkLmdvb2dsZS5jb20vd29ya3N0YXRpb25zIiwiYXVkIjoiZmlyZWJhc2Utc2tvbWlkb3JhLWFpb3QtMTc2MzQ4ODQ4MjI0My5jbHVzdGVyLWxyNmR3bGMybHpiY2N0cWhxb3JheDV6bXJvLmNsb3Vkd29ya3N0YXRpb25zLmRldiIsImlhdCI6MTc2NDYzNDIwOSwiZXhwIjoxNzY0NzIwNjA5fQ.xB3uf0cI-wKmCBhbFCJ2amiLBTKIWb1sg475hM7uSUFAYdVFxTa5W1ycybXQ7QAn6ejKhk54dQzmNlnQV5TwJE23i7Ye_9vnU2mY3SWaYB1cjXI3Tn0NdW8pBZEnbYPWtNawiLsuUykxArOn5ghdEWn0RfmL62gcuVOsGLyIzku9QqFKBoAQO7Y0K8reDtD3ZfNM6UicT71zrAQF1c4c7xmoAF_HLpFwmax21OsGL0h3o3xQZalVAnVcIPAO9I2_LWktSpl0__Ya-tlJWjYr-1QQeBcGZVd8HeTWqep8ViNpa7n7H7qSorB_WHabdduPfzzjMt-7ICf56fqyuydjWQ","firebaseProjectId":"styleai-footwear"}
+[debug] [2025-12-02T00:10:09.694Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-12-02T00:10:09.695Z] > authorizing via signed-in user (valxmachi@gmail.com)
+[debug] [2025-12-02T00:10:09.695Z] [iam] checking project styleai-footwear for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get","firebasehosting.sites.update",null]
+[debug] [2025-12-02T00:10:09.695Z] Checked if tokens are valid: true, expires at: 1764637808212
+[debug] [2025-12-02T00:10:09.695Z] Checked if tokens are valid: true, expires at: 1764637808212
+[debug] [2025-12-02T00:10:09.695Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/styleai-footwear:testIamPermissions [none]
+[debug] [2025-12-02T00:10:09.695Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/styleai-footwear:testIamPermissions x-goog-quota-user=projects/styleai-footwear
+[debug] [2025-12-02T00:10:09.695Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/styleai-footwear:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get","firebasehosting.sites.update",null]}
+[debug] [2025-12-02T00:10:09.749Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/styleai-footwear:testIamPermissions 200
+[debug] [2025-12-02T00:10:09.749Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/styleai-footwear:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2025-12-02T00:10:09.750Z] [iam] error while checking permissions, command may fail: Authorization failed. This account is missing the following required permissions on project styleai-footwear:
+
+  
+[debug] [2025-12-02T00:10:09.750Z] Checked if tokens are valid: true, expires at: 1764637808212
+[debug] [2025-12-02T00:10:09.750Z] Checked if tokens are valid: true, expires at: 1764637808212
+[debug] [2025-12-02T00:10:09.750Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/styleai-footwear/serviceAccounts/styleai-footwear@appspot.gserviceaccount.com:testIamPermissions [none]
+[debug] [2025-12-02T00:10:09.751Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/styleai-footwear/serviceAccounts/styleai-footwear@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2025-12-02T00:10:09.814Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/styleai-footwear/serviceAccounts/styleai-footwear@appspot.gserviceaccount.com:testIamPermissions 200
+[debug] [2025-12-02T00:10:09.814Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/styleai-footwear/serviceAccounts/styleai-footwear@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2025-12-02T00:10:09.815Z] Checked if tokens are valid: true, expires at: 1764637808212
+[debug] [2025-12-02T00:10:09.815Z] Checked if tokens are valid: true, expires at: 1764637808212
+[debug] [2025-12-02T00:10:09.816Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/styleai-footwear [none]
+[debug] [2025-12-02T00:10:09.982Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/styleai-footwear 200
+[debug] [2025-12-02T00:10:09.982Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/styleai-footwear {"projectId":"styleai-footwear","projectNumber":"855662411333","displayName":"StyleAI Footwear","name":"projects/styleai-footwear","resources":{"hostingSite":"styleai-footwear","realtimeDatabaseInstance":"styleai-footwear-default-rtdb"},"state":"ACTIVE","etag":"1_5dcd58d3-8bff-45ba-b8aa-8d68ae0b3171"}
+[debug] [2025-12-02T00:10:12.738Z] defaultcredentials: writing to file /home/user/.config/firebase/valxmachi_gmail_com_application_default_credentials.json
+[debug] [2025-12-02T00:10:12.740Z] Checked if tokens are valid: true, expires at: 1764637808212
+[debug] [2025-12-02T00:10:12.741Z] Checked if tokens are valid: true, expires at: 1764637808212
+[debug] [2025-12-02T00:10:12.741Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/styleai-footwear/sites pageToken=&pageSize=10
+[debug] [2025-12-02T00:10:12.935Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/styleai-footwear/sites 200
+[debug] [2025-12-02T00:10:12.935Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/styleai-footwear/sites {"sites":[{"name":"projects/styleai-footwear/sites/sk-styleai-footwear-us-cen1","defaultUrl":"https://sk-styleai-footwear-us-cen1.web.app","appId":"1:855662411333:web:2b62d7a107f247f950ed2c","type":"USER_SITE"},{"name":"projects/styleai-footwear/sites/styleai-footwear","defaultUrl":"https://styleai-footwear.web.app","appId":"1:855662411333:web:657cc6c36c9df53450ed2c","type":"DEFAULT_SITE"}]}
+[debug] [2025-12-02T00:10:12.936Z] Checked if tokens are valid: true, expires at: 1764637808212
+[debug] [2025-12-02T00:10:12.936Z] Checked if tokens are valid: true, expires at: 1764637808212
+[debug] [2025-12-02T00:10:12.936Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/-/webApps/1:855662411333:web:657cc6c36c9df53450ed2c/config [none]
+[debug] [2025-12-02T00:10:13.275Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/-/webApps/1:855662411333:web:657cc6c36c9df53450ed2c/config 200
+[debug] [2025-12-02T00:10:13.276Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/-/webApps/1:855662411333:web:657cc6c36c9df53450ed2c/config {"projectId":"styleai-footwear","appId":"1:855662411333:web:657cc6c36c9df53450ed2c","databaseURL":"https://styleai-footwear-default-rtdb.firebaseio.com","storageBucket":"styleai-footwear.firebasestorage.app","apiKey":"AIzaSyB6TKlJLqnIzJltKM1jHmugZFhoSu-RpCI","authDomain":"styleai-footwear.firebaseapp.com","messagingSenderId":"855662411333","projectNumber":"855662411333","version":"2"}
+[info] 
+   Thank you for trying our early preview of Next.js support on Firebase Hosting.
+   During the preview, support is best-effort and breaking changes can be expected. Proceed with caution.
+
+   Documentation: https://firebase.google.com/docs/hosting/frameworks/nextjs
+   File a bug: https://github.com/firebase/firebase-tools/issues/new?template=bug_report.md
+   Submit a feature request: https://github.com/firebase/firebase-tools/issues/new?template=feature_request.md
+
+   We'd love to learn from you. Express your interest in helping us shape the future of Firebase Hosting: https://goo.gle/41enW5X
+
+[debug] [2025-12-02T00:10:21.083Z] Checked if tokens are valid: true, expires at: 1764637808212
+[debug] [2025-12-02T00:10:21.083Z] Checked if tokens are valid: true, expires at: 1764637808212
+[debug] [2025-12-02T00:10:21.083Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/styleai-footwear/sites/styleai-footwear [none]
+[debug] [2025-12-02T00:10:21.253Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/styleai-footwear/sites/styleai-footwear 200
+[debug] [2025-12-02T00:10:21.253Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/styleai-footwear/sites/styleai-footwear {"name":"projects/styleai-footwear/sites/styleai-footwear","defaultUrl":"https://styleai-footwear.web.app","appId":"1:855662411333:web:657cc6c36c9df53450ed2c","type":"DEFAULT_SITE"}
+[info]   ▲ Next.js 14.2.33
+
+[info]   - Environments: .env.local, .env
+
+[info] 
+
+[info]    Creating an optimized production build ...
+
+[info]  ✓ Compiled successfully
+
+[info]    Linting and checking validity of types ...
+
+[info] 
+./src/ai/flows/analyze-style-dna.ts
+124:16  Warning: 'e' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/ai/flows/generate-event-style-advice.ts
+14:36  Warning: 'ImportedAccuWeatherSchemaType' is defined but never used.  @typescript-eslint/no-unused-vars
+14:96  Warning: 'ImportedGoogleCalendarEventSchemaType' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/app/actions.ts
+17:15  Warning: 'GenerateEventStyleAdviceInput' is defined but never used.  @typescript-eslint/no-unused-vars
+18:10  Warning: 'generateEventStyleAdvice' is defined but never used.  @typescript-eslint/no-unused-vars
+21:10  Warning: 'getCurrentWeather' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/components/OutfitCard.tsx
+277:13  Warning: 'anyBritishKeywords' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+937:10  Warning: 'OutfitImageRenderer' is defined but never used.  @typescript-eslint/no-unused-vars
+947:5  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules
+
+[info] Failed to compile.
+
+
+[info] ./src/app/upcoming-events/page.tsx:59:13
+Type error: Type '{ eventName: any; eventStartDateTime: any; eventEndDateTime: any; eventType: any; eventLocation: any; temperature: any; weatherCondition: any; advice: any; }[]' is not assignable to type 'UpcomingEventStyleAdvice[]'.
+  Property 'id' is missing in type '{ eventName: any; eventStartDateTime: any; eventEndDateTime: any; eventType: any; eventLocation: any; temperature: any; weatherCondition: any; advice: any; }' but required in type 'UpcomingEventStyleAdvice'.
+
+  57 |
+  58 |     const unsubscribe = onSnapshot(q, (snapshot) => {
+> 59 |       const eventsData: UpcomingEventStyleAdvice[] = snapshot.docs.map(doc => {
+     |             ^
+  60 |         const data = doc.data();
+  61 |         return {
+  62 |           eventName: data.eventName || "",
+
+[info] Next.js build worker exited with code: 1 and signal: null
+
+[debug] [2025-12-02T00:10:54.424Z] Error: ENOENT: no such file or directory, open '/home/user/skomidora-aiot/.next/export-marker.json'
+[error] 
+[error] Error: An unexpected error has occurred.
