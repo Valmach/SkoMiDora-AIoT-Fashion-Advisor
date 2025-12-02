@@ -32,15 +32,18 @@ export type AnalyzedItem = z.infer<typeof AnalyzeClothingItemOutputSchema> & {
 export type GoogleCalendarEvent = z.infer<typeof GoogleCalendarEventSchema>;
 
 export interface UpcomingEventStyleAdvice {
-  outfitRecommendation: any;
-  outfitRecommendation: any;
+  // FIXED: Removed duplicate declaration.
+  outfitRecommendation: any; // You may want to define a specific type here later
+  
   eventCountry: string;
   id: string | null | undefined;
+
+  // Inferred properties based on previous errors and context
   eventName: string;
   eventStartDateTime: string;
   eventEndDateTime: string;
   eventType: string;
-  eventLocation?: string;
+  eventLocation: string;
   temperature: number;
   weatherCondition: string;
   advice: string;
