@@ -33,7 +33,6 @@ import {
   StopCircle,
 } from "lucide-react";
 import type { ElementType } from "react";
-import type { UpcomingEventStyleAdvice, AnalyzedItem } from "@/types";
 import { useState, useEffect, useRef } from "react";
 import { format, parseISO } from "date-fns";
 import { enUS } from "date-fns/locale";
@@ -45,7 +44,6 @@ const DEFAULT_SHOE_PLACEHOLDER_IMAGE = "https://placehold.co/200x200.png";
 interface UpcomingEventAdviceCardProps {
   eventAdvice: UpcomingEventStyleAdvice;
   cardIndex: number;
-  analyzedItems?: AnalyzedItem[];
 }
 
 // ------------------------
@@ -99,7 +97,6 @@ const getEventImageHint = (eventType: string): string => {
 export default function UpcomingEventAdviceCard({
   eventAdvice,
   cardIndex,
-  analyzedItems = [],
 }: UpcomingEventAdviceCardProps) {
   const safeLocation = eventAdvice.eventLocation ?? ""; // 🔥 MAIN FIX
   const safeCountry = eventAdvice.eventCountry ?? "";   // if you store country separately
@@ -129,7 +126,6 @@ export default function UpcomingEventAdviceCard({
   // 1. Tooltip Shoe Logic
   // -------------------------------
   useEffect(() => {
-    const closetShoes = analyzedItems.filter(
       (item) => item.itemType === "Shoes"
     );
     if (closetShoes.length > 0) {
@@ -145,7 +141,6 @@ export default function UpcomingEventAdviceCard({
       setTooltipShoeImageUrl(DEFAULT_SHOE_PLACEHOLDER_IMAGE);
       setTooltipShoeText("Add shoes to your closet!");
     }
-  }, [analyzedItems, cardIndex, eventAdvice.eventName]);
 
   // -------------------------------
   // 2. Google Maps → Lat/Lon → Weather

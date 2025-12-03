@@ -15,57 +15,63 @@ import { useFirebase } from "@/firebase/provider";
 import { collection, query, onSnapshot } from "firebase/firestore";
 import type { UpcomingEventStyleAdvice } from "@/types";
 
-/***********************************
- * Fallback events with required fields
- ***********************************/
 const DUMMY_EVENTS_DATA: UpcomingEventStyleAdvice[] = [
   {
     id: "dummy-1",
     eventName: "Paris Fashion Week - Chanel Show",
-    eventStartDateTime: new Date(Date.now() + 5 * 86400000).toISOString(),
-    eventEndDateTime: new Date(Date.now() + 5 * 86400000 + 2 * 3600000).toISOString(),
+    eventStartDateTime: new Date(
+      Date.now() + 5 * 24 * 60 * 60 * 1000
+    ).toISOString(),
+    eventEndDateTime: new Date(
+      Date.now() + 5 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000
+    ).toISOString(),
     eventType: "Fashion Show",
     eventLocation: "Grand Palais, Paris, France",
     temperature: 18,
     weatherCondition: "Cloudy with a chance of rain",
     advice:
-      "For Paris Fashion Week, channel timeless elegance. A classic tweed jacket paired with tailored trousers or a silk midi skirt is effortlessly chic.",
+      "For Paris Fashion Week, channel timeless elegance. A classic tweed jacket paired with tailored trousers or a silk midi skirt is effortlessly chic. Complement with slingbacks and a quilted leather bag.",
     eventCountry: "France",
-    outfitRecommendation: null,     // <── REQUIRED PROPERTY FIXED
+    outfitRecommendation: null,
   },
   {
     id: "dummy-2",
     eventName: "The Met Gala",
-    eventStartDateTime: new Date(Date.now() + 12 * 86400000).toISOString(),
-    eventEndDateTime: new Date(Date.now() + 12 * 86400000 + 5 * 3600000).toISOString(),
+    eventStartDateTime: new Date(
+      Date.now() + 12 * 24 * 60 * 60 * 1000
+    ).toISOString(),
+    eventEndDateTime: new Date(
+      Date.now() + 12 * 24 * 60 * 60 * 1000 + 5 * 60 * 60 * 1000
+    ).toISOString(),
     eventType: "Gala",
     eventLocation: "The Metropolitan Museum of Art, New York, USA",
     temperature: 22,
     weatherCondition: "Clear",
     advice:
-      "The Met Gala demands avant-garde glamour. Embrace the theme with a sculptural gown and statement jewellery.",
+      "The Met Gala demands avant-garde glamour. Embrace the theme with a sculptural gown or dramatic, custom piece. Statement jewellery and artistic make-up are essential.",
     eventCountry: "USA",
-    outfitRecommendation: null,     // <── FIXED
+    outfitRecommendation: null,
   },
   {
     id: "dummy-3",
     eventName: "Milan Fashion Week - Fendi Show",
-    eventStartDateTime: new Date(Date.now() + 20 * 86400000).toISOString(),
-    eventEndDateTime: new Date(Date.now() + 20 * 86400000 + 2 * 3600000).toISOString(),
+    eventStartDateTime: new Date(
+      Date.now() + 20 * 24 * 60 * 60 * 1000
+    ).toISOString(),
+    eventEndDateTime: new Date(
+      Date.now() + 20 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000
+    ).toISOString(),
     eventType: "Fashion Show",
     eventLocation: "Fendi HQ, Milan, Italy",
     temperature: 25,
     weatherCondition: "Sunny",
     advice:
-      "Embody Italian luxury for Milan. Choose a leather dress or tailored suit with bold architectural heels.",
+      "Embody Italian luxury in Milan. A structured leather dress or sharply tailored suit showcases craftsmanship. Pair with sculptural heels and a hint of silk for a powerful statement.",
     eventCountry: "Italy",
-    outfitRecommendation: null,     // <── FIXED
+    outfitRecommendation: null,
   },
 ];
 
-/***********************************
- * Main Page
- ***********************************/
 export default function UpcomingEventsPage() {
   const firebase = useFirebase();
   const [events, setEvents] =
@@ -83,23 +89,24 @@ export default function UpcomingEventsPage() {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const eventsData: UpcomingEventStyleAdvice[] = snapshot.docs.map((doc) => {
-          const data = doc.data() as any;
-
-          return {
-            id: doc.id,
-            eventName: data.eventName || "",
-            eventStartDateTime: data.eventStartDateTime || "",
-            eventEndDateTime: data.eventEndDateTime || "",
-            eventType: data.eventType || "",
-            eventLocation: data.eventLocation || "",
-            temperature: data.temperature ?? 0,
-            weatherCondition: data.weatherCondition || "",
-            advice: data.advice || "",
-            eventCountry: data.eventCountry || "",
-            outfitRecommendation: data.outfitRecommendation ?? null,  // <── FIXED
-          };
-        });
+        const eventsData: UpcomingEventStyleAdvice[] = snapshot.docs.map(
+          (doc) => {
+            const data = doc.data() as any;
+            return {
+              id: doc.id,
+              eventName: data.eventName ?? "",
+              eventStartDateTime: data.eventStartDateTime ?? "",
+              eventEndDateTime: data.eventEndDateTime ?? "",
+              eventType: data.eventType ?? "",
+              eventLocation: data.eventLocation ?? "",
+              temperature: data.temperature ?? 0,
+              weatherCondition: data.weatherCondition ?? "",
+              advice: data.advice ?? "",
+              eventCountry: data.eventCountry ?? "",
+              outfitRecommendation: data.outfitRecommendation ?? null,
+            };
+          }
+        );
 
         setEvents(eventsData.length > 0 ? eventsData : DUMMY_EVENTS_DATA);
       },
@@ -112,9 +119,6 @@ export default function UpcomingEventsPage() {
     return () => unsubscribe();
   }, [firebase]);
 
-  /***********************************
-   * Render
-   ***********************************/
   return (
     <div className="container mx-auto space-y-8 pb-10">
       <div className="flex justify-between items-center mb-6">
@@ -122,7 +126,6 @@ export default function UpcomingEventsPage() {
           <CalendarDays className="h-7 w-7 text-accent" />
           Upcoming Events
         </h1>
-
         <CalendarConnectButton />
       </div>
 
