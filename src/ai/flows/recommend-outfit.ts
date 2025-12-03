@@ -55,7 +55,7 @@ export async function generateOutfitForEvent(input: RecommendOutfitInput): Promi
 
 const textGenerationPrompt = ai.definePrompt({
   name: 'generateOutfitTextPrompt',
-  model: 'googleai/gemini-1.5-flash-latest',
+  model: 'googleai/gemini-2.0-flash-latest',
   input: {schema: RecommendOutfitInputSchema},
   output: {schema: OutfitSchemaInternal.omit({ outfitImageDataUri: true }) },
   prompt: `You are an elite personal stylist for fashionistas who appreciate luxury, quality,and cutting-edge style. Your client has provided details of their actual shoe collection and wardrobe items.
