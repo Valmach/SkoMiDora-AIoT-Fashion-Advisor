@@ -13,8 +13,8 @@ import type {
 } from '@/ai/flows/analyze-clothing-item';
 import { analyzeClothingItem } from '@/ai/flows/analyze-clothing-item';
 
-// NOTE: analyzeStyleDNA currently expects a STRING input in its TS signature.
-import { analyzeStyleDNA } from '@/ai/flows/analyze-style-dna';
+// --- Style DNA flow (string-based Genkit flow under the hood) ---
+import { analyzeStyleDNA as analyzeStyleDNAFlow } from '@/ai/flows/analyze-style-dna';
 
 import type {
   RecommendOutfitInput,
@@ -25,6 +25,7 @@ import type {
   OutfitForFeedbackAction,
   EventDetailsForFeedbackAction,
   UpcomingEventStyleAdvice,
+  AnalyzeStyleDNAInput, // <- from "@/types" (same as mockAnalyzeStyleDNAInput)
 } from '@/types';
 
 import { generateOutfitForEvent } from '@/ai/flows/recommend-outfit';
@@ -58,34 +59,28 @@ export interface RecommendOutfitOutput {
 }
 
 /**
- * Input structure we send into Style DNA (before stringifying).
- * This lives locally here and is NOT imported from the flow module,
- * so we don't depend on its TS exports.
+ * Small adapter around the Genkit flow.
+ *
+ * The generated Genkit function currently expects a **string input** (because
+ * the original Zod schema was a string). We keep a strongly typed
+ * `AnalyzeStyleDNAInput` in our app, and stringify it here so the compiler
+ * stops complaining about "Argument of type '{ ... }' is not assignable to 'string'".
  */
-export interface AnalyzeStyleDNAInput {
-  wardrobeData: string;
-  shoeCollectionData: string;
-  accuWeatherInfo: {
-    temperature: number;
-    condition: string;
-    location?: string;
-  };
-  googleCalendarEvents: {
-    eventName: string;
-    eventStartDateTime: string;
-    eventEndDateTime: string;
-    eventType: string;
-    eventLocation?: string;
-    eventCountry?: string;
-  }[];
+async function runAnalyzeStyleDNA(
+  input: AnalyzeStyleDNAInput,
+): Promise<any> {
+  // If you later change your flow to accept a structured object, you can
+  // remove JSON.stringify here and update the flow's input schema.
+  return analyzeStyleDNAFlow(JSON.stringify(input) as any);
 }
 
-/* -------------------------------------------------------------------------- */
-/*  1) Analyze + Save Clothing Item                                           */
-/* -------------------------------------------------------------------------- */
-
+/**
+ * Takes image file data via FormData, uploads it to Firebase Storage,
+ * analyzes it with AI, and saves the result to Firestore.
+ * This server-centric approach avoids client-side permission issues and payload limits.
+ */
 export async function analyzeAndSaveClothingItem(
-  formData: FormData
+  formData: FormData,
 ): Promise<{ error: string } | AnalyzedItem> {
   console.log('ACTION: analyzeAndSaveClothingItem started.');
 
@@ -100,9 +95,10 @@ export async function analyzeAndSaveClothingItem(
       throw new Error('No file found in the form data.');
     }
     console.log(
-      `ACTION_INFO: File received: ${file.name}, type: ${file.type}, size: ${file.size}`
+      `ACTION_INFO: File received: ${file.name}, type: ${file.type}, size: ${file.size}`,
     );
 
+    // Step 1: Upload the image to Firebase Storage from the server action
     const uniqueFileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
     const imagePath = `public_wardrobe_items/${uniqueFileName}`;
 
@@ -127,14 +123,12 @@ export async function analyzeAndSaveClothingItem(
 
     if (!downloadURL) {
       console.error(
-        'ACTION_ERROR: Image uploaded, but publicUrl returned nothing.'
+        'ACTION_ERROR: Image uploaded, but getDownloadURL returned nothing.',
       );
-      throw new Error('Image uploaded, but failed to get a public URL.');
+      throw new Error('Image uploaded, but failed to get a download URL.');
     }
 
-    console.log(
-      'ACTION_INFO: Upload successful. Proceeding with AI analysis.'
-    );
+    console.log('ACTION_INFO: Upload successful. Proceeding with AI analysis.');
     const aiInput: AnalyzeClothingItemInput = { imageUri: downloadURL };
     const analysisResult = await analyzeClothingItem(aiInput);
 
@@ -142,29 +136,28 @@ export async function analyzeAndSaveClothingItem(
       throw new Error('AI analysis failed to return valid data.');
     }
     console.log(
-      'ACTION_INFO: AI analysis successful. Proceeding with Firestore write.'
+      'ACTION_INFO: AI analysis successful. Proceeding with Firestore write.',
     );
 
     const newItemData = {
       ...analysisResult,
       imageUrl: downloadURL,
-      imagePath,
+      imagePath: imagePath,
       createdAt: FieldValue.serverTimestamp(),
     };
-
     const docRef = await db
       .collection('publicWardrobeItems')
       .add(newItemData);
     console.log(
-      `ACTION_SUCCESS: Data saved to Firestore with ID: ${docRef.id}`
+      `ACTION_SUCCESS: Data saved to Firestore with ID: ${docRef.id}`,
     );
 
     return {
       ...(analysisResult as AnalyzeClothingItemOutput),
       id: docRef.id,
       imageUrl: downloadURL,
-      imagePath,
-      createdAt: Date.now(),
+      imagePath: imagePath,
+      createdAt: Date.now(), // Return current time for immediate client-side use
     };
   } catch (e: any) {
     console.error('CRITICAL ERROR in analyzeAndSaveClothingItem action:', e);
@@ -175,13 +168,13 @@ export async function analyzeAndSaveClothingItem(
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/*  2) Delete Clothing Item                                                   */
-/* -------------------------------------------------------------------------- */
-
+/**
+ * Deletes a clothing item from Firestore and its corresponding image from Firebase Storage.
+ * This function prioritizes deleting the Firestore document to ensure the UI updates correctly.
+ */
 export async function deleteClothingItem(
   itemId: string,
-  imagePath: string | undefined
+  imagePath: string | undefined,
 ): Promise<{ success: true } | { error: string }> {
   console.log(`ACTION: Attempting to delete item: ${itemId}`);
 
@@ -189,27 +182,33 @@ export async function deleteClothingItem(
   const db = admin.firestore();
   const storage = admin.storage();
 
+  // First, delete the Firestore document. This is the source of truth for the UI.
   try {
     await db.collection('publicWardrobeItems').doc(itemId).delete();
     console.log(`ACTION_SUCCESS: Firestore document ${itemId} deleted.`);
   } catch (e: any) {
     console.error(
       `CRITICAL_ERROR: Could not delete Firestore document ${itemId}. Error: ${e.message}`,
-      e
+      e,
     );
     return {
-      error: `Database error: Could not remove item. (${e.code || e.message})`,
+      error: `Database error: Could not remove item. (${
+        e.code || e.message
+      })`,
     };
   }
 
+  // If Firestore deletion was successful, then try to delete the storage file.
   if (imagePath) {
     try {
       const bucket = storage.bucket();
       await bucket.file(imagePath).delete();
       console.log(`ACTION_SUCCESS: Storage file ${imagePath} deleted.`);
     } catch (e: any) {
+      // This is a non-critical error. The item is gone from the UI.
+      // We log a warning that the file might be orphaned.
       console.warn(
-        `ACTION_WARN: Item deleted from database, but storage file '${imagePath}' could not be removed. It may be orphaned. Error: ${e.message}`
+        `ACTION_WARN: Item deleted from database, but storage file '${imagePath}' could not be removed. It may be orphaned. Error: ${e.message}`,
       );
     }
   }
@@ -217,10 +216,11 @@ export async function deleteClothingItem(
   return { success: true };
 }
 
-/* -------------------------------------------------------------------------- */
-/*  3) Style DNA Action (FIXED to pass STRING into analyzeStyleDNA)          */
-/* -------------------------------------------------------------------------- */
-
+/**
+ * Analyzes the user's style DNA.
+ * This action now fetches wardrobe data directly from Firestore for accuracy and robustness,
+ * then merges in your strongly-typed mockAnalyzeStyleDNAInput (calendar + weather).
+ */
 export async function analyzeStyleDNAAction(): Promise<
   { styleDNA: string } | { error: string }
 > {
@@ -229,7 +229,7 @@ export async function analyzeStyleDNAAction(): Promise<
     const db = admin.firestore();
 
     console.log(
-      'ACTION: analyzeStyleDNAAction started. Fetching items from Firestore...'
+      'ACTION: analyzeStyleDNAAction started. Fetching items from Firestore...',
     );
     const itemsCollectionRef = db.collection('publicWardrobeItems');
     const querySnapshot = await itemsCollectionRef.get();
@@ -243,7 +243,8 @@ export async function analyzeStyleDNAAction(): Promise<
         itemType: data.itemType,
         imageUrl: data.imageUrl,
         imagePath: data.imagePath,
-        createdAt: 0,
+        createdAt: 0, // Placeholder, not used in this action
+        // Spread any additional fields from AnalyzeClothingItemOutput
         ...data,
       } as AnalyzedItem);
     });
@@ -265,57 +266,35 @@ export async function analyzeStyleDNAAction(): Promise<
         : mockAnalyzeStyleDNAInput.shoeCollectionData;
 
     console.log(
-      `ACTION: wardrobeData for AI: ${wardrobeData.substring(0, 100)}...`
+      `ACTION: wardrobeData for AI: ${wardrobeData.substring(0, 100)}...`,
     );
     console.log(
-      `ACTION: shoeCollectionData for AI: ${shoeCollectionData.substring(
-        0,
-        100
-      )}...`
+      `ACTION: shoeCollectionData for AI: ${shoeCollectionData.substring(0, 100)}...`,
     );
 
-    // Build strongly-typed input object locally…
+    // Build a fully typed AnalyzeStyleDNAInput based on your mock + live wardrobe
     const aiInput: AnalyzeStyleDNAInput = {
-      ...mockAnalyzeStyleDNAInput, // provides accuWeatherInfo + googleCalendarEvents mocks
+      ...mockAnalyzeStyleDNAInput, // gives you accuWeatherInfo + googleCalendarEvents
       wardrobeData,
       shoeCollectionData,
     };
 
-    // 🔥 FIX: analyzeStyleDNA expects a STRING → we send JSON.stringify(aiInput)
-    const rawResult = (await analyzeStyleDNA(
-      JSON.stringify(aiInput)
-    )) as unknown;
+    const result = await runAnalyzeStyleDNA(aiInput);
 
-    // Normalise the result so callers always get `{ styleDNA: string }`
-    let styleDNA: string;
-
-    if (
-      rawResult &&
-      typeof rawResult === 'object' &&
-      'styleDNA' in rawResult &&
-      typeof (rawResult as any).styleDNA === 'string'
-    ) {
-      styleDNA = (rawResult as any).styleDNA;
-    } else if (typeof rawResult === 'string') {
-      styleDNA = rawResult;
-    } else {
-      styleDNA =
-        'Based on your wardrobe and footwear, your style reflects a considered, evolving fashion identity.';
+    // We know the flow returns at least a styleDNA string in your design.
+    if (!result || typeof result.styleDNA !== 'string') {
+      throw new Error('Style DNA flow did not return a valid styleDNA string.');
     }
 
-    return { styleDNA };
+    return { styleDNA: result.styleDNA };
   } catch (e: any) {
     console.error('Error in analyzeStyleDNAAction:', e);
     return { error: e.message || 'Failed to analyze style DNA.' };
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/*  4) Generate Outfit for Event                                              */
-/* -------------------------------------------------------------------------- */
-
 export async function generateOutfitForEventAction(
-  input: RecommendOutfitInput
+  input: RecommendOutfitInput,
 ): Promise<SingleOutfitOutputType | { error: string }> {
   try {
     return await generateOutfitForEvent(input);
@@ -327,27 +306,21 @@ export async function generateOutfitForEventAction(
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/*  5) Process Outfit Feedback                                                */
-/* -------------------------------------------------------------------------- */
-
 export async function processOutfitFeedbackAction(
-  input: ProcessOutfitFeedbackInput
+  input: ProcessOutfitFeedbackInput,
 ): Promise<ProcessOutfitFeedbackOutput | { error: string }> {
   try {
     return await processOutfitFeedback(input);
   } catch (e: any) {
     console.error('Error in processOutfitFeedbackAction:', e);
-    return { error: e.message || 'Failed to process outfit feedback.' };
+    return {
+      error: e.message || 'Failed to process outfit feedback.',
+    };
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/*  6) Generate Speech from Text                                              */
-/* -------------------------------------------------------------------------- */
-
 export async function generateSpeechFromTextAction(
-  text: string
+  text: string,
 ): Promise<{ media?: string; error?: string }> {
   try {
     const result = await generateSpeechFromText(text);

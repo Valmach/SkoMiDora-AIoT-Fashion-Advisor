@@ -32,7 +32,10 @@ import {
   Volume2,
   StopCircle,
 } from "lucide-react";
+
 import type { ElementType } from "react";
+import type { UpcomingEventStyleAdvice, AnalyzedItem } from "@/types"; // ✅ IMPORT FIX
+
 import { useState, useEffect, useRef } from "react";
 import { format, parseISO } from "date-fns";
 import { enUS } from "date-fns/locale";
@@ -44,11 +47,12 @@ const DEFAULT_SHOE_PLACEHOLDER_IMAGE = "https://placehold.co/200x200.png";
 interface UpcomingEventAdviceCardProps {
   eventAdvice: UpcomingEventStyleAdvice;
   cardIndex: number;
+  analyzedItems?: AnalyzedItem[]; // 🔥 FIX: Allow analyzed items to come from card
 }
 
-// ------------------------
-// Image Hints
-// ------------------------
+// ---------------------------------------------------------------------------
+// Image Hint Mapping
+// ---------------------------------------------------------------------------
 const imageHintsByEventType: Record<string, string[]> = {
   business: ["professional attire", "office chic", "corporate style"],
   meeting: ["business casual", "meeting outfit", "smart separates"],
@@ -65,21 +69,13 @@ const imageHintsByEventType: Record<string, string[]> = {
   "black-tie": ["tuxedo style", "formal gown", "elegant evening"],
   charity: ["charity event", "sophisticated dress", "benefit gala"],
   party: ["party outfit", "festive wear", "celebration dress"],
-  brunch: [
-    "brunch style",
-    "casual chic",
-    "daytime fashion",
-    "Paris restaurant",
-  ],
+  brunch: ["brunch style", "casual chic", "daytime fashion", "Paris restaurant"],
   default: ["stylish event", "modern fashion", "elegant attire"],
 };
 
 const getEventImageHint = (eventType: string): string => {
   const typeLower = eventType.toLowerCase();
-
-  if (typeLower.includes("brunch")) {
-    return "Paris restaurant";
-  }
+  if (typeLower.includes("brunch")) return "Paris restaurant";
 
   for (const keyword in imageHintsByEventType) {
     if (typeLower.includes(keyword)) {
@@ -87,27 +83,31 @@ const getEventImageHint = (eventType: string): string => {
       return hints[Math.floor(Math.random() * hints.length)];
     }
   }
+
   const defaultHints = imageHintsByEventType.default;
   return defaultHints[Math.floor(Math.random() * defaultHints.length)];
 };
 
-// ------------------------
+// ---------------------------------------------------------------------------
 // MAIN COMPONENT
-// ------------------------
+// ---------------------------------------------------------------------------
 export default function UpcomingEventAdviceCard({
   eventAdvice,
   cardIndex,
+  analyzedItems = [],
 }: UpcomingEventAdviceCardProps) {
-  const safeLocation = eventAdvice.eventLocation ?? ""; // 🔥 MAIN FIX
-  const safeCountry = eventAdvice.eventCountry ?? "";   // if you store country separately
+  const safeLocation = eventAdvice.eventLocation ?? "";
+  const safeCountry = eventAdvice.eventCountry ?? "";
+
   const [liveWeather, setLiveWeather] = useState<{
     temperature: number;
     condition: string;
   } | null>(null);
-  const [liveWeatherError, setLiveWeatherError] = useState<string | null>(null);
 
-  const [formattedEventTime, setFormattedEventTime] =
-    useState<string | null>(null);
+  const [liveWeatherError, setLiveWeatherError] = useState<string | null>(null);
+  const [formattedEventTime, setFormattedEventTime] = useState<string | null>(
+    null
+  );
   const [decision, setDecision] = useState<
     "accepted" | "rejected" | "modified" | null
   >(null);
@@ -122,29 +122,32 @@ export default function UpcomingEventAdviceCard({
   const preferredVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
-  // -------------------------------
-  // 1. Tooltip Shoe Logic
-  // -------------------------------
+  // ---------------------------------------------------------------------------
+  // 1. Tooltip Shoe Logic — FIXED VERSION
+  // ---------------------------------------------------------------------------
   useEffect(() => {
+    const closetShoes = analyzedItems.filter(
       (item) => item.itemType === "Shoes"
     );
+
     if (closetShoes.length > 0) {
       const eventNameLength = eventAdvice.eventName.length;
       const shoeIndex = (cardIndex + eventNameLength) % closetShoes.length;
-      const randomShoe = closetShoes[shoeIndex];
+      const selectedShoe = closetShoes[shoeIndex];
 
-      if (randomShoe?.imageUrl) {
-        setTooltipShoeImageUrl(randomShoe.imageUrl);
-        setTooltipShoeText(randomShoe.itemName);
+      if (selectedShoe?.imageUrl) {
+        setTooltipShoeImageUrl(selectedShoe.imageUrl);
+        setTooltipShoeText(selectedShoe.itemName);
       }
     } else {
       setTooltipShoeImageUrl(DEFAULT_SHOE_PLACEHOLDER_IMAGE);
       setTooltipShoeText("Add shoes to your closet!");
     }
+  }, [analyzedItems, cardIndex, eventAdvice.eventName]);
 
-  // -------------------------------
-  // 2. Google Maps → Lat/Lon → Weather
-  // -------------------------------
+  // ---------------------------------------------------------------------------
+  // 2. Weather Lookup (Google Maps → Lat/Lon → Weather)
+  // ---------------------------------------------------------------------------
   useEffect(() => {
     const fetchWeather = async () => {
       if (!safeLocation.trim()) {
@@ -158,9 +161,7 @@ export default function UpcomingEventAdviceCard({
           `/api/eventWeather?location=${encodeURIComponent(safeLocation)}`
         );
 
-        if (!res.ok) {
-          throw new Error(`Weather API error: ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`Weather API error: ${res.status}`);
 
         const data = await res.json();
 
@@ -174,7 +175,7 @@ export default function UpcomingEventAdviceCard({
           setLiveWeather(null);
           setLiveWeatherError("Weather unavailable");
         }
-      } catch (err: any) {
+      } catch (err) {
         setLiveWeather(null);
         setLiveWeatherError("Weather unavailable");
       }
@@ -183,55 +184,50 @@ export default function UpcomingEventAdviceCard({
     fetchWeather();
   }, [safeLocation]);
 
-  // -------------------------------
+  // ---------------------------------------------------------------------------
   // 3. Format Event Time
-  // -------------------------------
+  // ---------------------------------------------------------------------------
   useEffect(() => {
-    if (eventAdvice.eventStartDateTime && eventAdvice.eventEndDateTime) {
-      try {
-        const startDate = parseISO(eventAdvice.eventStartDateTime);
-        const endDate = parseISO(eventAdvice.eventEndDateTime);
-        const startStr = format(startDate, "EEE, d MMM 'at' p", {
-          locale: enUS,
-        });
-        const endStr = format(endDate, "p (zzz)", { locale: enUS });
+    if (!eventAdvice.eventStartDateTime || !eventAdvice.eventEndDateTime) return;
 
-        if (format(startDate, "yyyyMMdd") === format(endDate, "yyyyMMdd")) {
-          setFormattedEventTime(`${startStr} - ${endStr}`);
-        } else {
-          const fullEndStr = format(
-            endDate,
-            "EEE, d MMM 'at' p (zzz)",
-            { locale: enUS }
-          );
-          setFormattedEventTime(`${startStr} - ${fullEndStr}`);
-        }
-      } catch {
-        setFormattedEventTime("Event time not available");
-      }
+    try {
+      const startDate = parseISO(eventAdvice.eventStartDateTime);
+      const endDate = parseISO(eventAdvice.eventEndDateTime);
+
+      const sameDay = format(startDate, "yyyyMMdd") === format(endDate, "yyyyMMdd");
+
+      const startStr = format(startDate, "EEE, d MMM 'at' p", { locale: enUS });
+      const endStr = sameDay
+        ? format(endDate, "p (zzz)", { locale: enUS })
+        : format(endDate, "EEE, d MMM 'at' p (zzz)", { locale: enUS });
+
+      setFormattedEventTime(`${startStr} - ${endStr}`);
+    } catch {
+      setFormattedEventTime("Event time not available");
     }
   }, [eventAdvice.eventStartDateTime, eventAdvice.eventEndDateTime]);
 
-  // -------------------------------
-  // 4. Feedback buttons
-  // -------------------------------
+  // ---------------------------------------------------------------------------
+  // 4. Feedback Buttons
+  // ---------------------------------------------------------------------------
   const handleFeedback = (userAction: "accepted" | "rejected" | "modified") => {
     setDecision(userAction);
+
     const messages = {
       accepted: "Glad you found the style advice helpful!",
       rejected: "Thanks for the feedback. We'll improve our suggestions.",
       modified: "Modify functionality coming soon.",
     };
+
     toast({
-      title:
-        "Advice " + userAction.charAt(0).toUpperCase() + userAction.slice(1),
+      title: `Advice ${userAction}`,
       description: messages[userAction],
     });
   };
 
-  // -------------------------------
+  // ---------------------------------------------------------------------------
   // 5. Text-to-Speech
-  // -------------------------------
+  // ---------------------------------------------------------------------------
   const handleSpeak = () => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
 
@@ -262,44 +258,40 @@ export default function UpcomingEventAdviceCard({
     }
 
     utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => {
-      setIsSpeaking(false);
-      utteranceRef.current = null;
-    };
+    utterance.onend = () => setIsSpeaking(false);
 
     window.speechSynthesis.speak(utterance);
   };
 
-  // -------------------------------
+  // ---------------------------------------------------------------------------
   // Event Icon
-  // -------------------------------
+  // ---------------------------------------------------------------------------
   let EventIcon: ElementType = CalendarDays;
-  const eventTypeLower = eventAdvice.eventType.toLowerCase();
-  if (eventTypeLower.includes("business") || eventTypeLower.includes("meeting"))
+  const type = eventAdvice.eventType.toLowerCase();
+
+  if (type.includes("business") || type.includes("meeting"))
     EventIcon = Briefcase;
-  else if (eventTypeLower.includes("social") || eventTypeLower.includes("party"))
+  else if (type.includes("social") || type.includes("party"))
     EventIcon = PartyPopper;
-  else if (eventTypeLower.includes("fashion") || eventTypeLower.includes("art"))
+  else if (type.includes("fashion") || type.includes("art"))
     EventIcon = Sparkles;
 
-  // -------------------------------
-  // Image generation seed
-  // -------------------------------
+  // ---------------------------------------------------------------------------
+  // Image Generation
+  // ---------------------------------------------------------------------------
   const imageSeed = eventAdvice.eventName.replace(/\s+/g, "") + cardIndex;
   const imageSrc = `https://picsum.photos/seed/${imageSeed}/400/250`;
   const imageHint = getEventImageHint(eventAdvice.eventType);
 
-  // -------------------------------
-  // Weather badge logic
-  // -------------------------------
-  const isWeatherError = !!liveWeatherError;
   const weatherText = liveWeather
     ? `${liveWeather.temperature}°C, ${liveWeather.condition}`
     : liveWeatherError || "Weather unavailable";
 
-  // -------------------------------
+  const isWeatherError = !!liveWeatherError;
+
+  // ---------------------------------------------------------------------------
   // RENDER
-  // -------------------------------
+  // ---------------------------------------------------------------------------
   return (
     <Card
       className={cn(
@@ -338,7 +330,7 @@ export default function UpcomingEventAdviceCard({
         </div>
       </CardHeader>
 
-      {/* ---------- IMAGE ---------- */}
+      {/* IMAGE */}
       <CardContent className="flex-grow flex flex-col">
         <Tooltip>
           <TooltipTrigger asChild>
@@ -353,7 +345,6 @@ export default function UpcomingEventAdviceCard({
             </div>
           </TooltipTrigger>
 
-          {/* SHOE TOOLTIP */}
           <TooltipContent className="p-2 bg-card border shadow-lg rounded-md">
             <div className="w-32 h-32 relative bg-muted rounded overflow-hidden">
               <Image
@@ -370,7 +361,7 @@ export default function UpcomingEventAdviceCard({
           </TooltipContent>
         </Tooltip>
 
-        {/* WEATHER + EVENT TYPE */}
+        {/* WEATHER */}
         <div className="flex items-center gap-2 mb-2">
           <Badge
             variant="outline"
@@ -394,14 +385,13 @@ export default function UpcomingEventAdviceCard({
           </Badge>
         </div>
 
-        {/* ADVICE TEXT */}
+        {/* ADVICE */}
         <div className="text-xs text-foreground mb-2 leading-normal h-20 overflow-y-auto p-1 rounded bg-muted/30">
           <Lightbulb className="h-3.5 w-3.5 mr-2 float-left text-accent" />
           {eventAdvice.advice}
         </div>
       </CardContent>
 
-      {/* ---------- FOOTER ---------- */}
       <CardFooter className="flex flex-col items-start space-y-2 pt-3 border-t">
         <div className="w-full space-y-2">
           <div className="flex gap-2 w-full">
@@ -452,7 +442,6 @@ export default function UpcomingEventAdviceCard({
           </Button>
         </div>
 
-        {/* SPEECH BUTTON */}
         <div className="w-full pt-1">
           <Tooltip>
             <TooltipTrigger asChild>

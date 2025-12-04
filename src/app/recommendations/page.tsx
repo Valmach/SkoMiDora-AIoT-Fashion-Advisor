@@ -1,9 +1,7 @@
-
 "use client";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
-
 
 import { useState, useEffect, useTransition, useCallback } from "react";
 import {
@@ -31,7 +29,11 @@ import {
   mockAnalyzeStyleDNAInput,
 } from "@/lib/mockData";
 import OutfitCard from "@/components/OutfitCard";
-import type { SingleOutfitOutput, AnalyzedItem, GoogleCalendarEvent } from "@/types";
+import type {
+  SingleOutfitOutput,
+  AnalyzedItem,
+  GoogleCalendarEvent,
+} from "@/types";
 import { safeToMillis } from "@/types";
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import type { DocumentData } from "firebase/firestore";
@@ -45,7 +47,9 @@ export default function RecommendationsPage() {
     STYLE_DNA_LOCAL_STORAGE_KEY,
     null,
   );
-  const [recommendations, setRecommendations] = useState<SingleOutfitOutput[]>([]);
+  const [recommendations, setRecommendations] = useState<SingleOutfitOutput[]>(
+    [],
+  );
   const [isGenerating, startGeneratingTransition] = useTransition();
   const [generationError, setGenerationError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -62,7 +66,10 @@ export default function RecommendationsPage() {
       return;
     }
     setIsDataLoading(true);
-    const itemsCollectionRef = collection(firebase.firestore, "publicWardrobeItems");
+    const itemsCollectionRef = collection(
+      firebase.firestore,
+      "publicWardrobeItems",
+    );
     const q = query(itemsCollectionRef, orderBy("createdAt", "desc"));
 
     const unsubscribe = onSnapshot(
@@ -75,7 +82,7 @@ export default function RecommendationsPage() {
             items.push({
               id: doc.id,
               ...data,
-              createdAt: safeToMillis(data.createdAt), // Use safe conversion
+              createdAt: safeToMillis(data.createdAt),
             } as AnalyzedItem);
           }
         });
@@ -145,16 +152,19 @@ export default function RecommendationsPage() {
             shoeCollectionData,
           );
           const result = await generateOutfitForEventAction(recommendInput);
-          if ('error' in result) {
-            console.warn(`Could not generate outfit for event index ${eventIndex}: ${result.error}`);
-            return null; // Return null for failed attempts
+          if ("error" in result) {
+            console.warn(
+              `Could not generate outfit for event index ${eventIndex}: ${result.error}`,
+            );
+            return null;
           }
           return result;
         });
 
         const results = await Promise.all(outfitPromises);
-
-        const validResults = results.filter((r): r is SingleOutfitOutput => r !== null && 'chosenShoe' in r);
+        const validResults = results.filter(
+          (r): r is SingleOutfitOutput => r !== null && "chosenShoe" in r,
+        );
 
         if (validResults.length > 0) {
           setRecommendations(validResults);
@@ -162,33 +172,20 @@ export default function RecommendationsPage() {
             title: "Outfits Ready!",
             description: `Found ${validResults.length} outfits.`,
           });
-          if (validResults.length < results.length) {
-            setGenerationError(
-              `Could only generate ${validResults.length} out of ${results.length} outfits due to an AI processing error on some events.`,
-            );
-          }
         } else {
           setGenerationError(
-            "Recommendation Error: The AI failed to generate any valid outfits. This can happen during high load. Please try again in a moment.",
+            "No outfits generated. Ensure Digital Closet has items and try again.",
           );
           setRecommendations([]);
-          toast({
-            title: "Recommendation Failed",
-            description:
-              "No outfits generated. Ensure Digital Closet has items and try again.",
-            variant: "destructive",
-          });
         }
       } catch (e: any) {
         setGenerationError(
-          `System Error: ${e.message || "An unexpected error occurred during recommendation. Please try again."}`,
+          `System Error: ${
+            e.message ||
+            "An unexpected error occurred during recommendation. Please try again."
+          }`,
         );
         setRecommendations([]);
-        toast({
-          title: "System Error",
-          description: e.message || "Unexpected error.",
-          variant: "destructive",
-        });
       }
     });
   }, [styleDNA, wardrobeItems, toast, isDataLoading]);
@@ -216,6 +213,7 @@ export default function RecommendationsPage() {
   const error = generationError;
 
   const renderContent = () => {
+    // loading skeletons…
     if (isLoading && recommendations.length === 0) {
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -259,27 +257,14 @@ export default function RecommendationsPage() {
       return (
         <>
           <p className="text-lg text-center text-foreground font-semibold">
-            {`Found ${recommendations.length} outfit${recommendations.length === 1 ? "" : "s"} for your upcoming events:`}
+            {`Found ${recommendations.length} outfit${
+              recommendations.length === 1 ? "" : "s"
+            } for your upcoming events:`}
           </p>
-          {generationError && (
-            <Card className="bg-yellow-500/10 border-yellow-500/50 text-yellow-foreground p-4 my-4 col-span-full">
-              <CardHeader className="p-0 pb-2">
-                <div className="flex items-center">
-                  <AlertTriangle className="h-5 w-5 mr-2 text-yellow-500" />
-                  <CardTitle className="text-base text-yellow-200">
-                    Note
-                  </CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <p className="text-sm">{generationError}</p>
-              </CardContent>
-            </Card>
-          )}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {recommendations.map((outfit, index) => (
               <OutfitCard
-                key={`outfit-rec-page-${index}-${outfit.chosenShoe}-${new Date().getTime()}`}
+                key={`outfit-rec-page-${index}-${outfit.chosenShoe}-${Date.now()}`}
                 outfit={outfit}
                 index={index}
                 eventDetails={
@@ -287,8 +272,6 @@ export default function RecommendationsPage() {
                     index % mockAnalyzeStyleDNAInput.googleCalendarEvents.length
                   ] as GoogleCalendarEvent
                 }
-                styleDNA={styleDNA}
-                analyzedItems={wardrobeItems}
               />
             ))}
           </div>
@@ -304,14 +287,13 @@ export default function RecommendationsPage() {
             No Outfits Generated
           </h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            We couldn&apos;t generate outfits at this time. Try again or check
-            your Digital Closet.
+            We couldn’t generate outfits right now. Try again later.
           </p>
         </div>
       );
     }
 
-    return null; // Initial state before anything happens
+    return null;
   };
 
   return (
@@ -319,9 +301,7 @@ export default function RecommendationsPage() {
       <Card className="shadow-xl border-primary/20">
         <CardHeader>
           <div className="flex items-center space-x-3">
-            <div>
-              <Lightbulb className="h-8 w-8 text-accent" />
-            </div>
+            <Lightbulb className="h-8 w-8 text-accent" />
             <div>
               <CardTitle className="text-2xl font-bold text-foreground font-calligraphy">
                 Outfits From Your Closet
@@ -337,8 +317,8 @@ export default function RecommendationsPage() {
           {!styleDNA && !isLoading && (
             <div className="text-center py-4">
               <p className="text-muted-foreground mb-3">
-                Analyze Style DNA on the Dashboard page for personalized
-                recommendations.
+                Analyze your Style DNA on the Dashboard to personalize outfits
+                from your closet.
               </p>
               <Button asChild variant="outline">
                 <Link href="/">Go to Dashboard</Link>
@@ -354,20 +334,11 @@ export default function RecommendationsPage() {
                 disabled={isLoading}
               >
                 {isDataLoading && !isGenerating ? (
-                  <LoaderCircle
-                    key="loader-inventory-recs"
-                    className="mr-2 h-4 w-4 animate-spin"
-                  />
+                  <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
                 ) : isGenerating ? (
-                  <Loader2
-                    key="loader-recommend-page"
-                    className="mr-2 h-4 w-4 animate-spin"
-                  />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <Sparkles
-                    key="icon-recommend-page"
-                    className="mr-2 h-4 w-4"
-                  />
+                  <Sparkles className="mr-2 h-4 w-4" />
                 )}
 
                 {isDataLoading

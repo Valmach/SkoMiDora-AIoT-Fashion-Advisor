@@ -1,107 +1,143 @@
-
 'use server';
 
 /**
  * @fileOverview Outfit recommendation flow based on user's shoe collection,
- * event details from Google Calendar, weather conditions from AccuWeather,
- * and style preferences. This flow generates ONE outfit for a given event.
+ * wardrobe, event details, weather and style DNA.
  *
- * - generateOutfitForEvent - A function that recommends ONE outfit for a specific event.
- * - RecommendOutfitInput - The input type for the generateOutfitForEvent function.
- * - OutfitOutput - The schema for a single outfit recommendation.
+ * This version returns BOTH:
+ *  - outfitImageDataUri (for legacy callers)
+ *  - imageUrl (for the OutfitCard / UI)
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
+
+// ---------- INPUT SCHEMA ----------
 
 const RecommendOutfitInputSchema = z.object({
   shoeCollection: z
     .string()
-    .describe("A comma-separated list of the user's actual shoe names (e.g., 'Chanel Slingbacks, Manolo Blahnik Hangisi Pumps, Gucci Princetown Loafers'). Assume a high-end collection featuring designer names, quality craftsmanship, and fashionable pieces (e.g., trainers, heels, boots). This is a list of the user's ACTUAL shoes from their Digital Closet."),
+    .describe(
+      "Comma-separated list of the user's actual shoes, e.g. 'Chanel Slingbacks, Manolo Blahnik Hangisi Pumps'."
+    ),
   wardrobeData: z
     .string()
-    .describe("A comma-separated list of the user's actual clothing item names or brief descriptions (e.g., 'Burberry Trench Coat, Gucci Silk Blouse, Black Tailored Trousers'). This is a list of the user's ACTUAL clothing items from their Digital Closet."),
+    .describe(
+      "Comma-separated list of the user's actual clothing items, e.g. 'Burberry Trench Coat, Gucci Silk Blouse, Black Tailored Trousers'."
+    ),
   eventDetails: z
     .string()
-    .describe('Event details from Google Calendar, including type, location, and time. Consider the formality and social context of these events.'),
+    .describe(
+      'Event details from Google Calendar, including type, location, and time.'
+    ),
   weatherConditions: z
     .string()
-    .describe('Weather conditions from AccuWeather, including temperature, humidity, and precipitation.'),
-  stylePreferences: z // This is the Style DNA output from the previous flow
+    .describe(
+      'Weather conditions from AccuWeather, including temperature, humidity, precipitation.'
+    ),
+  stylePreferences: z
     .string()
-    .describe("User style DNA summary, reflecting their specific fashion profile derived from their actual wardrobe and shoes. This might include their preferred designers, silhouettes, materials, and a general aesthetic that leans towards middle to upper-class fashion trends and timeless elegance. Use British English in descriptions. Example: \"Based on their collection of Burberry trench coats and Gucci silk blouses, the user's style is characterized by a blend of classic British tailoring and Italian luxury...\""),
+    .describe(
+      "User style DNA summary, derived from their wardrobe and shoes. Use British English."
+    ),
 });
 export type RecommendOutfitInput = z.infer<typeof RecommendOutfitInputSchema>;
 
+// ---------- OUTPUT SCHEMA ----------
+
 const DesignerLinkSchemaInternal = z.object({
-  designerName: z.string().describe("The name of the designer or brand."),
-  designerUrl: z.string().describe("A URL string to the designer's official website or a relevant product page. Example: 'https://www.examplebrand.com'. This MUST be a string."),
+  designerName: z.string(),
+  designerUrl: z.string(),
 });
 
 const OutfitSchemaInternal = z.object({
-  chosenShoe: z.string().describe("The specific shoe from the user's 'shoeCollection' input string selected for this outfit. This MUST be an EXACT string match to one of the shoe names provided in the 'shoeCollection' input list. E.g., if 'Chanel Slingbacks' was in the input, this field must be 'Chanel Slingbacks'."),
-  outfitImageDataUri: z.string().optional().describe("An AI-generated image representing the complete outfit, as a data URI. Include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
-  outfitDescription: z.string().describe("A detailed description of the recommended outfit (2-3 sentences), using British English terminology and contemporary fashion language. CRITICALLY, the clothing items described (excluding the chosen shoe) MUST be EXPLICITLY CHOSEN FROM AND NAMED EXACTLY AS THEY APPEAR in the `wardrobeData` input string. For example, if `wardrobeData` includes \"Burberry TrenchCoat, Blue Jeans\", your description MUST say something like \"Wear your Burberry TrenchCoat with your Blue Jeans...\". DO NOT invent specific clothing items that are not in the `wardrobeData` list. If a truly complete outfit cannot be formed using ONLY items from `wardrobeData`, describe the 'Chosen Shoe' and suggest pairing it with very generic, UNSPECIFIED items (e.g., 'a simple top and well-fitting trousers that complement your Chosen Shoe')."),
-  reasoning: z.string().describe("The stylist's reasoning (1-2 sentences) behind this outfit recommendation, explaining how it suits the event, weather, chosen shoe, and how it specifically leverages items or styles from the user's `wardrobeData` and aligns with their `stylePreferences` (Style DNA). Use British English and modern fashion terms."),
-  suitabilityScore: z.number().min(0).max(100).describe('A numerical score (0-100) indicating how suitable the outfit is. Example: 85. This MUST be a number.'),
-  designerLinks: z.array(DesignerLinkSchemaInternal).optional().describe("If applicable, provide up to three relevant shopping links to designers, brands, or high-quality multi-brand retailers related to the recommended outfit or the user's style DNA. Examples: specific brand website if an item is mentioned (e.g., Gucci), representative designers for the style (e.g. Chanel, Ralph Lauren), or luxury e-commerce sites (e.g., Net-a-Porter, Mytheresa, Farfetch, Source Unknown, White House Black Market). An empty array is acceptable if no relevant links are found. Strive for up to three links."),
-  suggestedShoeboxTheme: z.string().optional().describe("If relevant, suggest a SkoMiDora Shoebox theme (e.g., 'Gucci themed', 'Marvel Comics', 'Minimalist Nature', 'Personalised Photo Box') that would complement this outfit or the chosen shoe. Only suggest if a strong thematic link exists, particularly for designer shoes or specific styles. If no strong theme comes to mind, omit this field or leave it empty."),
-});
-export type OutfitOutput = z.infer<typeof OutfitSchemaInternal>;
+  chosenShoe: z
+    .string()
+    .describe(
+      "The exact shoe name chosen from the 'shoeCollection' input string."
+    ),
+  outfitDescription: z
+    .string()
+    .describe(
+      '2–3 sentence British English description of the outfit using ONLY wardrobeData items + the chosen shoe.'
+    ),
+  reasoning: z
+    .string()
+    .describe(
+      '1–2 sentence explanation of why this outfit fits the event, weather and style DNA.'
+    ),
+  suitabilityScore: z
+    .number()
+    .min(0)
+    .max(100)
+    .describe('0–100 numeric score.'),
+  designerLinks: z
+    .array(DesignerLinkSchemaInternal)
+    .optional()
+    .describe('Up to 3 designer / retailer links.'),
+  suggestedShoeboxTheme: z.string().optional(),
 
-export async function generateOutfitForEvent(input: RecommendOutfitInput): Promise<OutfitOutput> {
+  // 🔥 NEW: image fields used by the UI
+  outfitImageDataUri: z
+    .string()
+    .optional()
+    .describe('Deprecated / legacy field – kept for backward compatibility.'),
+  imageUrl: z
+    .string()
+    .optional()
+    .describe(
+      'Public URL of the generated outfit image, used directly by the frontend.'
+    ),
+});
+export type SingleOutfitOutput = z.infer<typeof OutfitSchemaInternal>;
+
+// ---------- PUBLIC ENTRYPOINT ----------
+
+export async function generateOutfitForEvent(
+  input: RecommendOutfitInput
+): Promise<SingleOutfitOutput> {
   return generateOutfitForEventFlow(input);
 }
 
+// ---------- TEXT PROMPT ----------
+
 const textGenerationPrompt = ai.definePrompt({
   name: 'generateOutfitTextPrompt',
-  model: 'googleai/gemini-2.0-flash-latest',
-  input: {schema: RecommendOutfitInputSchema},
-  output: {schema: OutfitSchemaInternal.omit({ outfitImageDataUri: true }) },
-  prompt: `You are an elite personal stylist for fashionistas who appreciate luxury, quality,and cutting-edge style. Your client has provided details of their actual shoe collection and wardrobe items.
-Use British English terminology and spelling throughout your response (e.g., "trousers" instead of "pants", "jumper" instead of "sweater", "colour" instead of "color", "trainers" instead of "sneakers").
-Your language should be sophisticated yet contemporary, appealing to Gen X, Y, and Z fashion enthusiasts. For example, use terms like 'top' or 'shirt' instead of 'blouse' where appropriate, and consider modern terms for outerwear and ensembles (e.g., 'a cool jacket', 'a sharp look', 'a great kit').
+  model: 'googleai/gemini-1.5-flash-latest',
+  input: { schema: RecommendOutfitInputSchema },
+  output: {
+    // omit image fields in this step – text only
+    schema: OutfitSchemaInternal.omit({
+      outfitImageDataUri: true,
+      imageUrl: true,
+    }),
+  },
+  prompt: `You are an elite personal stylist for fashionistas who appreciate luxury, quality, and cutting-edge style.
+Use British English spelling and contemporary fashion language.
 
-Your task is to recommend ONE impeccable outfit based on the following information for the specified event:
-
-Shoe Collection (User's actual shoes, comma-separated names): {{{shoeCollection}}}
-Wardrobe Data (User's actual clothing items, comma-separated names/brief descriptions): {{{wardrobeData}}}
+Shoe Collection: {{{shoeCollection}}}
+Wardrobe Data: {{{wardrobeData}}}
 Event Details: {{{eventDetails}}}
 Weather Conditions: {{{weatherConditions}}}
-Style Preferences (User's Style DNA, derived from their wardrobe): {{{stylePreferences}}}
+Style Preferences (Style DNA): {{{stylePreferences}}}
 
-For the outfit (excluding the image for now):
-1.  **Chosen Shoe**: CRITICAL - You MUST select ONE specific shoe from the user's 'Shoe Collection' input string. The value for 'chosenShoe' in your JSON output MUST be an EXACT string match to one of the shoe names provided in the 'Shoe Collection' input list. Example: If 'shoeCollection' input is "Manolo Blahnik Hangisi Pumps, Gucci Jordaan Loafers", then 'chosenShoe' MUST be either "Manolo Blahnik Hangisi Pumps" OR "Gucci Jordaan Loafers". Do NOT invent a shoe or modify the name. Ensure this chosen shoe is the *single most appropriate selection* from the user's 'Shoe Collection' that specifically matches the formality, style, and context of the given \`Event Details\`. If multiple shoes from the user's collection could work, prioritize the one that creates the most impactful or fitting look for *this particular event*. If no shoe from their collection seems perfect, choose the best available option from THEIR LISTED SHOES and explain this in 'Reasoning'. VARY YOUR SHOE CHOICE for different events if the user's collection offers suitable alternatives.
-2.  **Outfit Description**: Provide a 2-3 sentence description using British English and contemporary fashion terms. This description MUST feature the 'Chosen Shoe'.
-    **CRITICAL INSTRUCTION FOR OUTFIT DESCRIPTION:** The clothing items (excluding the shoe) in the described outfit **MUST BE EXPLICITLY CHOSEN FROM AND NAMED EXACTLY AS THEY APPEAR in the user's 'Wardrobe Data' input string.** For example, if 'Wardrobe Data' contains "Burberry TrenchCoat, Blue Jeans", your description MUST say something like "Pair your {Chosen Shoe name} with your Burberry TrenchCoat and your Blue Jeans...".
-    **DO NOT invent specific clothing items that are not in the 'Wardrobe Data' list, no matter how complementary they might seem.**
-    If you absolutely cannot form a complete and appropriate outfit using *only* items named in 'Wardrobe Data' along with the 'Chosen Shoe', then your 'outfitDescription' should primarily feature the 'Chosen Shoe' and suggest pairing it with very generic, UNSPECIFIED items (e.g., "a simple top and well-fitting trousers that complement your {Chosen Shoe name}"). Do NOT name specific items (like "a black silk camisole" or "dark wash denim jeans") if they are not listed in the 'Wardrobe Data' input.
-3.  **Reasoning**: Explain in 1-2 sentences *why* this specific combination is ideal. Connect it to the event, weather, and the user's 'Style Preferences' (their Style DNA). Crucially, explain how the outfit utilizes or complements items from their 'Wardrobe Data' and the 'Chosen Shoe', particularly justifying the shoe choice for the specific event context. If you resorted to generic items in the description, explain why items from 'Wardrobe Data' were not suitable or sufficient.
-4.  **Suitability Score**: Provide a numerical score between 0 and 100 (e.g., 75, 90). This 'suitabilityScore' field MUST be a number, not a string like "85%".
-5.  **Designer Links**: Strive to provide **up to three relevant shopping links** in the 'designerLinks' array.
-    *   Link to specific designers if their items are mentioned (e.g., Gucci).
-    *   Link to representative designers for the style (e.g. Chanel, Ralph Lauren).
-    *   Link to high-quality multi-brand retailers (e.g., Net-a-Porter, Mytheresa, Farfetch, Source Unknown, White House Black Market).
-    *   Prioritize relevance. An empty array is acceptable if no relevant links are found. 'designerName' is the brand/retailer name, 'designerUrl' is their official website URL (must be a string).
-6.  **Suggested SkoMiDora Shoebox Theme (If applicable)**: If the chosen shoe or outfit has a strong thematic link to a SkoMiDora Shoebox category (e.g., 'Gucci themed', 'Marvel Comics', 'Minimalist Nature', 'Manolo Blahnik themed', 'Sports Inspired', 'Personalised Photo Box'), provide this in 'suggestedShoeboxTheme'. Omit or leave empty if no strong theme is obvious.
+CRITICAL RULES:
+1. "chosenShoe" must be an EXACT string match to one of the items in Shoe Collection.
+2. Outfit description must use item names EXACTLY as they appear in Wardrobe Data.
+3. If you cannot form a complete outfit from Wardrobe Data + chosen shoe, use generic unspecified items in the description (e.g. "a simple top and well-fitting trousers") without inventing specific pieces.
+4. "suitabilityScore" MUST be a number (0–100).
 
-**Self-Correction Check before Outputting JSON:**
-1.  Is the 'chosenShoe' an EXACT string match from the 'Shoe Collection' input list? (Mandatory)
-2.  Does the 'outfitDescription' ONLY use clothing items (excluding shoes) that are EXACTLY named from the 'Wardrobe Data' input string, or does it correctly use generic unspecified items if wardrobe items are insufficient? (Mandatory)
-3.  Is the 'suitabilityScore' a number (0-100)? (Mandatory)
-If any mandatory check fails, revise the output before completing.
-
-Output ONE outfit's textual details in JSON format, strictly adhering to the schema (excluding outfitImageDataUri for this step).
-- All text descriptions and reasoning must be in British English and specific to the user's items and style, using contemporary fashion language.
-`,
+Return a single JSON object matching the output schema (no extra fields).`,
 });
 
+// ---------- FLOW IMPLEMENTATION ----------
+
 const fallbackShoes = [
-  "Classic Leather Loafers (Black)",
-  "Elegant Pointed-Toe Pumps (Nude)",
-  "Stylish Ankle Boots (Brown Suede)",
-  "Versatile White Trainers",
-  "Chic Block Heel Sandals (Neutral)"
+  'Classic Leather Loafers (Black)',
+  'Elegant Pointed-Toe Pumps (Nude)',
+  'Stylish Ankle Boots (Brown Suede)',
+  'Versatile White Trainers',
+  'Chic Block Heel Sandals (Neutral)',
 ];
 let fallbackShoeIndex = 0;
 
@@ -111,98 +147,178 @@ const generateOutfitForEventFlow = ai.defineFlow(
     inputSchema: RecommendOutfitInputSchema,
     outputSchema: OutfitSchemaInternal,
   },
-  async (input: RecommendOutfitInput): Promise<OutfitOutput> => {
-    let textOutput: Omit<OutfitOutput, 'outfitImageDataUri'> | undefined;
-    let generatedImageUri: string | undefined;
+  async (input: RecommendOutfitInput): Promise<SingleOutfitOutput> => {
+    let textOutput: Omit<
+      SingleOutfitOutput,
+      'outfitImageDataUri' | 'imageUrl'
+    > | null = null;
+    let generatedImageUrl: string | undefined;
 
     try {
-      console.log("generateOutfitForEventFlow: Received input. Shoe Collection:", input.shoeCollection, "Wardrobe Data:", input.wardrobeData.substring(0,100)+"...", "Event:", input.eventDetails.substring(0,50)+"...");
+      console.log(
+        'generateOutfitForEventFlow: input',
+        JSON.stringify(
+          {
+            shoeCollectionPreview: input.shoeCollection.slice(0, 80),
+            wardrobeDataPreview: input.wardrobeData.slice(0, 80),
+            eventDetailsPreview: input.eventDetails.slice(0, 80),
+          },
+          null,
+          2
+        )
+      );
+
+      // 1) TEXT STEP
       const { output: step1Output } = await textGenerationPrompt(input);
 
       if (!step1Output) {
-        console.warn("generateOutfitForEventFlow: AI returned null output for text generation (step1Output). Using fallback.");
-        throw new Error("Text generation failed (step1Output was null).");
+        throw new Error('Text generation returned null output.');
       }
-      textOutput = step1Output;
-      console.log("generateOutfitForEventFlow: Text generation successful. Chosen Shoe:", textOutput.chosenShoe, "Outfit Description:", textOutput.outfitDescription.substring(0, 100)+"...");
 
-      // Step 2: Generate image based on the outfit description
+      textOutput = step1Output;
+      console.log(
+        'generateOutfitForEventFlow: text OK – chosenShoe:',
+        textOutput.chosenShoe
+      );
+
+      // Normalise suitabilityScore just in case
+      const parsedScore = parseInt(String(textOutput.suitabilityScore), 10);
+      textOutput.suitabilityScore = Number.isNaN(parsedScore)
+        ? 70
+        : parsedScore;
+
+      // Clean up designerLinks
+      if (Array.isArray(textOutput.designerLinks)) {
+        textOutput.designerLinks = textOutput.designerLinks.filter(
+          (link) =>
+            link &&
+            typeof link.designerName === 'string' &&
+            typeof link.designerUrl === 'string' &&
+            link.designerUrl.startsWith('http')
+        );
+      } else {
+        textOutput.designerLinks = [];
+      }
+
+      // Top up designerLinks with defaults if fewer than 3
+      if (textOutput.designerLinks.length < 3) {
+        const defaults = [
+          {
+            designerName: 'Net-a-Porter',
+            designerUrl: 'https://www.net-a-porter.com/',
+          },
+          {
+            designerName: 'Mytheresa',
+            designerUrl: 'https://www.mytheresa.com/',
+          },
+          {
+            designerName: 'Farfetch',
+            designerUrl: 'https://www.farfetch.com/',
+          },
+        ];
+        for (const d of defaults) {
+          if (textOutput.designerLinks.length >= 3) break;
+          if (
+            !textOutput.designerLinks.some(
+              (e) => e.designerName === d.designerName
+            )
+          ) {
+            textOutput.designerLinks.push(d);
+          }
+        }
+      }
+
+      // 2) IMAGE STEP – ask Gemini to render this outfit
       if (textOutput.outfitDescription) {
-        console.log("generateOutfitForEventFlow: Attempting image generation for description:", textOutput.outfitDescription.substring(0,100)+"...");
         try {
-          const imageGenResult = await ai.generate({
+          const imagePrompt = `
+Photorealistic full-body outfit render on a model or mannequin, clean studio lighting.
+Outfit description:
+${textOutput.outfitDescription}
+Chosen shoes: ${textOutput.chosenShoe}.
+Neutral background.
+          `.trim();
+
+          const imageGenResult: any = await ai.generate({
             model: 'googleai/gemini-2.0-flash-preview-image-generation',
-            prompt: `Generate a photorealistic image that visually represents this fashion outfit on a mannequin or in a flat-lay style: ${textOutput.outfitDescription}. The image should be clean, well-lit, and focus on the clothing items.`,
+            prompt: imagePrompt,
             config: {
-              responseModalities: ['TEXT', 'IMAGE'],
+              responseModalities: ['IMAGE'],
             },
           });
 
-          if (imageGenResult.media && imageGenResult.media.url) {
-            generatedImageUri = imageGenResult.media.url;
-            console.log("generateOutfitForEventFlow: Image generation successful. Data URI length:", generatedImageUri.length);
+          // Genkit image responses usually have a .media field; be defensive:
+          const media = (imageGenResult as any).media;
+          if (Array.isArray(media) && media[0]?.url) {
+            generatedImageUrl = media[0].url;
+          } else if (media?.url) {
+            generatedImageUrl = media.url;
+          }
+
+          if (generatedImageUrl) {
+            console.log(
+              'generateOutfitForEventFlow: image URL generated:',
+              generatedImageUrl.slice(0, 80) + '...'
+            );
           } else {
-            console.warn("generateOutfitForEventFlow: Image generation did not return a media URL. Media object:", imageGenResult.media, "Full imageGenResult:", imageGenResult);
+            console.warn(
+              'generateOutfitForEventFlow: no media.url in imageGenResult, using text-only output.'
+            );
           }
-        } catch (imageGenError: any) {
-          console.error("generateOutfitForEventFlow: Error during image generation AI call:", imageGenError.message || imageGenError);
-          // Proceed without image, generatedImageUri will remain undefined
+        } catch (imageErr: any) {
+          console.error(
+            'generateOutfitForEventFlow: image generation error:',
+            imageErr?.message || imageErr
+          );
         }
-      } else {
-        console.warn("generateOutfitForEventFlow: No outfit description available for image generation.");
       }
 
-      const parsedScore = parseInt(String(textOutput.suitabilityScore), 10);
-      textOutput.suitabilityScore = !isNaN(parsedScore) ? parsedScore : 70;
-
-      textOutput.designerLinks = Array.isArray(textOutput.designerLinks) ? textOutput.designerLinks.filter(link =>
-        link && typeof link.designerName === 'string' &&
-        typeof link.designerUrl === 'string' &&
-        link.designerUrl.startsWith('http')
-      ) : [];
-
-      if (textOutput.designerLinks.length < 3) {
-          const defaultLinksToAdd = [
-              { designerName: "Farfetch", designerUrl: "https://www.farfetch.com/uk/shopping/women/items.aspx" },
-              { designerName: "Source Unknown", designerUrl: "https://sourceunknown.com/" },
-              { designerName: "Ralph Lauren", designerUrl: "https://www.ralphlauren.com/" },
-              { designerName: "Net-a-Porter", designerUrl: "https://www.net-a-porter.com/" },
-              { designerName: "Mytheresa", designerUrl: "https://www.mytheresa.com/" }
-          ];
-          for (const defaultLink of defaultLinksToAdd) {
-              if (textOutput.designerLinks.length >= 3) break;
-              if (!textOutput.designerLinks.some(existingLink => existingLink.designerName === defaultLink.designerName)) {
-                  textOutput.designerLinks.push(defaultLink);
-              }
-          }
-      }
-
-      return { ...textOutput, outfitImageDataUri: generatedImageUri };
-
-    } catch (error: any) {
-      console.error("generateOutfitForEventFlow: Error during AI processing or image generation. Input shoes:", input.shoeCollection, "Event:", input.eventDetails.substring(0,50)+"...", "Error:", error.message || error);
-      
-      const userShoes = input.shoeCollection ? input.shoeCollection.split(',').map(s => s.trim()).filter(s => s) : [];
-      let currentFallbackShoe = fallbackShoes[fallbackShoeIndex % fallbackShoes.length];
-      if (userShoes.length > 0) {
-        // If user has shoes, pick one of theirs as a fallback shoe
-        currentFallbackShoe = userShoes[fallbackShoeIndex % userShoes.length];
-      }
-      fallbackShoeIndex = (fallbackShoeIndex + 1); 
-
-      console.log("generateOutfitForEventFlow: Using fallback shoe due to error:", currentFallbackShoe);
       return {
-        chosenShoe: currentFallbackShoe,
-        outfitDescription: `A versatile ensemble featuring your ${currentFallbackShoe.toLowerCase()}. Consider pairing with smart trousers or a contemporary skirt and a well-fitted top from your wardrobe. This provides a balance of comfort and fashion-forward sensibility suitable for many occasions. Add a stylish jacket for a more complete look or a cashmere jumper for relaxed elegance.`,
-        reasoning: "Fallback due to an AI processing issue. The chosen footwear offers versatility. This suggestion aims for a broadly appealing smart-casual look suitable for various daytime events and mild weather, reflecting a sophisticated style preference.",
+        ...textOutput,
+        outfitImageDataUri: generatedImageUrl, // legacy
+        imageUrl: generatedImageUrl, // 🔥 what the UI should use
+      };
+    } catch (error: any) {
+      console.error(
+        'generateOutfitForEventFlow: ERROR, falling back. Message:',
+        error?.message || error
+      );
+
+      // Fallback: pick a shoe from user list or default list
+      const userShoes = input.shoeCollection
+        ? input.shoeCollection
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
+      let fallbackShoe =
+        userShoes[fallbackShoeIndex % Math.max(userShoes.length, 1)] ||
+        fallbackShoes[fallbackShoeIndex % fallbackShoes.length];
+      fallbackShoeIndex++;
+
+      return {
+        chosenShoe: fallbackShoe,
+        outfitDescription: `A versatile ensemble featuring your ${fallbackShoe.toLowerCase()}. Consider pairing with smart trousers or a contemporary skirt and a well-fitted top from your wardrobe for a polished yet comfortable look.`,
+        reasoning:
+          'Fallback recommendation due to an AI processing issue. This look aims for a broadly flattering smart-casual aesthetic suitable for many daytime events in mild weather.',
         suitabilityScore: 60,
-        outfitImageDataUri: undefined, 
         designerLinks: [
-            { designerName: "Net-a-Porter", designerUrl: "https://www.net-a-porter.com/" },
-            { designerName: "Mytheresa", designerUrl: "https://www.mytheresa.com/" },
-            { designerName: "White House Black Market", designerUrl: "https://www.whitehouseblackmarket.com/" }
+          {
+            designerName: 'Net-a-Porter',
+            designerUrl: 'https://www.net-a-porter.com/',
+          },
+          {
+            designerName: 'Mytheresa',
+            designerUrl: 'https://www.mytheresa.com/',
+          },
+          {
+            designerName: 'White House Black Market',
+            designerUrl: 'https://www.whitehouseblackmarket.com/',
+          },
         ],
-        suggestedShoeboxTheme: "Minimalist Nature"
+        suggestedShoeboxTheme: 'Minimalist Nature',
+        outfitImageDataUri: undefined,
+        imageUrl: undefined,
       };
     }
   }
