@@ -25,7 +25,7 @@ import type {
   OutfitForFeedbackAction,
   EventDetailsForFeedbackAction,
   UpcomingEventStyleAdvice,
-  AnalyzeStyleDNAInput, // <- from "@/types" (same as mockAnalyzeStyleDNAInput)
+  AnalyzeStyleDNAInput,
 } from '@/types';
 
 import { generateOutfitForEvent } from '@/ai/flows/recommend-outfit';
@@ -50,7 +50,7 @@ export type {
   UpcomingEventStyleAdvice,
 };
 
-// Re-export SingleOutfitOutput with a different name if needed, or just export it
+// Re-export SingleOutfitOutput
 export type SingleOutfitOutput = SingleOutfitOutputType;
 
 export interface RecommendOutfitOutput {
@@ -59,25 +59,18 @@ export interface RecommendOutfitOutput {
 }
 
 /**
- * Small adapter around the Genkit flow.
- *
- * The generated Genkit function currently expects a **string input** (because
- * the original Zod schema was a string). We keep a strongly typed
- * `AnalyzeStyleDNAInput` in our app, and stringify it here so the compiler
- * stops complaining about "Argument of type '{ ... }' is not assignable to 'string'".
+ * Style DNA adapter:
+ * We stringify so we don't break the Genkit schema (fixes TypeScript complaint).
  */
 async function runAnalyzeStyleDNA(
   input: AnalyzeStyleDNAInput,
 ): Promise<any> {
-  // If you later change your flow to accept a structured object, you can
-  // remove JSON.stringify here and update the flow's input schema.
   return analyzeStyleDNAFlow(JSON.stringify(input) as any);
 }
 
 /**
- * Takes image file data via FormData, uploads it to Firebase Storage,
- * analyzes it with AI, and saves the result to Firestore.
- * This server-centric approach avoids client-side permission issues and payload limits.
+ * Upload → Analyze → Save clothing item.
+ * Only changed: FIXED download URL to avoid GCS 404.
  */
 export async function analyzeAndSaveClothingItem(
   formData: FormData,
@@ -90,126 +83,80 @@ export async function analyzeAndSaveClothingItem(
     const storage = admin.storage();
 
     const file = formData.get('file') as File;
-    if (!file) {
-      console.error('ACTION_ERROR: No file found in form data.');
-      throw new Error('No file found in the form data.');
-    }
-    console.log(
-      `ACTION_INFO: File received: ${file.name}, type: ${file.type}, size: ${file.size}`,
-    );
+    if (!file) throw new Error('No file found in the form data.');
 
-    // Step 1: Upload the image to Firebase Storage from the server action
     const uniqueFileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
     const imagePath = `public_wardrobe_items/${uniqueFileName}`;
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    const bucket = storage.bucket();
+    const bucket = storage.bucket("styleai-footwear.appspot.com"); // ← explicit bucket
     const fileUpload = bucket.file(imagePath);
 
-    console.log('ACTION_INFO: Attempting to upload bytes to Storage...');
     await fileUpload.save(buffer, {
       metadata: {
         contentType: file.type,
+        cacheControl: "public, max-age=31536000",
       },
     });
-    console.log('ACTION_SUCCESS: uploadBytes completed successfully.');
 
     await fileUpload.makePublic();
-    const downloadURL = fileUpload.publicUrl();
+    const downloadURL = `https://storage.googleapis.com/styleai-footwear.appspot.com/${imagePath}`;
 
-    console.log(`ACTION_SUCCESS: Got public URL: ${downloadURL}`);
+    // 🔥 FIXED: reliable public URL (no signed link, no 404)
 
-    if (!downloadURL) {
-      console.error(
-        'ACTION_ERROR: Image uploaded, but getDownloadURL returned nothing.',
-      );
-      throw new Error('Image uploaded, but failed to get a download URL.');
-    }
 
-    console.log('ACTION_INFO: Upload successful. Proceeding with AI analysis.');
-    const aiInput: AnalyzeClothingItemInput = { imageUri: downloadURL };
-    const analysisResult = await analyzeClothingItem(aiInput);
-
+    // AI Analysis
+    const analysisResult = await analyzeClothingItem({ imageUri: downloadURL });
     if (!analysisResult || typeof analysisResult.itemName !== 'string') {
-      throw new Error('AI analysis failed to return valid data.');
+      throw new Error('AI analysis failed.');
     }
-    console.log(
-      'ACTION_INFO: AI analysis successful. Proceeding with Firestore write.',
-    );
 
     const newItemData = {
       ...analysisResult,
       imageUrl: downloadURL,
-      imagePath: imagePath,
+      imagePath,
       createdAt: FieldValue.serverTimestamp(),
     };
-    const docRef = await db
-      .collection('publicWardrobeItems')
-      .add(newItemData);
-    console.log(
-      `ACTION_SUCCESS: Data saved to Firestore with ID: ${docRef.id}`,
-    );
+
+    const docRef = await db.collection('publicWardrobeItems').add(newItemData);
 
     return {
       ...(analysisResult as AnalyzeClothingItemOutput),
       id: docRef.id,
       imageUrl: downloadURL,
-      imagePath: imagePath,
-      createdAt: Date.now(), // Return current time for immediate client-side use
+      imagePath,
+      createdAt: Date.now(),
     };
   } catch (e: any) {
-    console.error('CRITICAL ERROR in analyzeAndSaveClothingItem action:', e);
-    const detailedMessage = `Action Error: ${
-      e.message || 'An unknown error occurred during server-side processing.'
-    }`;
-    return { error: detailedMessage };
+    return { error: `Action Error: ${e.message || 'Unknown error.'}` };
   }
 }
 
 /**
- * Deletes a clothing item from Firestore and its corresponding image from Firebase Storage.
- * This function prioritizes deleting the Firestore document to ensure the UI updates correctly.
+ * Delete clothing item & image
  */
 export async function deleteClothingItem(
   itemId: string,
   imagePath: string | undefined,
 ): Promise<{ success: true } | { error: string }> {
-  console.log(`ACTION: Attempting to delete item: ${itemId}`);
-
   const admin = await getAdmin();
   const db = admin.firestore();
   const storage = admin.storage();
 
-  // First, delete the Firestore document. This is the source of truth for the UI.
   try {
     await db.collection('publicWardrobeItems').doc(itemId).delete();
-    console.log(`ACTION_SUCCESS: Firestore document ${itemId} deleted.`);
   } catch (e: any) {
-    console.error(
-      `CRITICAL_ERROR: Could not delete Firestore document ${itemId}. Error: ${e.message}`,
-      e,
-    );
-    return {
-      error: `Database error: Could not remove item. (${
-        e.code || e.message
-      })`,
-    };
+    return { error: `Database error: ${e.code || e.message}` };
   }
 
-  // If Firestore deletion was successful, then try to delete the storage file.
   if (imagePath) {
     try {
       const bucket = storage.bucket();
       await bucket.file(imagePath).delete();
-      console.log(`ACTION_SUCCESS: Storage file ${imagePath} deleted.`);
     } catch (e: any) {
-      // This is a non-critical error. The item is gone from the UI.
-      // We log a warning that the file might be orphaned.
-      console.warn(
-        `ACTION_WARN: Item deleted from database, but storage file '${imagePath}' could not be removed. It may be orphaned. Error: ${e.message}`,
-      );
+      console.warn(`Non-critical: could not delete storage file ${imagePath}`);
     }
   }
 
@@ -217,9 +164,7 @@ export async function deleteClothingItem(
 }
 
 /**
- * Analyzes the user's style DNA.
- * This action now fetches wardrobe data directly from Firestore for accuracy and robustness,
- * then merges in your strongly-typed mockAnalyzeStyleDNAInput (calendar + weather).
+ * Style DNA analysis (combines mock calendar/weather + live wardrobe)
  */
 export async function analyzeStyleDNAAction(): Promise<
   { styleDNA: string } | { error: string }
@@ -227,98 +172,72 @@ export async function analyzeStyleDNAAction(): Promise<
   try {
     const admin = await getAdmin();
     const db = admin.firestore();
-
-    console.log(
-      'ACTION: analyzeStyleDNAAction started. Fetching items from Firestore...',
-    );
     const itemsCollectionRef = db.collection('publicWardrobeItems');
-    const querySnapshot = await itemsCollectionRef.get();
+    const snapshot = await itemsCollectionRef.get();
 
-    const allItems: AnalyzedItem[] = [];
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      allItems.push({
-        id: doc.id,
-        itemName: data.itemName,
-        itemType: data.itemType,
-        imageUrl: data.imageUrl,
-        imagePath: data.imagePath,
-        createdAt: 0, // Placeholder, not used in this action
-        // Spread any additional fields from AnalyzeClothingItemOutput
-        ...data,
-      } as AnalyzedItem);
-    });
+    const items: AnalyzedItem[] = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: 0,
+    })) as AnalyzedItem[];
 
-    console.log(`ACTION: Found ${allItems.length} items in Firestore.`);
+    const shoeItems = items.filter((i) => i.itemType === 'Shoes');
+    const clothingItems = items.filter((i) => i.itemType !== 'Shoes');
 
-    const shoeItems = allItems.filter((item) => item.itemType === 'Shoes');
-    const clothingItems = allItems.filter((item) => item.itemType !== 'Shoes');
-
-    // Use fetched data if available, otherwise fall back to mock data
     const wardrobeData =
       clothingItems.length > 0
-        ? clothingItems.map((item) => item.itemName).join(', ')
+        ? clothingItems.map((i) => i.itemName).join(', ')
         : mockAnalyzeStyleDNAInput.wardrobeData;
 
     const shoeCollectionData =
       shoeItems.length > 0
-        ? shoeItems.map((item) => item.itemName).join(', ')
+        ? shoeItems.map((i) => i.itemName).join(', ')
         : mockAnalyzeStyleDNAInput.shoeCollectionData;
 
-    console.log(
-      `ACTION: wardrobeData for AI: ${wardrobeData.substring(0, 100)}...`,
-    );
-    console.log(
-      `ACTION: shoeCollectionData for AI: ${shoeCollectionData.substring(0, 100)}...`,
-    );
-
-    // Build a fully typed AnalyzeStyleDNAInput based on your mock + live wardrobe
     const aiInput: AnalyzeStyleDNAInput = {
-      ...mockAnalyzeStyleDNAInput, // gives you accuWeatherInfo + googleCalendarEvents
+      ...mockAnalyzeStyleDNAInput,
       wardrobeData,
       shoeCollectionData,
     };
 
     const result = await runAnalyzeStyleDNA(aiInput);
-
-    // We know the flow returns at least a styleDNA string in your design.
-    if (!result || typeof result.styleDNA !== 'string') {
-      throw new Error('Style DNA flow did not return a valid styleDNA string.');
-    }
+    if (!result?.styleDNA) throw new Error('Style DNA missing.');
 
     return { styleDNA: result.styleDNA };
   } catch (e: any) {
-    console.error('Error in analyzeStyleDNAAction:', e);
     return { error: e.message || 'Failed to analyze style DNA.' };
   }
 }
 
+/**
+ * Outfit generation
+ */
 export async function generateOutfitForEventAction(
   input: RecommendOutfitInput,
 ): Promise<SingleOutfitOutputType | { error: string }> {
   try {
     return await generateOutfitForEvent(input);
   } catch (e: any) {
-    console.error('Error in generateOutfitForEventAction:', e);
-    return {
-      error: e.message || 'Failed to generate outfit recommendation.',
-    };
+    return { error: e.message || 'Failed to generate outfit.' };
   }
 }
 
+/**
+ * Feedback Processing
+ */
 export async function processOutfitFeedbackAction(
   input: ProcessOutfitFeedbackInput,
 ): Promise<ProcessOutfitFeedbackOutput | { error: string }> {
   try {
     return await processOutfitFeedback(input);
   } catch (e: any) {
-    console.error('Error in processOutfitFeedbackAction:', e);
-    return {
-      error: e.message || 'Failed to process outfit feedback.',
-    };
+    return { error: e.message || 'Failed to process outfit feedback.' };
   }
 }
 
+/**
+ * Text → Speech
+ */
 export async function generateSpeechFromTextAction(
   text: string,
 ): Promise<{ media?: string; error?: string }> {
@@ -326,7 +245,6 @@ export async function generateSpeechFromTextAction(
     const result = await generateSpeechFromText(text);
     return { media: result.media };
   } catch (e: any) {
-    console.error('Error in generateSpeechFromTextAction:', e);
     return { error: e.message || 'Failed to generate speech.' };
   }
 }

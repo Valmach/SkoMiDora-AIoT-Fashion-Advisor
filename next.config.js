@@ -1,30 +1,40 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  reactStrictMode: true,
+
   images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'placehold.co',
-      },
-      {
-        protocol: 'https',
-        hostname: 'firebasestorage.googleapis.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'storage.googleapis.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'picsum.photos',
-      },
+    domains: [
+      "lh3.googleusercontent.com", // fixed Google user content host
+      "firebasestorage.googleapis.com", // storage API
+      "storage.googleapis.com", // direct bucket access
+      "picsum.photos"
     ],
-  },
-  experimental: {
-    serverComponentsExternalPackages: ['@genkit-ai/core', 'firebase-admin', 'firebase'],
-  },
-  env: {
-    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+
+    remotePatterns: [
+      // Google profile images (OAuth, avatars, etc.)
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com"
+      },
+
+      // Firebase Storage (public URLs)
+      {
+        protocol: "https",
+        hostname: "firebasestorage.googleapis.com"
+      },
+
+      // Direct bucket access if used
+      {
+        protocol: "https",
+        hostname: "storage.googleapis.com"
+      },
+
+      // Mock images for events
+      {
+        protocol: "https",
+        hostname: "picsum.photos"
+      }
+    ]
   }
 };
 

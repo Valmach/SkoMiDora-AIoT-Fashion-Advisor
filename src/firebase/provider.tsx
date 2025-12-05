@@ -32,23 +32,28 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const app = initializeApp({
       apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
-      authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
-      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
-      messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
-      appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
+      authDomain: "styleai-footwear.firebaseapp.com",
+      projectId: "styleai-footwear",
+      storageBucket: "styleai-footwear.appspot.com",
+      messagingSenderId: "855662411333",
+      appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!, // only this stays dynamic
     });
-
+  
     const auth = getAuth(app);
     const firestore = getFirestore(app);
     const storage = getStorage(app);
-
+  
     setServices({ app, auth, firestore, storage });
-
+  
     onAuthStateChanged(auth, (u) => {
-      if (!u) signInAnonymously(auth);
+      if (!u) {
+        signInAnonymously(auth).catch((err) =>
+          console.error("Anonymous Login Error:", err)
+        );
+      }
     });
   }, []);
+  
 
   if (!services) return <div>Connecting to Firebase…</div>;
 
