@@ -1,42 +1,20 @@
-#!/bin/bash
-set -e
+// src/lib/firebase-admin-loader.ts
+import * as admin from "firebase-admin";
 
-FILE="src/app/api/user/shoeboxes/route.ts"
+let app: admin.app.App | null = null;
 
-echo "🔧 Fixing shoeboxes route..."
+export function getAdmin() {
+  if (app) return app;
 
-# Remove old imports or broken code
-sed -i 's/import .*firebase-admin.*//g' "$FILE"
-
-# Insert correct import (top of file)
-sed -i '1i import { getAdmin } from "@/lib/firebase-admin-loader";' "$FILE"
-
-# Replace old admin usage with safe version
-sed -i 's/const shoeboxesRef = admin.firestore()/const admin = await getAdmin(); const db = admin.firestore(); const shoeboxesRef = db/' "$FILE"
-
-# If file is too different, overwrite completely
-cat << 'FILE' > "$FILE"
-import { getAdmin } from "@/lib/firebase-admin-loader";
-
-export async function GET() {
-  try {
-    const admin = await getAdmin();
-    const db = admin.firestore();
-
-    const snapshot = await db.collection("shoeboxes").get();
-    const shoeboxes = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-
-    return Response.json({ shoeboxes });
-  } catch (e: any) {
-    return Response.json(
-      { error: e.message ?? "Failed to fetch shoeboxes" },
-      { status: 500 }
-    );
+  if (admin.apps.length > 0) {
+    app = admin.app();
+    return app;
   }
-}
-FILE
 
-echo "🎉 shoeboxes route fixed!"
+  // Uses GOOGLE_APPLICATION_CREDENTIALS automatically. No manual secrets.
+  app = admin.initializeApp({
+    credential: admin.credential.applicationDefault(),
+  });
+
+  return app;
+}

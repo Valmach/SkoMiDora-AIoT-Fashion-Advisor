@@ -6,14 +6,13 @@
 import { getAdmin } from '@/lib/firebase-admin-loader';
 import { FieldValue } from 'firebase-admin/firestore';
 
-// Import AI flow types and functions
+// AI flow imports
 import type {
   AnalyzeClothingItemInput,
   AnalyzeClothingItemOutput,
 } from '@/ai/flows/analyze-clothing-item';
 import { analyzeClothingItem } from '@/ai/flows/analyze-clothing-item';
 
-// --- Style DNA flow (string-based Genkit flow under the hood) ---
 import { analyzeStyleDNA as analyzeStyleDNAFlow } from '@/ai/flows/analyze-style-dna';
 
 import type {
@@ -36,11 +35,10 @@ import type {
   ProcessOutfitFeedbackOutput,
 } from '@/types';
 import { processOutfitFeedback } from '@/ai/flows/process-outfit-feedback';
-import { getCurrentWeather } from '@/services/accuweather';
 import { mockAnalyzeStyleDNAInput } from '@/lib/mockData';
 import { generateSpeechFromText } from '@/ai/flows/generate-speech-from-text';
 
-// Re-exporting other types for client component use
+// ------- Re-exports ----------
 export type {
   GoogleCalendarEvent as GoogleCalendarEventSchema,
   AccuWeatherSchema,
@@ -49,8 +47,6 @@ export type {
   AnalyzedItem,
   UpcomingEventStyleAdvice,
 };
-
-// Re-export SingleOutfitOutput
 export type SingleOutfitOutput = SingleOutfitOutputType;
 
 export interface RecommendOutfitOutput {
@@ -58,69 +54,48 @@ export interface RecommendOutfitOutput {
   eventsForOutfits: GoogleCalendarEvent[];
 }
 
-/**
- * Style DNA adapter:
- * We stringify so we don't break the Genkit schema (fixes TypeScript complaint).
- */
-async function runAnalyzeStyleDNA(
-  input: AnalyzeStyleDNAInput,
-): Promise<any> {
+// Helper for string-based Style DNA flow
+async function runAnalyzeStyleDNA(input: AnalyzeStyleDNAInput) {
   return analyzeStyleDNAFlow(JSON.stringify(input) as any);
 }
 
-/**
- * Upload → Analyze → Save clothing item.
- * Only changed: FIXED download URL to avoid GCS 404.
- */
+/* =======================================================
+   1) UPLOAD → ANALYZE → SAVE CLOTHING ITEM
+   ======================================================= */
 export async function analyzeAndSaveClothingItem(
   formData: FormData,
 ): Promise<{ error: string } | AnalyzedItem> {
-  console.log('ACTION: analyzeAndSaveClothingItem started.');
-
   try {
-    const admin = await getAdmin();
+    const admin = getAdmin();
+    if (!admin) return { error: 'Admin credentials missing.' };
+
     const db = admin.firestore();
     const storage = admin.storage();
 
     const file = formData.get('file') as File;
-    if (!file) throw new Error('No file found in the form data.');
+    if (!file) return { error: 'No file found in form data.' };
 
-    const uniqueFileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
-    const imagePath = `public_wardrobe_items/${uniqueFileName}`;
-
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    const bucket = storage.bucket("styleai-footwear.appspot.com"); // ← explicit bucket
+    const imagePath = `public_wardrobe_items/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const bucket = storage.bucket('styleai-footwear.appspot.com');
     const fileUpload = bucket.file(imagePath);
 
     await fileUpload.save(buffer, {
-      metadata: {
-        contentType: file.type,
-        cacheControl: "public, max-age=31536000",
-      },
+      metadata: { contentType: file.type, cacheControl: 'public, max-age=31536000' },
     });
-
     await fileUpload.makePublic();
+
     const downloadURL = `https://storage.googleapis.com/styleai-footwear.appspot.com/${imagePath}`;
 
-    // 🔥 FIXED: reliable public URL (no signed link, no 404)
-
-
-    // AI Analysis
     const analysisResult = await analyzeClothingItem({ imageUri: downloadURL });
-    if (!analysisResult || typeof analysisResult.itemName !== 'string') {
-      throw new Error('AI analysis failed.');
-    }
+    if (!analysisResult?.itemName) return { error: 'AI analysis failed.' };
 
-    const newItemData = {
+    const docRef = await db.collection('publicWardrobeItems').add({
       ...analysisResult,
       imageUrl: downloadURL,
       imagePath,
       createdAt: FieldValue.serverTimestamp(),
-    };
-
-    const docRef = await db.collection('publicWardrobeItems').add(newItemData);
+    });
 
     return {
       ...(analysisResult as AnalyzeClothingItemOutput),
@@ -130,50 +105,49 @@ export async function analyzeAndSaveClothingItem(
       createdAt: Date.now(),
     };
   } catch (e: any) {
-    return { error: `Action Error: ${e.message || 'Unknown error.'}` };
+    return { error: e.message || 'Unknown upload error.' };
   }
 }
 
-/**
- * Delete clothing item & image
- */
+/* =======================================================
+   2) DELETE ITEM
+   ======================================================= */
 export async function deleteClothingItem(
   itemId: string,
-  imagePath: string | undefined,
-): Promise<{ success: true } | { error: string }> {
-  const admin = await getAdmin();
+  imagePath?: string,
+) {
+  const admin = getAdmin();
+  if (!admin) return { error: 'Admin credentials missing.' };
+
   const db = admin.firestore();
   const storage = admin.storage();
 
   try {
     await db.collection('publicWardrobeItems').doc(itemId).delete();
   } catch (e: any) {
-    return { error: `Database error: ${e.code || e.message}` };
+    return { error: `DB delete error: ${e.code || e.message}` };
   }
 
   if (imagePath) {
     try {
-      const bucket = storage.bucket();
-      await bucket.file(imagePath).delete();
-    } catch (e: any) {
-      console.warn(`Non-critical: could not delete storage file ${imagePath}`);
+      await storage.bucket().file(imagePath).delete();
+    } catch {
+      console.warn(`⚠️ Cannot delete storage file ${imagePath}`);
     }
   }
-
   return { success: true };
 }
 
-/**
- * Style DNA analysis (combines mock calendar/weather + live wardrobe)
- */
-export async function analyzeStyleDNAAction(): Promise<
-  { styleDNA: string } | { error: string }
-> {
+/* =======================================================
+   3) STYLE DNA + CLOSET → AI
+   ======================================================= */
+export async function analyzeStyleDNAAction() {
+  const admin = getAdmin();
+  if (!admin) return { error: 'Admin credentials missing for SSR.' };
+
   try {
-    const admin = await getAdmin();
     const db = admin.firestore();
-    const itemsCollectionRef = db.collection('publicWardrobeItems');
-    const snapshot = await itemsCollectionRef.get();
+    const snapshot = await db.collection('publicWardrobeItems').get();
 
     const items: AnalyzedItem[] = snapshot.docs.map((doc) => ({
       id: doc.id,
@@ -181,70 +155,52 @@ export async function analyzeStyleDNAAction(): Promise<
       createdAt: 0,
     })) as AnalyzedItem[];
 
-    const shoeItems = items.filter((i) => i.itemType === 'Shoes');
-    const clothingItems = items.filter((i) => i.itemType !== 'Shoes');
-
-    const wardrobeData =
-      clothingItems.length > 0
-        ? clothingItems.map((i) => i.itemName).join(', ')
-        : mockAnalyzeStyleDNAInput.wardrobeData;
-
-    const shoeCollectionData =
-      shoeItems.length > 0
-        ? shoeItems.map((i) => i.itemName).join(', ')
-        : mockAnalyzeStyleDNAInput.shoeCollectionData;
+    const wardrobeData = items.filter(i => i.itemType !== 'Shoes').map(i => i.itemName).join(', ');
+    const shoeCollectionData = items.filter(i => i.itemType === 'Shoes').map(i => i.itemName).join(', ');
 
     const aiInput: AnalyzeStyleDNAInput = {
       ...mockAnalyzeStyleDNAInput,
-      wardrobeData,
-      shoeCollectionData,
+      wardrobeData: wardrobeData || mockAnalyzeStyleDNAInput.wardrobeData,
+      shoeCollectionData: shoeCollectionData || mockAnalyzeStyleDNAInput.shoeCollectionData,
     };
 
     const result = await runAnalyzeStyleDNA(aiInput);
-    if (!result?.styleDNA) throw new Error('Style DNA missing.');
-
-    return { styleDNA: result.styleDNA };
+    return result?.styleDNA ? { styleDNA: result.styleDNA } : { error: 'Style DNA missing' };
   } catch (e: any) {
-    return { error: e.message || 'Failed to analyze style DNA.' };
+    return { error: e.message || 'Style DNA server error' };
   }
 }
 
-/**
- * Outfit generation
- */
-export async function generateOutfitForEventAction(
-  input: RecommendOutfitInput,
-): Promise<SingleOutfitOutputType | { error: string }> {
+/* =======================================================
+   4) OUTFIT GENERATION
+   ======================================================= */
+export async function generateOutfitForEventAction(input: RecommendOutfitInput) {
   try {
     return await generateOutfitForEvent(input);
   } catch (e: any) {
-    return { error: e.message || 'Failed to generate outfit.' };
+    return { error: e.message || 'Failed to generate outfit' };
   }
 }
 
-/**
- * Feedback Processing
- */
-export async function processOutfitFeedbackAction(
-  input: ProcessOutfitFeedbackInput,
-): Promise<ProcessOutfitFeedbackOutput | { error: string }> {
+/* =======================================================
+   5) FEEDBACK
+   ======================================================= */
+export async function processOutfitFeedbackAction(input: ProcessOutfitFeedbackInput) {
   try {
     return await processOutfitFeedback(input);
   } catch (e: any) {
-    return { error: e.message || 'Failed to process outfit feedback.' };
+    return { error: e.message || 'Failed to process feedback' };
   }
 }
 
-/**
- * Text → Speech
- */
-export async function generateSpeechFromTextAction(
-  text: string,
-): Promise<{ media?: string; error?: string }> {
+/* =======================================================
+   6) SPEECH
+   ======================================================= */
+export async function generateSpeechFromTextAction(text: string) {
   try {
     const result = await generateSpeechFromText(text);
     return { media: result.media };
   } catch (e: any) {
-    return { error: e.message || 'Failed to generate speech.' };
+    return { error: e.message || 'Speech synthesis failed' };
   }
 }

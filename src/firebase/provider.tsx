@@ -6,45 +6,63 @@ import type { Auth } from "firebase/auth";
 import type { Firestore } from "firebase/firestore";
 import type { FirebaseStorage } from "firebase/storage";
 
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, onAuthStateChanged, signInAnonymously } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
-const FirebaseContext = createContext<{
+/* -----------------------------------------------------------
+   SINGLE CLIENT APP INSTANCE (NO DUPLICATES)
+----------------------------------------------------------- */
+
+const getClientApp = (): FirebaseApp => {
+  if (getApps().length > 0) return getApp();
+  return initializeApp({
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
+    authDomain: "styleai-footwear.firebaseapp.com",
+    projectId: "styleai-footwear",
+    storageBucket: "styleai-footwear.appspot.com",
+    messagingSenderId: "855662411333",
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
+  });
+};
+
+/* -----------------------------------------------------------
+   CONTEXT
+----------------------------------------------------------- */
+
+type FirebaseServices = {
   app: FirebaseApp;
   auth: Auth;
   firestore: Firestore;
   storage: FirebaseStorage;
-} | null>(null);
+};
+
+const FirebaseContext = createContext<FirebaseServices | null>(null);
 
 export function useFirebase() {
   const ctx = useContext(FirebaseContext);
-  if (ctx === null) {
+  if (!ctx) {
     throw new Error("useFirebase must be used within a FirebaseProvider");
   }
   return ctx;
 }
 
+/* -----------------------------------------------------------
+   PROVIDER (CLIENT ONLY)
+----------------------------------------------------------- */
+
 export function FirebaseProvider({ children }: { children: React.ReactNode }) {
-  const [services, setServices] = useState<any>(null);
+  const [services, setServices] = useState<FirebaseServices | null>(null);
 
   useEffect(() => {
-    const app = initializeApp({
-      apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
-      authDomain: "styleai-footwear.firebaseapp.com",
-      projectId: "styleai-footwear",
-      storageBucket: "styleai-footwear.appspot.com",
-      messagingSenderId: "855662411333",
-      appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!, // only this stays dynamic
-    });
-  
+    const app = getClientApp();
     const auth = getAuth(app);
     const firestore = getFirestore(app);
     const storage = getStorage(app);
-  
+
     setServices({ app, auth, firestore, storage });
-  
+
     onAuthStateChanged(auth, (u) => {
       if (!u) {
         signInAnonymously(auth).catch((err) =>
@@ -53,9 +71,10 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
       }
     });
   }, []);
-  
 
-  if (!services) return <div>Connecting to Firebase…</div>;
+  if (!services) {
+    return <div className="text-center text-sm opacity-60 p-4">Connecting to Firebase…</div>;
+  }
 
   return (
     <FirebaseContext.Provider value={services}>

@@ -149,28 +149,24 @@ export default function UpcomingEventAdviceCard({
   // 2. Weather Lookup (Google Maps → Lat/Lon → Weather)
   // ---------------------------------------------------------------------------
   useEffect(() => {
+    console.log("Event location passed to weather API:", safeLocation);
+  
     const fetchWeather = async () => {
-      if (!safeLocation.trim()) {
+      if (!safeLocation || safeLocation.trim().length < 3) {
         setLiveWeather(null);
         setLiveWeatherError(null);
         return;
       }
-
+  
       try {
         const res = await fetch(
           `/api/eventWeather?location=${encodeURIComponent(safeLocation)}`
         );
-
         if (!res.ok) throw new Error(`Weather API error: ${res.status}`);
-
+  
         const data = await res.json();
-
         if (data?.temperature && data?.condition) {
-          setLiveWeather({
-            temperature: data.temperature,
-            condition: data.condition,
-          });
-          setLiveWeatherError(null);
+          setLiveWeather({ temperature: data.temperature, condition: data.condition });
         } else {
           setLiveWeather(null);
           setLiveWeatherError("Weather unavailable");
@@ -180,7 +176,7 @@ export default function UpcomingEventAdviceCard({
         setLiveWeatherError("Weather unavailable");
       }
     };
-
+  
     fetchWeather();
   }, [safeLocation]);
 

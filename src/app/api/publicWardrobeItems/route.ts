@@ -1,26 +1,31 @@
-import { getAdmin } from "@/lib/firebase-admin-loader";
 import { NextResponse } from "next/server";
 
-export const runtime = 'nodejs'; // Ensure this runs in a Node.js environment
-export const dynamic = 'force-dynamic';
+// Optional: enable logging
+console.log("API Route Loaded: /api/eventWeather");
 
-export async function GET() {
-    try {
-        const admin = await getAdmin();
-        const db = admin.firestore();
-        const snapshot = await db.collection("publicWardrobeItems").orderBy("createdAt", "desc").get();
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const location = searchParams.get("location");
 
-        const items = snapshot.docs.map((doc: { id: any; data: () => any; }) => ({
-            id: doc.id,
-            ...doc.data(),
-        }));
-
-        return NextResponse.json({ items });
-    } catch (error) {
-        console.error("Error fetching public wardrobe items:", error);
-        return NextResponse.json(
-            { error: "Failed to fetch public wardrobe items" },
-            { status: 500 },
-        );
+    if (!location || location.trim().length < 2) {
+      return NextResponse.json(
+        { error: "Invalid location" },
+        { status: 400 }
+      );
     }
+
+    // Mock fallback data for now
+    // TODO: Replace with real AccuWeather/Google Maps
+    return NextResponse.json({
+      temperature: 19,
+      condition: "Clear Skies",
+    });
+  } catch (err: any) {
+    console.error("Weather API Error:", err);
+    return NextResponse.json(
+      { error: "Weather Service Failed" },
+      { status: 500 }
+    );
+  }
 }
