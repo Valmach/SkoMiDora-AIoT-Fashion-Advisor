@@ -1,54 +1,77 @@
-import admin, { ServiceAccount } from "firebase-admin";
+/**
+ * @fileOverview Centralized Firebase Admin initialization for Server Actions & SSR.
+ * This loader guarantees:
+ *   - Admin is initialized ONLY once
+ *   - Works with Google-managed runtime credentials (Cloud Run / Hosting / Functions)
+ *   - Works with manual local secrets via .env
+ */
+
+import * as admin from "firebase-admin";
+import type { ServiceAccount } from "firebase-admin";
 
 let app: admin.app.App | null = null;
 
-export function getAdmin() {
+/**
+ * Safely initializes Firebase Admin only once.
+ * Supports automatic Google credentials and manual local secrets.
+ */
+export function getAdmin(): admin.app.App {
+  // -------------------------------------------------------
+  // 0. Already initialized? Return instance immediately.
+  // -------------------------------------------------------
   if (app) return app;
 
-  // Case 1: Firebase Hosting / Cloud Functions / Cloud Run
-  const auto = process.env.FIREBASE_CONFIG || process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  if (auto || process.env.FIREBASE_SERVICE_ACCOUNT) {
-    try {
-      // Try using GOOGLE_APPLICATION_CREDENTIALS first
-      app = admin.initializeApp();
-      return app;
-    } catch {
-      // Try explicit key if provided
-      try {
-        const svc = process.env.FIREBASE_SERVICE_ACCOUNT
-          ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-          : undefined;
+  // -------------------------------------------------------
+  // 1. GOOGLE CLOUD RUNTIME (Cloud Functions, Cloud Run, Hosting)
+  // -------------------------------------------------------
+  const hasGoogleRuntimeCreds =
+    process.env.FIREBASE_CONFIG ||
+    process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
-        if (svc) {
-          app = admin.initializeApp({
-            credential: admin.credential.cert(svc as ServiceAccount),
-          });
-          return app;
-        }
-      } catch (e) {
-        console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT:", e);
-      }
+  if (hasGoogleRuntimeCreds) {
+    try {
+      // Uses automatically injected service account credentials
+      app = admin.initializeApp({
+        storageBucket: "styleai-footwear.appspot.com",
+      });
+      return app;
+    } catch (err) {
+      console.warn("⚠ Failed automatic Google runtime init, falling back to manual cert…", err);
     }
   }
 
-  // Case 2: Local development using manual secrets
+  // -------------------------------------------------------
+  // 2. LOCAL DEVELOPMENT (Manual Service Account Secrets)
+  // -------------------------------------------------------
   const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
   let privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
 
   if (projectId && clientEmail && privateKey) {
+    // Fix newline escaping inside environment variables
     privateKey = privateKey.replace(/\\n/g, "\n");
 
-    app = admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId,
-        clientEmail,
-        privateKey,
-      } as ServiceAccount),
-    });
-    return app;
+    try {
+      app = admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId,
+          clientEmail,
+          privateKey,
+        } as ServiceAccount),
+        storageBucket: "styleai-footwear.appspot.com",
+      });
+
+      return app;
+    } catch (err) {
+      console.error("❌ Failed manual Firebase Admin initialization:", err);
+      throw err;
+    }
   }
 
-  console.error("❌ Firebase Admin not initialized. Missing credentials.");
-  return null;
+  // -------------------------------------------------------
+  // 3. NO VALID CREDS → HARD ERROR
+  // -------------------------------------------------------
+  throw new Error(
+    "❌ Firebase Admin not initialized (missing FIREBASE_ADMIN_* env vars OR GOOGLE creds)."
+  );
 }

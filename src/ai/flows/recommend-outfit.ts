@@ -7,39 +7,23 @@
  * This version returns BOTH:
  *  - outfitImageDataUri (for legacy callers)
  *  - imageUrl (for the OutfitCard / UI)
- * and it hard-guards against "outfits" that are just a giant list of shoes.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
 /* -----------------------------------------------------------
-   INPUT SCHEMA
+   INPUT SCHEMA – matches existing string-based usage
 ----------------------------------------------------------- */
 
 const RecommendOutfitInputSchema = z.object({
-  /**
-   * Comma-separated list of shoe names, e.g.
-   * "Black Leather Over-The-Knee Boots, Tory Burch Black Sport Sandals, ..."
-   */
-  shoeCollection: z.string(),
-  /**
-   * Wardrobe data as a string (can be plain text or JSON).
-   */
-  wardrobeData: z.string(),
-  /**
-   * Event details (JSON or natural language).
-   */
-  eventDetails: z.string(),
-  /**
-   * Weather conditions (JSON or natural language).
-   */
-  weatherConditions: z.string(),
-  /**
-   * Style DNA / preferences narrative.
-   */
-  stylePreferences: z.string(),
+  shoeCollection: z.string(),        // comma-separated shoes
+  wardrobeData: z.string(),          // JSON string of wardrobe items
+  eventDetails: z.string(),          // JSON string
+  weatherConditions: z.string(),     // JSON string
+  stylePreferences: z.string(),      // JSON string
 });
+
 export type RecommendOutfitInput = z.infer<typeof RecommendOutfitInputSchema>;
 
 /* -----------------------------------------------------------
@@ -59,7 +43,7 @@ const OutfitSchemaInternal = z.object({
   designerLinks: z.array(DesignerLinkSchemaInternal).optional(),
   suggestedShoeboxTheme: z.string().optional(),
 
-  // UI fields
+  // For UI
   outfitImageDataUri: z.string().optional(),
   imageUrl: z.string().optional(),
 });
@@ -67,7 +51,7 @@ const OutfitSchemaInternal = z.object({
 export type SingleOutfitOutput = z.infer<typeof OutfitSchemaInternal>;
 
 /* -----------------------------------------------------------
-   PUBLIC ENTRYPOINT
+   PUBLIC ENTRYPOINT (used by actions.ts)
 ----------------------------------------------------------- */
 
 export async function generateOutfitForEvent(
@@ -77,7 +61,7 @@ export async function generateOutfitForEvent(
 }
 
 /* -----------------------------------------------------------
-   TEXT PROMPT (NO IMAGE YET)
+   TEXT PROMPT (STYLIST LOGIC)
 ----------------------------------------------------------- */
 
 const textGenerationPrompt = ai.definePrompt({
@@ -91,41 +75,31 @@ const textGenerationPrompt = ai.definePrompt({
     }),
   },
   prompt: `
-You are a luxury stylist. Use contemporary, intelligent British fashion English.
+You are a luxury stylist in London writing for Vogue, Harper's Bazaar, and The Gentlewoman.
 
-You will receive:
-- "shoeCollection": a comma-separated list of shoe names.
-- "wardrobeData": a description or JSON of clothing from the digital wardrobe.
-- "eventDetails": information about the event (name, type, time, location).
-- "weatherConditions": summary of expected conditions.
-- "stylePreferences": Style DNA analysis and preferences.
+You will create a COMPLETE outfit using ONLY items from the user's wardrobe and shoe collection, when available.
 
-CRITICAL RULES:
-1. "chosenShoe" MUST be exactly ONE shoe string from the shoeCollection list.
-   - Do NOT copy the entire shoe list into "chosenShoe".
-   - Do NOT list multiple shoes in "chosenShoe".
-2. "outfitDescription" MUST describe a COMPLETE outfit:
-   - Use one chosen shoe + 2–4 clothing items (dresses, trousers, tops, blazers, outerwear).
-   - Prefer using wardrobe item names when available in wardrobeData.
-   - If wardrobeData is minimal, describe plausible pieces in line with the Style DNA.
-   - NEVER paste the entire shoeCollection into "outfitDescription".
-3. "reasoning" should explain WHY the outfit works:
-   - Reference event type, time of day, weather and stylePreferences.
-4. "suitabilityScore" MUST be a number between 0 and 100.
-   - 70–90 for strong but not perfect matches.
-   - 90–100 only if the match is ideal.
-5. "designerLinks" (0–3 items):
-   - If you include them, they MUST be real, HTTPS URLs to high-end multi-brand retailers or designers.
+RULES:
+- Do NOT invent clothing when the wardrobe provides options.
+- "chosenShoe" MUST be exactly one item from the shoeCollection.
+- If you mention other garments, prefer names & descriptions implied by the wardrobeData.
+- Prefer silhouette balance, colour harmony, fabric contrast and layering logic.
+- If a garment category is missing, describe a generic version (“a simple black wool coat”), without naming designers.
+- Use contemporary British fashion English — concise, chic, no Americanisms.
+- SuitabilityScore must be 0–100 based on weather, formality and practicality.
+- The outfitDescription must read like a refined paragraph, not a bullet list.
+- DO NOT paste multiple shoes in chosenShoe. It must be a single shoe.
 
-Return ONLY valid JSON matching the schema.
+Return ONLY valid JSON with:
+chosenShoe, outfitDescription, reasoning, suitabilityScore, designerLinks, suggestedShoeboxTheme.
 
-Shoe Collection (comma-separated):
+Shoe Collection:
 {{{shoeCollection}}}
 
-Wardrobe Data:
+Wardrobe:
 {{{wardrobeData}}}
 
-Event Details:
+Event:
 {{{eventDetails}}}
 
 Weather:
@@ -137,7 +111,7 @@ Style DNA:
 });
 
 /* -----------------------------------------------------------
-   FALLBACKS (if Gemini fails completely)
+   FALLBACKS (if Gemini fails)
 ----------------------------------------------------------- */
 
 const fallbackShoes = [
@@ -147,29 +121,10 @@ const fallbackShoes = [
   'Versatile White Trainers',
   'Chic Block Heel Sandals (Neutral)',
 ];
-
 let fallbackShoeIndex = 0;
 
 /* -----------------------------------------------------------
-   HELPERS
------------------------------------------------------------ */
-
-function parseShoeList(raw: string): string[] {
-  if (!raw) return [];
-  return raw
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
-function pickDeterministicShoe(shoes: string[]): string | null {
-  if (!shoes.length) return null;
-  // Simple deterministic pick: first shoe in the list
-  return shoes[0];
-}
-
-/* -----------------------------------------------------------
-   MAIN FLOW (TEXT + IMAGE + POST-PROCESSING GUARDS)
+   MAIN FLOW (TEXT + IMAGE)
 ----------------------------------------------------------- */
 
 const generateOutfitForEventFlow = ai.defineFlow(
@@ -182,9 +137,6 @@ const generateOutfitForEventFlow = ai.defineFlow(
     let textOutput: Partial<SingleOutfitOutput> | null = null;
     let generatedImageUrl: string | undefined;
 
-    const shoes = parseShoeList(input.shoeCollection);
-    const deterministicShoe = pickDeterministicShoe(shoes);
-
     try {
       /* -------------------- TEXT -------------------- */
       const { output: step1Output } = await textGenerationPrompt(input);
@@ -192,14 +144,13 @@ const generateOutfitForEventFlow = ai.defineFlow(
       if (!step1Output) {
         throw new Error('Text generation failed.');
       }
+      textOutput = step1Output;
 
-      textOutput = { ...step1Output };
+      // Ensure a numeric suitability score
+      const parsed = parseInt(String(textOutput.suitabilityScore ?? 70), 10);
+      textOutput.suitabilityScore = Number.isNaN(parsed) ? 70 : parsed;
 
-      /* ---- Normalize score ---- */
-      const parsedScore = parseInt(String(textOutput.suitabilityScore ?? 70), 10);
-      textOutput.suitabilityScore = Number.isNaN(parsedScore) ? 70 : parsedScore;
-
-      /* ---- Designer links cleanup ---- */
+      // Designer links clean-up
       if (Array.isArray(textOutput.designerLinks)) {
         textOutput.designerLinks = textOutput.designerLinks.filter(
           (d) => d?.designerName && d?.designerUrl?.startsWith('http'),
@@ -212,59 +163,31 @@ const generateOutfitForEventFlow = ai.defineFlow(
           { designerName: 'Mytheresa', designerUrl: 'https://www.mytheresa.com/' },
           { designerName: 'Farfetch', designerUrl: 'https://www.farfetch.com/' },
         ];
-        textOutput.designerLinks = [...(textOutput.designerLinks ?? []), ...defaults].slice(0, 3);
+        textOutput.designerLinks = [
+          ...(textOutput.designerLinks ?? []),
+          ...defaults,
+        ].slice(0, 3);
       }
 
-      /* -------------------- HARD GUARDS -------------------- */
-
-      // 1) Ensure chosenShoe is a SINGLE shoe, not a giant list
-      if (!textOutput.chosenShoe && deterministicShoe) {
-        textOutput.chosenShoe = deterministicShoe;
+      // Ensure single shoe (if model tried to stuff a list in there)
+      if (textOutput.chosenShoe && textOutput.chosenShoe.includes(',')) {
+        textOutput.chosenShoe = textOutput.chosenShoe.split(',')[0].trim();
       }
 
-      if (textOutput.chosenShoe) {
-        const commaCount = (textOutput.chosenShoe.match(/,/g) || []).length;
-        if (commaCount > 3 && deterministicShoe) {
-          // AI clearly pasted the whole shoeCollection – override
-          textOutput.chosenShoe = deterministicShoe;
-        }
-      }
-
-      // 2) If outfitDescription clearly just parrots the entire shoe list,
-      //    replace it with a clean, wardrobe-focused description.
-      if (textOutput.outfitDescription && input.shoeCollection) {
-        const normalizedDesc = textOutput.outfitDescription.toLowerCase();
-        const normalizedShoes = input.shoeCollection.toLowerCase();
-
-        const looksLikeDumpedList =
-          normalizedDesc.length > 0.8 * normalizedShoes.length &&
-          normalizedDesc.includes(shoes[0]?.toLowerCase() ?? '');
-
-        if (looksLikeDumpedList && deterministicShoe) {
-          textOutput.outfitDescription =
-            `A refined, wearable look built around your ${deterministicShoe.toLowerCase()}. ` +
-            `Pair it with one of your favourite dresses, tailored co-ords or a sharp trouser-and-blazer combination ` +
-            `from your digital wardrobe to keep the silhouette clean and modern while still feeling effortless.`;
-        }
-      }
-
-      // 3) If description is still missing or suspiciously short, enforce a safe default
-      if (!textOutput.outfitDescription && deterministicShoe) {
-        textOutput.outfitDescription =
-          `A versatile ensemble built around your ${deterministicShoe.toLowerCase()}, ` +
-          `styled with pieces from your digital closet that match your current Style DNA.`;
-      }
-
-      /* -------------------- IMAGE GENERATION -------------------- */
-
+      /* -------------------- IMAGE (NO FORESTS) -------------------- */
       if (textOutput.outfitDescription && textOutput.chosenShoe) {
         try {
           const imagePrompt = `
-Photorealistic fashion studio render.
-Hero footwear: ${textOutput.chosenShoe}
-Outfit description: ${textOutput.outfitDescription}
-Focus on the full outfit, not just a close-up of the shoes.
-Neutral magazine-style background, editorial lighting.
+High-end fashion editorial photograph of a single model in a full outfit.
+Indoor photography studio on a seamless backdrop. Clean, minimalist set.
+NO trees, NO grass, NO forest, NO park, NO garden, NO sky, NO mountains, NO outdoor scenery.
+Focus tightly on the clothes and shoes like a luxury lookbook campaign.
+
+Outfit focus: ${textOutput.outfitDescription}
+Footwear focus: ${textOutput.chosenShoe}
+
+Lighting: soft, diffused studio lighting, neutral background (warm beige or soft grey).
+Camera: full-body shot, straight-on, professional fashion photography.
           `.trim();
 
           const response = await ai.generate({
@@ -285,32 +208,27 @@ Neutral magazine-style background, editorial lighting.
       }
 
       return {
-        chosenShoe: textOutput.chosenShoe ?? deterministicShoe ?? 'Signature footwear from your closet',
-        outfitDescription:
-          textOutput.outfitDescription ??
-          'A balanced, wardrobe-led outfit tailored to your event, weather and Style DNA.',
-        reasoning:
-          textOutput.reasoning ??
-          'Constructed as a safe, smart-casual ensemble aligned with your stored wardrobe and shoe collection.',
-        suitabilityScore: textOutput.suitabilityScore ?? 70,
-        designerLinks: textOutput.designerLinks,
-        suggestedShoeboxTheme:
-          textOutput.suggestedShoeboxTheme ?? 'Minimalist, gallery-style shoebox with soft lighting',
+        ...textOutput,
         outfitImageDataUri: generatedImageUrl,
         imageUrl: generatedImageUrl,
-      };
+      } as SingleOutfitOutput;
     } catch {
-      /* -------------------- HARD FALLBACK (NO AI TEXT) -------------------- */
-      const userShoes = shoes;
+      /* -------------------- HARD FALLBACK -------------------- */
+      const shoesList = input.shoeCollection
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
 
+      const shoeFromUser =
+        shoesList[fallbackShoeIndex % Math.max(shoesList.length, 1)];
       const fallbackShoe =
-        userShoes[fallbackShoeIndex % Math.max(userShoes.length, 1)] ||
-        fallbackShoes[fallbackShoeIndex % fallbackShoes.length];
+        shoeFromUser || fallbackShoes[fallbackShoeIndex % fallbackShoes.length];
+
       fallbackShoeIndex++;
 
       return {
         chosenShoe: fallbackShoe,
-        outfitDescription: `A versatile ensemble built around your ${fallbackShoe.toLowerCase()}. Combine with smart trousers or a sleek skirt and a well-fitted blouse or dress from your digital wardrobe for a polished yet effortless look.`,
+        outfitDescription: `A versatile ensemble built around your ${fallbackShoe.toLowerCase()}. Combine with smart trousers or a sleek skirt and a well-fitted blouse for a polished yet effortless look.`,
         reasoning:
           'Fallback recommendation due to temporary AI processing. Focused on a timeless smart-casual aesthetic suitable for many daytime occasions.',
         suitabilityScore: 60,
