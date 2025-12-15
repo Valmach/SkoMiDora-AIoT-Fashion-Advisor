@@ -1,5 +1,11 @@
 "use client";
 
+// Declare the global constant for secure path construction
+declare const __app_id: string | undefined;
+
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 import { useState, useEffect } from "react";
 import {
   Card,
@@ -10,15 +16,22 @@ import {
 } from "@/components/ui/card";
 import { CalendarDays } from "lucide-react";
 import CalendarConnectButton from "@/components/ui/CalendarConnectButton";
+// ✅ FIX: Changed to a default import to resolve TS2724 ("no exported member named...")
 import UpcomingEventAdviceCard from "@/components/UpcomingEventAdviceCard";
 import { useFirebase } from "@/firebase/provider";
 import { collection, query, onSnapshot } from "firebase/firestore";
+
+// ✅ Type imported from global types
 import type { UpcomingEventStyleAdvice } from "@/types";
+
+/* ============================================================
+   FALLBACK / DEMO DATA
+============================================================ */
 
 const DUMMY_EVENTS_DATA: UpcomingEventStyleAdvice[] = [
   {
     id: "dummy-1",
-    eventName: "Paris Fashion Week - Chanel Show",
+    eventName: "Paris Fashion Week – Chanel Show",
     eventStartDateTime: new Date(
       Date.now() + 5 * 24 * 60 * 60 * 1000
     ).toISOString(),
@@ -28,9 +41,9 @@ const DUMMY_EVENTS_DATA: UpcomingEventStyleAdvice[] = [
     eventType: "Fashion Show",
     eventLocation: "Grand Palais, Paris, France",
     temperature: 18,
-    weatherCondition: "Cloudy with a chance of rain",
+    weatherCondition: "Cloudy with light rain",
     advice:
-      "For Paris Fashion Week, channel timeless elegance. A classic tweed jacket paired with tailored trousers or a silk midi skirt is effortlessly chic. Complement with slingbacks and a quilted leather bag.",
+      "For Paris Fashion Week, lean into timeless elegance. A tailored tweed jacket with silk trousers or a midi skirt feels refined and appropriate. Complete the look with slingbacks and a structured leather bag.",
     eventCountry: "France",
     outfitRecommendation: null,
   },
@@ -44,17 +57,17 @@ const DUMMY_EVENTS_DATA: UpcomingEventStyleAdvice[] = [
       Date.now() + 12 * 24 * 60 * 60 * 1000 + 5 * 60 * 60 * 1000
     ).toISOString(),
     eventType: "Gala",
-    eventLocation: "The Metropolitan Museum of Art, New York, USA",
+    eventLocation: "Metropolitan Museum of Art, New York, USA",
     temperature: 22,
     weatherCondition: "Clear",
     advice:
-      "The Met Gala demands avant-garde glamour. Embrace the theme with a sculptural gown or dramatic, custom piece. Statement jewellery and artistic make-up are essential.",
+      "The Met Gala calls for theatrical glamour. Opt for a sculptural silhouette or custom couture-inspired piece. Statement jewellery and bold styling are essential.",
     eventCountry: "USA",
     outfitRecommendation: null,
   },
   {
     id: "dummy-3",
-    eventName: "Milan Fashion Week - Fendi Show",
+    eventName: "Milan Fashion Week – Fendi Show",
     eventStartDateTime: new Date(
       Date.now() + 20 * 24 * 60 * 60 * 1000
     ).toISOString(),
@@ -66,24 +79,40 @@ const DUMMY_EVENTS_DATA: UpcomingEventStyleAdvice[] = [
     temperature: 25,
     weatherCondition: "Sunny",
     advice:
-      "Embody Italian luxury in Milan. A structured leather dress or sharply tailored suit showcases craftsmanship. Pair with sculptural heels and a hint of silk for a powerful statement.",
+      "In Milan, embrace sharp Italian tailoring. A structured leather dress or a crisply cut suit showcases confidence and craftsmanship. Finish with sculptural heels.",
     eventCountry: "Italy",
     outfitRecommendation: null,
   },
 ];
 
-export default function UpcomingEventsPage() {
+/* ============================================================
+   PAGE
+============================================================ */
+
+export default function EventsPage() {
   const firebase = useFirebase();
   const [events, setEvents] =
     useState<UpcomingEventStyleAdvice[]>(DUMMY_EVENTS_DATA);
 
   useEffect(() => {
-    if (!firebase) {
+    // If Firebase is not initialized or the user's auth status is not yet known,
+    // use dummy data and exit the effect.
+    if (!firebase || !firebase.auth.currentUser) {
       setEvents(DUMMY_EVENTS_DATA);
       return;
     }
 
-    const eventsCollectionRef = collection(firebase.firestore, "upcomingEvents");
+    // 🔥 Using the provided __app_id and userId for secure Firestore path construction (MANDATORY)
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    // Use the current authenticated user's ID
+    const userId = firebase.auth.currentUser.uid;
+    // Collection path: /artifacts/{appId}/users/{userId}/upcomingEvents
+    const collectionPath = `/artifacts/${appId}/users/${userId}/upcomingEvents`;
+
+    const eventsCollectionRef = collection(
+      firebase.firestore,
+      collectionPath
+    );
     const q = query(eventsCollectionRef);
 
     const unsubscribe = onSnapshot(
@@ -108,6 +137,9 @@ export default function UpcomingEventsPage() {
           }
         );
 
+        // Sort events by start date
+        eventsData.sort((a, b) => new Date(a.eventStartDateTime).getTime() - new Date(b.eventStartDateTime).getTime());
+
         setEvents(eventsData.length > 0 ? eventsData : DUMMY_EVENTS_DATA);
       },
       (err) => {
@@ -131,11 +163,11 @@ export default function UpcomingEventsPage() {
 
       <Card className="shadow-xl border-primary/20">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold text-foreground">
+          <CardTitle className="text-2xl font-bold">
             Your Event Style Guidance
           </CardTitle>
-          <CardDescription className="text-muted-foreground">
-            Synced from Google Calendar or from your saved events.
+          <CardDescription>
+            Synced from Google Calendar or your saved events.
           </CardDescription>
         </CardHeader>
 

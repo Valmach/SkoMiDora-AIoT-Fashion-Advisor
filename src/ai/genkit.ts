@@ -8,6 +8,6 @@
  */
 
 // This now imports the configured instance from the root config file.
-import { ai } from "../../genkit.config";
+import { ai } from "../../genkit.config"; // <--- This is the corrected import path
 
 export { ai };

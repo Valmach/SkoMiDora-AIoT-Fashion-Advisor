@@ -1,467 +1,73 @@
-"use client";
+import { FieldValue } from "firebase-admin/firestore";
 
-import Image from "next/image";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  CalendarDays,
-  MapPin,
-  CloudSun,
-  Lightbulb,
-  Briefcase,
-  PartyPopper,
-  Sparkles,
-  ThumbsUp,
-  ThumbsDown,
-  Edit3,
-  AlertTriangle,
-  Info,
-  Volume2,
-  StopCircle,
-} from "lucide-react";
+// --- Outfit & Item Types ---
 
-import type { ElementType } from "react";
-import type { UpcomingEventStyleAdvice, AnalyzedItem } from "@/types"; // ✅ IMPORT FIX
-
-import { useState, useEffect, useRef } from "react";
-import { format, parseISO } from "date-fns";
-import { enUS } from "date-fns/locale";
-import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
-
-const DEFAULT_SHOE_PLACEHOLDER_IMAGE = "https://placehold.co/200x200.png";
-
-interface UpcomingEventAdviceCardProps {
-  eventAdvice: UpcomingEventStyleAdvice;
-  cardIndex: number;
-  analyzedItems?: AnalyzedItem[]; // 🔥 FIX: Allow analyzed items to come from card
+export interface SingleOutfitOutput {
+  top: string;
+  bottom: string;
+  shoes: string;
+  outerwear: string | null;
+  accessories: string | null;
+  imageUrl: string; // The URL of the generated outfit image
+  description: string;
 }
 
-// ---------------------------------------------------------------------------
-// Image Hint Mapping
-// ---------------------------------------------------------------------------
-const imageHintsByEventType: Record<string, string[]> = {
-  business: ["professional attire", "office chic", "corporate style"],
-  meeting: ["business casual", "meeting outfit", "smart separates"],
-  professional: ["power suit", "executive look", "boardroom fashion"],
-  conference: ["conference wear", "business formal", "networking style"],
-  client: ["client meeting", "impressive outfit", "polished look"],
-  social: ["social gathering", "party dress", "evening wear"],
-  chic: ["chic outfit", "trendy fashion", "stylish look"],
-  art: ["gallery opening", "artistic style", "creative outfit"],
-  fashion: ["fashion event", "runway look", "designer wear"],
-  opening: ["event opening", "statement piece", "celebration style"],
-  formal: ["formal event", "gala dress", "black tie"],
-  gala: ["gala attire", "evening gown", "luxury fashion"],
-  "black-tie": ["tuxedo style", "formal gown", "elegant evening"],
-  charity: ["charity event", "sophisticated dress", "benefit gala"],
-  party: ["party outfit", "festive wear", "celebration dress"],
-  brunch: ["brunch style", "casual chic", "daytime fashion", "Paris restaurant"],
-  default: ["stylish event", "modern fashion", "elegant attire"],
-};
+export interface AnalyzedItem {
+  id?: string; // Optional ID for client-side representation
+  itemName: string;
+  itemType: string;
+  color: string | null;
+  generalMaterial: string | null;
+  narrativeDescription: string | null;
+  styleKeywords: string[] | undefined;
+  imageUrl: string;
+  imagePath: string;
+  createdAt: number | FieldValue;
+}
 
-const getEventImageHint = (eventType: string): string => {
-  const typeLower = eventType.toLowerCase();
-  if (typeLower.includes("brunch")) return "Paris restaurant";
+// --- Recommendation Input/Output Types ---
 
-  for (const keyword in imageHintsByEventType) {
-    if (typeLower.includes(keyword)) {
-      const hints = imageHintsByEventType[keyword];
-      return hints[Math.floor(Math.random() * hints.length)];
-    }
-  }
-
-  const defaultHints = imageHintsByEventType.default;
-  return defaultHints[Math.floor(Math.random() * defaultHints.length)];
-};
-
-// ---------------------------------------------------------------------------
-// MAIN COMPONENT
-// ---------------------------------------------------------------------------
-export default function UpcomingEventAdviceCard({
-  eventAdvice,
-  cardIndex,
-  analyzedItems = [],
-}: UpcomingEventAdviceCardProps) {
-  const safeLocation = eventAdvice.eventLocation ?? "";
-  const safeCountry = eventAdvice.eventCountry ?? "";
-
-  const [liveWeather, setLiveWeather] = useState<{
-    temperature: number;
-    condition: string;
-  } | null>(null);
-
-  const [liveWeatherError, setLiveWeatherError] = useState<string | null>(null);
-  const [formattedEventTime, setFormattedEventTime] = useState<string | null>(
-    null
-  );
-  const [decision, setDecision] = useState<
-    "accepted" | "rejected" | "modified" | null
-  >(null);
-
-  const [tooltipShoeImageUrl, setTooltipShoeImageUrl] = useState(
-    DEFAULT_SHOE_PLACEHOLDER_IMAGE
-  );
-  const [tooltipShoeText, setTooltipShoeText] = useState("Suggested Footwear");
-
-  const { toast } = useToast();
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const preferredVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-
-  // ---------------------------------------------------------------------------
-  // 1. Tooltip Shoe Logic — FIXED VERSION
-  // ---------------------------------------------------------------------------
-  useEffect(() => {
-    const closetShoes = analyzedItems.filter(
-      (item) => item.itemType === "Shoes"
-    );
-
-    if (closetShoes.length > 0) {
-      const eventNameLength = eventAdvice.eventName.length;
-      const shoeIndex = (cardIndex + eventNameLength) % closetShoes.length;
-      const selectedShoe = closetShoes[shoeIndex];
-
-      if (selectedShoe?.imageUrl) {
-        setTooltipShoeImageUrl(selectedShoe.imageUrl);
-        setTooltipShoeText(selectedShoe.itemName);
-      }
-    } else {
-      setTooltipShoeImageUrl(DEFAULT_SHOE_PLACEHOLDER_IMAGE);
-      setTooltipShoeText("Add shoes to your closet!");
-    }
-  }, [analyzedItems, cardIndex, eventAdvice.eventName]);
-
-  // ---------------------------------------------------------------------------
-  // 2. Weather Lookup (Google Maps → Lat/Lon → Weather)
-  // ---------------------------------------------------------------------------
-  useEffect(() => {
-    console.log("Event location passed to weather API:", safeLocation);
+// The type structure used for displaying an event and its associated style advice.
+export interface UpcomingEventStyleAdvice {
+  outfitRecommendation: SingleOutfitOutput | any; 
   
-    const fetchWeather = async () => {
-      if (!safeLocation || safeLocation.trim().length < 3) {
-        setLiveWeather(null);
-        setLiveWeatherError(null);
-        return;
-      }
+  eventCountry: string;
+  id: string | null | undefined;
+
+  // Event Details
+  eventName: string;
+  eventStartDateTime: string;
+  eventEndDateTime: string;
+  eventType: string;
+  eventLocation: string;
   
-      try {
-        const res = await fetch(
-          `/api/eventWeather?location=${encodeURIComponent(safeLocation)}`
-        );
-        if (!res.ok) throw new Error(`Weather API error: ${res.status}`);
-  
-        const data = await res.json();
-        if (data?.temperature && data?.condition) {
-          setLiveWeather({ temperature: data.temperature, condition: data.condition });
-        } else {
-          setLiveWeather(null);
-          setLiveWeatherError("Weather unavailable");
-        }
-      } catch (err) {
-        setLiveWeather(null);
-        setLiveWeatherError("Weather unavailable");
-      }
-    };
-  
-    fetchWeather();
-  }, [safeLocation]);
+  // Weather/Advice from LLM
+  temperature: number;
+  weatherCondition: string;
+  advice: string;
+}
 
-  // ---------------------------------------------------------------------------
-  // 3. Format Event Time
-  // ---------------------------------------------------------------------------
-  useEffect(() => {
-    if (!eventAdvice.eventStartDateTime || !eventAdvice.eventEndDateTime) return;
+// Input for the LLM flow (used in Server Actions after normalization)
+export interface RecommendOutfitInput {
+  shoeCollection: string[];
+  wardrobeData: AnalyzedItem[]; // Use the structured AnalyzedItem array
+  eventDetails: string;
+  weatherConditions: string;
+  stylePreferences: string;
+}
 
-    try {
-      const startDate = parseISO(eventAdvice.eventStartDateTime);
-      const endDate = parseISO(eventAdvice.eventEndDateTime);
+// Input for Style DNA analysis flow
+export interface AnalyzeStyleDNAInput {
+  wardrobeData: string; // Comma-separated list of items (used before flow)
+  shoeCollectionData: string; // Comma-separated list of shoes (used before flow)
+  styleQuestions: string[];
+  currentStyleDNA: string;
+}
 
-      const sameDay = format(startDate, "yyyyMMdd") === format(endDate, "yyyyMMdd");
-
-      const startStr = format(startDate, "EEE, d MMM 'at' p", { locale: enUS });
-      const endStr = sameDay
-        ? format(endDate, "p (zzz)", { locale: enUS })
-        : format(endDate, "EEE, d MMM 'at' p (zzz)", { locale: enUS });
-
-      setFormattedEventTime(`${startStr} - ${endStr}`);
-    } catch {
-      setFormattedEventTime("Event time not available");
-    }
-  }, [eventAdvice.eventStartDateTime, eventAdvice.eventEndDateTime]);
-
-  // ---------------------------------------------------------------------------
-  // 4. Feedback Buttons
-  // ---------------------------------------------------------------------------
-  const handleFeedback = (userAction: "accepted" | "rejected" | "modified") => {
-    setDecision(userAction);
-
-    const messages = {
-      accepted: "Glad you found the style advice helpful!",
-      rejected: "Thanks for the feedback. We'll improve our suggestions.",
-      modified: "Modify functionality coming soon.",
-    };
-
-    toast({
-      title: `Advice ${userAction}`,
-      description: messages[userAction],
-    });
-  };
-
-  // ---------------------------------------------------------------------------
-  // 5. Text-to-Speech
-  // ---------------------------------------------------------------------------
-  const handleSpeak = () => {
-    if (typeof window === "undefined" || !window.speechSynthesis) return;
-
-    if (window.speechSynthesis.speaking) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-      return;
-    }
-
-    const weatherPhrase = liveWeather
-      ? `The forecast is ${liveWeather.temperature} degrees and ${liveWeather.condition}.`
-      : "Weather data is currently unavailable.";
-
-    const adviceText = eventAdvice.advice || "No advice available.";
-
-    const utterance = new SpeechSynthesisUtterance(
-      `${weatherPhrase} Based on this, here is my suggestion. ${adviceText}`
-    );
-
-    utteranceRef.current = utterance;
-    utterance.rate = 1.1;
-
-    if (preferredVoiceRef.current) {
-      utterance.voice = preferredVoiceRef.current;
-      utterance.lang = preferredVoiceRef.current.lang;
-    } else {
-      utterance.lang = "en-GB";
-    }
-
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-
-    window.speechSynthesis.speak(utterance);
-  };
-
-  // ---------------------------------------------------------------------------
-  // Event Icon
-  // ---------------------------------------------------------------------------
-  let EventIcon: ElementType = CalendarDays;
-  const type = eventAdvice.eventType.toLowerCase();
-
-  if (type.includes("business") || type.includes("meeting"))
-    EventIcon = Briefcase;
-  else if (type.includes("social") || type.includes("party"))
-    EventIcon = PartyPopper;
-  else if (type.includes("fashion") || type.includes("art"))
-    EventIcon = Sparkles;
-
-  // ---------------------------------------------------------------------------
-  // Image Generation
-  // ---------------------------------------------------------------------------
-  const imageSeed = eventAdvice.eventName.replace(/\s+/g, "") + cardIndex;
-  const imageSrc = `https://picsum.photos/seed/${imageSeed}/400/250`;
-  const imageHint = getEventImageHint(eventAdvice.eventType);
-
-  const weatherText = liveWeather
-    ? `${liveWeather.temperature}°C, ${liveWeather.condition}`
-    : liveWeatherError || "Weather unavailable";
-
-  const isWeatherError = !!liveWeatherError;
-
-  // ---------------------------------------------------------------------------
-  // RENDER
-  // ---------------------------------------------------------------------------
-  return (
-    <Card
-      className={cn(
-        "flex flex-col shadow-md hover:shadow-lg transition-shadow duration-300 bg-card/80 backdrop-blur-sm h-full fade-in-up",
-        {
-          "ring-2 ring-green-500": decision === "accepted",
-          "ring-2 ring-red-700": decision === "rejected",
-          "ring-2 ring-amber-500": decision === "modified",
-        }
-      )}
-      style={{ animationDelay: `${cardIndex * 100}ms` }}
-    >
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex-grow">
-            <CardTitle className="text-md font-semibold">
-              {eventAdvice.eventName}
-            </CardTitle>
-
-            {formattedEventTime && (
-              <CardDescription className="text-xs text-muted-foreground">
-                <CalendarDays className="inline h-3 w-3 mr-1" />
-                {formattedEventTime}
-              </CardDescription>
-            )}
-
-            {safeLocation && (
-              <CardDescription className="text-xs text-muted-foreground">
-                <MapPin className="inline h-3 w-3 mr-1" />
-                {safeLocation}
-              </CardDescription>
-            )}
-          </div>
-
-          <EventIcon className="h-5 w-5 text-accent ml-2" />
-        </div>
-      </CardHeader>
-
-      {/* IMAGE */}
-      <CardContent className="flex-grow flex flex-col">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="aspect-[16/10] w-full relative rounded-md mb-3 bg-secondary/50">
-              <Image
-                src={imageSrc}
-                alt={`Style advice for ${eventAdvice.eventName}`}
-                fill
-                className="object-cover transition-transform duration-500 hover:scale-105"
-                data-ai-hint={imageHint}
-              />
-            </div>
-          </TooltipTrigger>
-
-          <TooltipContent className="p-2 bg-card border shadow-lg rounded-md">
-            <div className="w-32 h-32 relative bg-muted rounded overflow-hidden">
-              <Image
-                src={tooltipShoeImageUrl}
-                alt={tooltipShoeText}
-                fill
-                sizes="128px"
-                className="object-contain"
-              />
-            </div>
-            <p className="text-[11px] mt-1 text-center truncate">
-              {tooltipShoeText}
-            </p>
-          </TooltipContent>
-        </Tooltip>
-
-        {/* WEATHER */}
-        <div className="flex items-center gap-2 mb-2">
-          <Badge
-            variant="outline"
-            className={cn(
-              "text-xs",
-              isWeatherError
-                ? "border-red-600 text-red-600 bg-red-600/10"
-                : "border-accent/70 text-accent"
-            )}
-          >
-            {isWeatherError ? (
-              <AlertTriangle className="h-3 w-3 mr-1" />
-            ) : (
-              <CloudSun className="h-3 w-3 mr-1" />
-            )}
-            {weatherText}
-          </Badge>
-
-          <Badge variant="secondary" className="text-xs capitalize">
-            {eventAdvice.eventType}
-          </Badge>
-        </div>
-
-        {/* ADVICE */}
-        <div className="text-xs text-foreground mb-2 leading-normal h-20 overflow-y-auto p-1 rounded bg-muted/30">
-          <Lightbulb className="h-3.5 w-3.5 mr-2 float-left text-accent" />
-          {eventAdvice.advice}
-        </div>
-      </CardContent>
-
-      <CardFooter className="flex flex-col items-start space-y-2 pt-3 border-t">
-        <div className="w-full space-y-2">
-          <div className="flex gap-2 w-full">
-            <Button
-              onClick={() => handleFeedback("rejected")}
-              variant={decision === "rejected" ? "default" : "outline"}
-              className={cn(
-                "flex-1",
-                decision === "rejected"
-                  ? "bg-red-700 hover:bg-red-800 text-white"
-                  : "border-red-600 text-red-600 hover:bg-red-600/10"
-              )}
-              size="sm"
-            >
-              <ThumbsDown className="mr-2 h-4 w-4" />
-              Reject
-            </Button>
-
-            <Button
-              onClick={() => handleFeedback("modified")}
-              variant={decision === "modified" ? "default" : "outline"}
-              className={cn(
-                "flex-1",
-                decision === "modified"
-                  ? "bg-amber-500 hover:bg-amber-600 text-black"
-                  : "border-amber-500 text-amber-500 hover:bg-amber-500/10"
-              )}
-              size="sm"
-            >
-              <Edit3 className="mr-2 h-4 w-4" />
-              Modify
-            </Button>
-          </div>
-
-          <Button
-            onClick={() => handleFeedback("accepted")}
-            variant={decision === "accepted" ? "default" : "outline"}
-            className={cn(
-              "w-full",
-              decision === "accepted"
-                ? "bg-green-600 hover:bg-green-700 text-white"
-                : "border-green-500 text-green-500 hover:bg-green-500/10"
-            )}
-            size="sm"
-          >
-            <ThumbsUp className="mr-2 h-4 w-4" />
-            Accept
-          </Button>
-        </div>
-
-        <div className="w-full pt-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                onClick={handleSpeak}
-                variant="secondary"
-                size="sm"
-                className="w-full"
-              >
-                {isSpeaking ? (
-                  <StopCircle className="mr-2 h-4 w-4" />
-                ) : (
-                  <Volume2 className="mr-2 h-4 w-4" />
-                )}
-                {isSpeaking ? "Stop" : "Listen"}
-              </Button>
-            </TooltipTrigger>
-
-            <TooltipContent>
-              <p>{isSpeaking ? "Stop speaking" : "Listen to advice"}</p>
-            </TooltipContent>
-          </Tooltip>
-        </div>
-      </CardFooter>
-    </Card>
-  );
+// Input for the feedback flow
+export interface ProcessOutfitFeedbackInput {
+  outfit: SingleOutfitOutput;
+  feedbackType: 'accepted' | 'rejected' | 'modified';
+  userComment?: string;
+  eventContext: string;
 }

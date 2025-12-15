@@ -1,149 +1,94 @@
-/**
- * @fileOverview Shared TypeScript types used across server actions, flows,
- * and client components. Ensures type-safety between AI flows, Firestore,
- * and React components.
- */
+import { FieldValue } from "firebase-admin/firestore";
+// Assuming Zod is available globally or imported by the surrounding environment
+import { z } from "zod"; 
 
-import type { z } from "zod";
-import { Timestamp } from "firebase/firestore";
+// --- Zod Schemas for LLM & Integration ---
 
-import type {
-  AnalyzeClothingItemOutputSchema,
-  AnalyzeStyleDNAInputSchema,
-  AnalyzeStyleDNAOutputSchema,
-  AccuWeatherSchema as AccuWeatherSchemaInternal,
-  GoogleCalendarEventSchema,
-  GenerateEventStyleAdviceInputSchema,
-  GenerateEventStyleAdviceOutputSchema,
-  ProcessOutfitFeedbackInputSchema,
-  ProcessOutfitFeedbackOutputSchema,
-  OutfitSchema,
-} from "./schemas";
+export const AccuWeatherSchema = z.object({
+  temperature: z.number(),
+  condition: z.string(),
+  location: z.string().optional(),
+});
+export type AccuWeatherSchema = z.infer<typeof AccuWeatherSchema>;
 
-import type { AnalyzeClothingItemInput } from "@/ai/flows/analyze-clothing-item";
+export const GoogleCalendarEventSchema = z.object({
+  eventName: z.string(),
+  eventStartDateTime: z.string(),
+  eventEndDateTime: z.string(),
+  eventType: z.string(),
+  eventLocation: z.string().optional(),
+  eventCountry: z.string().optional(),
+});
+export type GoogleCalendarEvent = z.infer<typeof GoogleCalendarEventSchema>; // Renamed type for cleaner use
 
-/* ============================================================
-   FIRESTORE ITEM
-============================================================ */
+// --- Outfit & Item Types ---
 
-export type AnalyzedItem = z.infer<typeof AnalyzeClothingItemOutputSchema> & {
-  id: string;
+export interface SingleOutfitOutput {
+  top: string;
+  bottom: string;
+  shoes: string;
+  outerwear: string | null;
+  accessories: string | null;
+  imageUrl: string; // The URL of the generated outfit image
+  description: string;
+}
+
+export interface AnalyzedItem {
+  id?: string; // Optional ID for client-side representation
+  itemName: string;
+  itemType: string;
+  color: string | null;
+  generalMaterial: string | null;
+  narrativeDescription: string | null;
+  styleKeywords: string[] | undefined;
   imageUrl: string;
-  imagePath?: string;
-  createdAt: number;
-};
+  imagePath: string;
+  createdAt: number | FieldValue;
+}
 
-/* ============================================================
-   BASIC EVENT TYPES
-============================================================ */
+// --- Recommendation Input/Output Types ---
 
-export type GoogleCalendarEvent = z.infer<typeof GoogleCalendarEventSchema>;
-
-/**
- * Style advice for upcoming events (used on Dashboard).
- */
+// The type structure used for displaying an event and its associated style advice.
 export interface UpcomingEventStyleAdvice {
-  outfitRecommendation: any; // Future: replace with typed outfit structure
+  outfitRecommendation: SingleOutfitOutput | any; 
+  
   eventCountry: string;
   id: string | null | undefined;
 
+  // Event Details
   eventName: string;
   eventStartDateTime: string;
   eventEndDateTime: string;
   eventType: string;
   eventLocation: string;
-
+  
+  // Weather/Advice from LLM
   temperature: number;
   weatherCondition: string;
   advice: string;
 }
 
-/* ============================================================
-   AI FLOW TYPE EXPORTS
-============================================================ */
-
-export type { AnalyzeClothingItemInput };
-
-export type AnalyzeClothingItemOutput = z.infer<
-  typeof AnalyzeClothingItemOutputSchema
->;
-
-export type AnalyzeStyleDNAInput = z.infer<typeof AnalyzeStyleDNAInputSchema>;
-export type AnalyzeStyleDNAOutput = z.infer<typeof AnalyzeStyleDNAOutputSchema>;
-
-export type AccuWeatherSchema = z.infer<typeof AccuWeatherSchemaInternal>;
-
-export type GenerateEventStyleAdviceInput = z.infer<
-  typeof GenerateEventStyleAdviceInputSchema
->;
-export type GenerateEventStyleAdviceOutput = z.infer<
-  typeof GenerateEventStyleAdviceOutputSchema
->;
-
-export type ProcessOutfitFeedbackInput = z.infer<
-  typeof ProcessOutfitFeedbackInputSchema
->;
-export type ProcessOutfitFeedbackOutput = z.infer<
-  typeof ProcessOutfitFeedbackOutputSchema
->;
-
-/* ============================================================
-   🔥 FIXED: RECOMMEND OUTFIT INPUT
-============================================================ */
-/**
- * NOTE:
- * - This MUST match page.tsx → generateOutfitForEventAction
- * - And MUST match flows/recommend-outfit.ts Zod schema.
- * - The AI expects EVERYTHING as strings.
- */
+// Input for the LLM flow (used in Server Actions after normalization)
 export interface RecommendOutfitInput {
-  shoeCollection: string;       // comma-separated list
-  wardrobeData: string;         // JSON stringified array of wardrobe items
-  eventDetails: string;         // JSON string
-  weatherConditions: string;    // JSON string
-  stylePreferences: string;     // JSON string (Style DNA)
+  shoeCollection: string[];
+  wardrobeData: AnalyzedItem[]; // Use the structured AnalyzedItem array
+  eventDetails: string;
+  weatherConditions: string;
+  stylePreferences: string;
 }
 
-/* Output from the Outfit Flow */
-export type SingleOutfitOutput = z.infer<typeof OutfitSchema>;
-export type OutfitOutput = z.infer<typeof OutfitSchema>;
+// Input for Style DNA analysis flow
+export interface AnalyzeStyleDNAInput {
+  wardrobeData: string; // Comma-separated list of items (used before flow)
+  shoeCollectionData: string; // Comma-separated list of shoes (used before flow)
+  styleQuestions: string[];
+  currentStyleDNA: string;
+}
 
-/* ============================================================
-   DATE NORMALIZER
-============================================================ */
-
-/**
- * Safely converts Firestore timestamps, JS Dates, or raw numbers
- * into a millisecond timestamp for UI sorting.
- */
-export const safeToMillis = (dateValue: any): number => {
-  if (!dateValue) return Date.now();
-
-  if (dateValue instanceof Timestamp) {
-    return dateValue.toMillis();
-  }
-
-  if (
-    typeof dateValue === "object" &&
-    dateValue !== null &&
-    "toMillis" in dateValue &&
-    typeof dateValue.toMillis === "function"
-  ) {
-    return dateValue.toMillis();
-  }
-
-  if (dateValue instanceof Date) return dateValue.getTime();
-
-  if (typeof dateValue === "number") return dateValue;
-
-  return Date.now();
-};
-
-/* ============================================================
-   FEEDBACK TYPES
-============================================================ */
-
-export type OutfitForFeedbackAction = z.infer<typeof OutfitSchema>;
-export type EventDetailsForFeedbackAction = z.infer<
-  typeof GoogleCalendarEventSchema
->;
+// Input for the feedback flow
+export interface ProcessOutfitFeedbackInput {
+  outfit: SingleOutfitOutput;
+  feedbackType: 'accepted' | 'rejected' | 'modified';
+  userComment?: string;
+  eventContext: string;
+}

@@ -1,5 +1,5 @@
-[0;31m❌ Undefined Import:[0m  import { initializeFirebase } from ".";
-    → Tried resolving: ..{ts,tsx,js,jsx}/index
+[0;31m❌ Undefined Import:[0m  import { googleAI } from "@genkit-ai/google-genai";
+    → Tried resolving: src/genkit-ai/google-genai.{ts,tsx,js,jsx}/index
 
 [0;31m❌ Undefined Import:[0m  import { Slot } from "@radix-ui/react-slot";
     → Tried resolving: src/radix-ui/react-slot.{ts,tsx,js,jsx}/index
@@ -60,6 +60,9 @@
 
 [0;31m❌ Undefined Import:[0m  import * as SeparatorPrimitive from "@radix-ui/react-separator";
     → Tried resolving: src/radix-ui/react-separator.{ts,tsx,js,jsx}/index
+
+[0;31m❌ Undefined Import:[0m  import { ai } from "../../genkit.config";
+    → Tried resolving: ../../genkit.config.{ts,tsx,js,jsx}/index
 
 [0;31m❌ Undefined Import:[0m  import { ai } from "../../genkit.config";
     → Tried resolving: ../../genkit.config.{ts,tsx,js,jsx}/index
