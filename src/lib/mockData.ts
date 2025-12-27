@@ -1,20 +1,34 @@
-
-import type { AnalyzeStyleDNAInput } from "@/types";
-import type { RecommendOutfitInput } from "@/types";
+import type {
+  AnalyzeStyleDNAInput,
+  RecommendOutfitInput,
+  AnalyzedItem,
+  GoogleCalendarEvent,
+} from "@/types";
 
 const now = Date.now();
 const oneHour = 60 * 60 * 1000;
 const oneDay = 24 * oneHour;
 
+/* ============================================================
+   MOCK: AnalyzeStyleDNAInput (raw/serialized strings)
+============================================================ */
+
 export const mockAnalyzeStyleDNAInput: AnalyzeStyleDNAInput = {
   wardrobeData:
-    "RFID_Tags: Item_1_Burberry_TrenchCoat_Beige_SizeM, Item_2_Gucci_SilkBlouse_Cream_SizeS, Item_3_SaintLaurent_LeatherPants_Black_Size30, Item_4_LoroPiana_CashmereSweater_Grey_SizeM, Item_5_MaxMara_LinenDress_White_SizeM, Item_6_BottegaVeneta_KnitCardigan_Brown_SizeM",
+    "Burberry trench coat (beige), Gucci silk blouse (cream), Saint Laurent leather pants (black), Loro Piana cashmere sweater (grey), Max Mara linen dress (white), Bottega Veneta knit cardigan (brown).",
+
   shoeCollectionData:
-    "NFC_Tags: Shoe_1_Chanel_Slingbacks_BeigeBlack_Size39, Shoe_2_ManoloBlahnik_HangisiPumps_BlueSatin_Size39, Shoe_3_Hermes_OranSandals_Gold_Size39, Shoe_4_Gucci_PrincetownSlippers_Leather_Black_Size39, Shoe_5_GoldenGoose_SuperstarSneakers_WhiteDistressed_Size39, Shoe_6_ChristianLouboutin_SoKatePumps_NudePatent_Size39",
-  accuWeatherInfo: {
-    temperature: 22,
-    condition: "Partly cloudy with a chance of showers",
-  },
+    "Chanel slingbacks (beige/black), Manolo Blahnik Hangisi pumps (blue satin), Hermès Oran sandals (gold), Gucci Princetown loafers (black leather), Golden Goose Superstar sneakers (white), Christian Louboutin So Kate pumps (nude patent).",
+
+  styleQuestions: [
+    "Do you prefer tailored or relaxed silhouettes?",
+    "Are you drawn more to neutral tones or bold colours?",
+    "Do you prioritise comfort or statement pieces?",
+  ],
+
+  currentStyleDNA:
+    "Sophisticated chic with modern minimalist influences. Strong preference for luxury materials and timeless silhouettes.",
+
   googleCalendarEvents: [
     {
       eventName: "Team Sync Meeting",
@@ -22,75 +36,83 @@ export const mockAnalyzeStyleDNAInput: AnalyzeStyleDNAInput = {
       eventEndDateTime: new Date(now + oneDay + oneHour).toISOString(),
       eventType: "business",
       eventLocation: "10 Downing Street, London",
+      eventCountry: "UK",
     },
     {
       eventName: "Art Gallery Opening",
-      eventStartDateTime: new Date(
-        now + 2 * oneDay + 2 * oneHour,
-      ).toISOString(),
+      eventStartDateTime: new Date(now + 2 * oneDay + 2 * oneHour).toISOString(),
       eventEndDateTime: new Date(now + 2 * oneDay + 4 * oneHour).toISOString(),
       eventType: "social chic",
       eventLocation: "Museum of Modern Art, New York",
+      eventCountry: "USA",
     },
-    {
-      eventName: "Weekend Charity Gala",
-      eventStartDateTime: new Date(
-        now + 3 * oneDay + 19 * oneHour,
-      ).toISOString(),
-      eventEndDateTime: new Date(now + 3 * oneDay + 23 * oneHour).toISOString(),
-      eventType: "formal black-tie",
-      eventLocation: "The Plaza Hotel, New York City",
-    },
-    {
-      eventName: "Client Presentation",
-      eventStartDateTime: new Date(
-        now + 4 * oneDay + 10 * oneHour,
-      ).toISOString(),
-      eventEndDateTime: new Date(
-        now + 4 * oneDay + 11 * oneHour + 30 * 60000,
-      ).toISOString(),
-      eventType: "business professional",
-      eventLocation: "Salesforce Tower, San Francisco",
-    },
-    {
-      eventName: "Fashion Week Show",
-      eventStartDateTime: new Date(
-        now + 5 * oneDay + 15 * oneHour,
-      ).toISOString(),
-      eventEndDateTime: new Date(now + 5 * oneDay + 16 * oneHour).toISOString(),
-      eventType: "fashion event",
-      eventLocation: "Spring Studios, NYC",
-    },
-    {
-      eventName: "Weekend Brunch with Friends",
-      eventStartDateTime: new Date(
-        now + 6 * oneDay + 11 * oneHour,
-      ).toISOString(),
-      eventEndDateTime: new Date(now + 6 * oneDay + 13 * oneHour).toISOString(),
-      eventType: "social brunch",
-      eventLocation: "The Ivy Chelsea Garden, London",
-    },
-  ],
+  ] as GoogleCalendarEvent[],
 };
 
-// Updated to accept user's actual wardrobe and shoe collection data
+/* ============================================================
+   MOCK: Structured wardrobe (AnalyzedItem[])
+   Used by RecommendOutfitInput
+============================================================ */
+
+export const mockAnalyzedWardrobe: AnalyzedItem[] = [
+  {
+    id: "item-1",
+    itemName: "Burberry Trench Coat",
+    itemType: "outerwear",
+    color: "beige",
+    description: "Classic trench coat with a tailored silhouette.",
+    narrativeDescription: "A timeless beige trench that elevates any look.",
+    imageUrl: "/event-placeholder.jpg",
+    imagePath: "wardrobe/burberry-trench.jpg",
+    createdAt: new Date().toISOString(),
+    styleKeywords: ["classic", "tailored", "luxury"],
+  },
+  {
+    id: "item-2",
+    itemName: "Gucci Silk Blouse",
+    itemType: "top",
+    color: "cream",
+    description: "Silk blouse, elegant drape.",
+    narrativeDescription: "A cream silk blouse for polished sophistication.",
+    imageUrl: "/event-placeholder.jpg",
+    imagePath: "wardrobe/gucci-silk-blouse.jpg",
+    createdAt: new Date().toISOString(),
+    styleKeywords: ["elegant", "minimal", "luxury"],
+  },
+  {
+    id: "item-3",
+    itemName: "Saint Laurent Leather Pants",
+    itemType: "bottom",
+    color: "black",
+    description: "Leather trousers with a modern cut.",
+    narrativeDescription: "Black leather trousers with a sharp, modern edge.",
+    imageUrl: "/event-placeholder.jpg",
+    imagePath: "wardrobe/saint-laurent-leather-pants.jpg",
+    createdAt: new Date().toISOString(),
+    styleKeywords: ["edgy", "modern", "statement"],
+  },
+];
+
+/* ============================================================
+   MOCK → RecommendOutfitInput
+============================================================ */
+
 export const getMockRecommendOutfitInput = (
-  styleDna?: string,
+  stylePreferences?: string,
   eventIndex: number = 0,
-  userWardrobeData?: string,
-  userShoeCollectionData?: string,
+  wardrobeOverride?: AnalyzedItem[],
+  shoeCollectionOverride?: string[]
 ): RecommendOutfitInput => {
-  const calendarEvent =
-    mockAnalyzeStyleDNAInput.googleCalendarEvents[
-      eventIndex % mockAnalyzeStyleDNAInput.googleCalendarEvents.length
-    ];
+  const events =
+    mockAnalyzeStyleDNAInput.googleCalendarEvents as GoogleCalendarEvent[];
+
+  const calendarEvent = events[eventIndex % events.length];
 
   const startDate = new Date(calendarEvent.eventStartDateTime);
   const endDate = new Date(calendarEvent.eventEndDateTime);
 
   const formatDate = (date: Date) => {
     return date.toLocaleString(undefined, {
-      // Using undefined for locale to use browser's default
       weekday: "long",
       month: "long",
       day: "numeric",
@@ -100,19 +122,31 @@ export const getMockRecommendOutfitInput = (
     });
   };
 
-  let eventDetailsString = `Upcoming event: ${calendarEvent.eventName} (${calendarEvent.eventType}) from ${formatDate(startDate)} to ${formatDate(endDate)}.`;
+  let eventDetails = `Upcoming event: ${calendarEvent.eventName} (${calendarEvent.eventType}) from ${formatDate(
+    startDate
+  )} to ${formatDate(endDate)}.`;
+
   if (calendarEvent.eventLocation) {
-    eventDetailsString += ` Location: ${calendarEvent.eventLocation}.`;
+    eventDetails += ` Location: ${calendarEvent.eventLocation}.`;
   }
 
   return {
+    wardrobeData: wardrobeOverride ?? mockAnalyzedWardrobe,
+
     shoeCollection:
-      userShoeCollectionData || mockAnalyzeStyleDNAInput.shoeCollectionData,
-    wardrobeData: userWardrobeData || mockAnalyzeStyleDNAInput.wardrobeData,
-    eventDetails: eventDetailsString,
-    weatherConditions: `Current weather: ${mockAnalyzeStyleDNAInput.accuWeatherInfo.temperature}°C, ${mockAnalyzeStyleDNAInput.accuWeatherInfo.condition}.`,
+      shoeCollectionOverride ?? [
+        "Chanel slingbacks",
+        "Manolo Blahnik Hangisi pumps",
+        "Hermès Oran sandals",
+        "Gucci Princetown loafers",
+      ],
+
+    eventDetails,
+
+    weatherConditions:
+      "Current weather: 22°C, partly cloudy with a chance of showers.",
+
     stylePreferences:
-      styleDna ||
-      "Prefers sophisticated chic and modern minimalist styles. Values high-quality materials like silk, cashmere, and fine leather. Enjoys designer pieces from Chanel, Gucci, Saint Laurent, Loro Piana, Max Mara. Color palette includes neutrals, rich jewel tones, and occasional bold accents. Footwear is a key statement.",
+      stylePreferences ?? mockAnalyzeStyleDNAInput.currentStyleDNA,
   };
 };

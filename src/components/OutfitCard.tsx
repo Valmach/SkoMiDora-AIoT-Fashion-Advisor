@@ -30,6 +30,20 @@ export default function OutfitCard({
       "https://placehold.co/400x600?text=Outfit"
     : "https://placehold.co/400x600?text=Loading…";
 
+  /* ============================================================
+     🛠️ SkoMiDora Logic Fix: Numeric Sanitization
+     This ensures the Suitability Score is a pure number for 
+     hardware triggering (Motorized Shelves & LED pulses).
+     ============================================================ */
+  const getNumericScore = (score: any): number => {
+    if (typeof score === 'number') return score;
+    if (typeof score === 'string') return parseFloat(score) || 0;
+    // Fallback for cases where TS detects a function/ReactNode union
+    return 0;
+  };
+
+  const finalScore = getNumericScore(outfit.suitabilityScore);
+
   return (
     <Card className="h-full flex flex-col shadow-md hover:shadow-lg transition-shadow duration-300">
       <CardHeader>
@@ -59,7 +73,10 @@ export default function OutfitCard({
 
         <p className="mt-1 text-[11px] text-muted-foreground">
           Suitability score:{" "}
-          <span className="font-medium">{Math.round(outfit.suitabilityScore)}/100</span>
+          <span className="font-medium">
+            {/* ✅ FIXED: Math.round now receives a guaranteed number */}
+            {Math.round(finalScore)}/100
+          </span>
         </p>
 
         {/* 🖼️ SSR-Safe Image */}

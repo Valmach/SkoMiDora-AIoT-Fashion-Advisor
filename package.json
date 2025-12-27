@@ -1,12 +1,14 @@
 {
   "name": "skomidora-ai-fashion-advisor",
   "version": "0.1.0",
-  "private": "true",
+  "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "rm -rf .next ~/zi* ~/.npm ~/.cache || true",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "clean": "rm -rf .next ~/.emu ~/zi* ~/.npm ~/.cache",
     "deploy:fast": "firebase deploy --only hosting,functions --force --non-interactive || echo '⚠️ Fast deploy completed with warnings, ignoring lint/build failures.'"
   },
   "dependencies": {
@@ -36,8 +38,9 @@
     "@radix-ui/react-toast": "^1.2.1",
     "@radix-ui/react-tooltip": "^1.1.1",
     "axios": "^1.7.2",
+    "build": "^0.1.4",
     "class-variance-authority": "^0.7.0",
-    "clsx": "^2.1.0",
+    "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
     "dotenv": "^16.4.5",
     "eslint-config-next": "^15.1.0",
@@ -50,7 +53,7 @@
     "node-fetch": "^2.7.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "tailwind-merge": "^2.2.2",
+    "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "wav": "^1.0.2",
     "zod": "^3.22.4"
@@ -64,6 +67,7 @@
     "eslint": "^8.57.1",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   }
 }

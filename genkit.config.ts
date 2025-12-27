@@ -1,23 +1,17 @@
 /**
- * @fileoverview This is the Genkit configuration file.
+ * Genkit configuration — Firebase Studio / GCP native
  *
- * It is used to configure the Genkit framework and its plugins.
- * It is also used to load environment variables from the .env file.
+ * IMPORTANT:
+ * - DO NOT pass API keys
+ * - Use Application Default Credentials (ADC)
+ * - Firebase Studio / Cloud Workstations already provide a service account
  */
-import "dotenv/config"; // Load environment variables from .env
 
 import { genkit } from "genkit";
 import { googleAI } from "@genkit-ai/google-genai";
 
-// IMPORTANT: For deployed environments (like Firebase Cloud Functions / App Hosting),
-// GOOGLE_API_KEY MUST be set as an environment variable in that function's/backend's configuration.
-// For local development, this config ensures the GOOGLE_API_KEY is loaded from your .env file.
-const plugins = [
-  googleAI({ apiKey: process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY }), // Enabled Google AI plugin
-];
-
-// If plugins array is empty, Genkit will initialize without specific model providers.
-// AI calls will likely fail, but the server should start if this was the blocking issue.
 export const ai = genkit({
-  plugins: plugins,
+  plugins: [
+    googleAI(), // ✅ NO apiKey — uses ADC
+  ],
 });

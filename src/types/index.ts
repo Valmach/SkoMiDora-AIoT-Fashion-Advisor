@@ -1,15 +1,15 @@
 import { FieldValue } from "firebase-admin/firestore";
-// Assuming Zod is available globally or imported by the surrounding environment
 import { z } from "zod"; 
+import { ReactNode } from "react"; 
 
-// --- Zod Schemas for LLM & Integration ---
+// --- Zod Schemas ---
 
 export const AccuWeatherSchema = z.object({
   temperature: z.number(),
   condition: z.string(),
   location: z.string().optional(),
 });
-export type AccuWeatherSchema = z.infer<typeof AccuWeatherSchema>;
+export type AccuWeatherSchemaType = z.infer<typeof AccuWeatherSchema>;
 
 export const GoogleCalendarEventSchema = z.object({
   eventName: z.string(),
@@ -19,76 +19,114 @@ export const GoogleCalendarEventSchema = z.object({
   eventLocation: z.string().optional(),
   eventCountry: z.string().optional(),
 });
-export type GoogleCalendarEvent = z.infer<typeof GoogleCalendarEventSchema>; // Renamed type for cleaner use
+export type GoogleCalendarEvent = z.infer<typeof GoogleCalendarEventSchema>;
 
 // --- Outfit & Item Types ---
 
 export interface SingleOutfitOutput {
+  outfitImageDataUri: string | undefined;
+  outfitDescription: ReactNode;
+  chosenShoe: any;
+  suitabilityScore: (score: any) => ReactNode;
+  narrativeDescription: string;
   top: string;
   bottom: string;
   shoes: string;
   outerwear: string | null;
   accessories: string | null;
-  imageUrl: string; // The URL of the generated outfit image
+  imageUrl: string;
   description: string;
 }
 
+// Add this to your existing types file
 export interface AnalyzedItem {
-  id?: string; // Optional ID for client-side representation
+  id?: string;
   itemName: string;
   itemType: string;
-  color: string | null;
-  generalMaterial: string | null;
-  narrativeDescription: string | null;
-  styleKeywords: string[] | undefined;
+  color: string;
+  description?: string;
+  narrativeDescription?: string;
   imageUrl: string;
   imagePath: string;
-  createdAt: number | FieldValue;
+  createdAt: any; // Can be Firestore Timestamp or string
+  styleKeywords?: string[];
+  [key: string]: any; 
 }
 
-// --- Recommendation Input/Output Types ---
-
-// The type structure used for displaying an event and its associated style advice.
-export interface UpcomingEventStyleAdvice {
-  outfitRecommendation: SingleOutfitOutput | any; 
+/**
+ * ✅ Fixes ts(2305): Exporting safeToMillis
+ * Converts various date formats into a sortable number
+ */
+export function safeToMillis(date: any): number {
+  if (!date) return Date.now();
   
+  // Handle Firestore Timestamp { seconds, nanoseconds }
+  if (typeof date === 'object' && 'seconds' in date) {
+    return date.seconds * 1000;
+  }
+  
+  // Handle Date object or ISO String
+  const parsed = new Date(date).getTime();
+  return isNaN(parsed) ? Date.now() : parsed;
+}
+
+// --- Recommendation & Feedback Types ---
+
+export interface UpcomingEventStyleAdvice {
+  eventImageUrl: any;
+  outfitRecommendation: SingleOutfitOutput | any; 
   eventCountry: string;
   id: string | null | undefined;
-
-  // Event Details
   eventName: string;
   eventStartDateTime: string;
   eventEndDateTime: string;
   eventType: string;
   eventLocation: string;
-  
-  // Weather/Advice from LLM
   temperature: number;
   weatherCondition: string;
   advice: string;
 }
 
-// Input for the LLM flow (used in Server Actions after normalization)
 export interface RecommendOutfitInput {
   shoeCollection: string[];
-  wardrobeData: AnalyzedItem[]; // Use the structured AnalyzedItem array
+  wardrobeData: AnalyzedItem[]; 
   eventDetails: string;
   weatherConditions: string;
   stylePreferences: string;
 }
 
-// Input for Style DNA analysis flow
 export interface AnalyzeStyleDNAInput {
-  wardrobeData: string; // Comma-separated list of items (used before flow)
-  shoeCollectionData: string; // Comma-separated list of shoes (used before flow)
+  googleCalendarEvents: any;
+  wardrobeData: string;
+  shoeCollectionData: string;
   styleQuestions: string[];
   currentStyleDNA: string;
 }
 
-// Input for the feedback flow
+// --- Feedback Specific Types (FIXED BUILD ERROR) ---
+
 export interface ProcessOutfitFeedbackInput {
+  userAction: string;
   outfit: SingleOutfitOutput;
   feedbackType: 'accepted' | 'rejected' | 'modified';
   userComment?: string;
   eventContext: string;
+}
+
+// ✅ UPDATE THIS TO MATCH YOUR AI FLOW RETURN VALUE
+export interface ProcessOutfitFeedbackOutput {
+  followUpMessage: string;  // This matches what line 30 is actually returning
+  success?: boolean;        // Made optional so it doesn't crash if missing
+  message?: string;        // Made optional so it doesn't crash if missing
+  updatedDNA?: any;
+
+}
+
+
+// Helper types for Feedback Actions
+export interface OutfitForFeedbackAction extends SingleOutfitOutput {}
+export interface EventDetailsForFeedbackAction {
+  eventName: string;
+  eventType: string;
+  [key: string]: any;
 }

@@ -1,84 +1,52 @@
-"use client";
+'use client';
 
-import { createContext, useContext, useState, useEffect } from "react";
-import type { FirebaseApp } from "firebase/app";
-import type { Auth } from "firebase/auth";
-import type { Firestore } from "firebase/firestore";
-import type { FirebaseStorage } from "firebase/storage";
+import { createContext, useContext, useEffect, useState } from 'react';
+import type { User } from 'firebase/auth';
+import { onAuthStateChanged } from 'firebase/auth';
 
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, onAuthStateChanged, signInAnonymously } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
+import { auth, firestore, storage } from '@/lib/firebase';
 
-/* -----------------------------------------------------------
-   SINGLE CLIENT APP INSTANCE (NO DUPLICATES)
------------------------------------------------------------ */
-
-const getClientApp = (): FirebaseApp => {
-  if (getApps().length > 0) return getApp();
-  return initializeApp({
-    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
-    authDomain: "styleai-footwear.firebaseapp.com",
-    projectId: "styleai-footwear",
-    storageBucket: "styleai-footwear.appspot.com",
-    messagingSenderId: "855662411333",
-    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
-  });
+type FirebaseContextValue = {
+  user: User | null;
+  loading: boolean;
+  auth: typeof auth;
+  firestore: typeof firestore;
+  storage: typeof storage;
 };
 
-/* -----------------------------------------------------------
-   CONTEXT
------------------------------------------------------------ */
+const FirebaseContext = createContext<FirebaseContextValue | undefined>(
+  undefined,
+);
 
-type FirebaseServices = {
-  app: FirebaseApp;
-  auth: Auth;
-  firestore: Firestore;
-  storage: FirebaseStorage;
-};
+export function FirebaseProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-const FirebaseContext = createContext<FirebaseServices | null>(null);
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u ?? null);
+      setLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  return (
+    <FirebaseContext.Provider
+      value={{ user, loading, auth, firestore, storage }}
+    >
+      {children}
+    </FirebaseContext.Provider>
+  );
+}
 
 export function useFirebase() {
   const ctx = useContext(FirebaseContext);
   if (!ctx) {
-    throw new Error("useFirebase must be used within a FirebaseProvider");
+    throw new Error('useFirebase must be used within FirebaseProvider');
   }
   return ctx;
-}
-
-/* -----------------------------------------------------------
-   PROVIDER (CLIENT ONLY)
------------------------------------------------------------ */
-
-export function FirebaseProvider({ children }: { children: React.ReactNode }) {
-  const [services, setServices] = useState<FirebaseServices | null>(null);
-
-  useEffect(() => {
-    const app = getClientApp();
-    const auth = getAuth(app);
-    const firestore = getFirestore(app);
-    const storage = getStorage(app);
-
-    setServices({ app, auth, firestore, storage });
-
-    onAuthStateChanged(auth, (u) => {
-      if (!u) {
-        signInAnonymously(auth).catch((err) =>
-          console.error("Anonymous Login Error:", err)
-        );
-      }
-    });
-  }, []);
-
-  if (!services) {
-    return <div className="text-center text-sm opacity-60 p-4">Connecting to Firebase…</div>;
-  }
-
-  return (
-    <FirebaseContext.Provider value={services}>
-      {children}
-    </FirebaseContext.Provider>
-  );
 }

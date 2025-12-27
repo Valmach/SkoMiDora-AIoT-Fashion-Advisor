@@ -1,4 +1,4 @@
-import { getAdmin } from "@/lib/firebase-admin-loader";
+import { getAdmin } from "@/lib/firebase-admin";
 
 export const dynamic = "force-dynamic";
 

@@ -1,4 +1,3 @@
-
 'use client';
 
 export const dynamic = "force-dynamic";
@@ -87,8 +86,9 @@ export default function DashboardPage() {
       try {
         const result = await analyzeStyleDNAAction();
   
+        // FIX: Casting result.styleDNA to string to resolve ts(2322)
         if (result && 'styleDNA' in result && result.styleDNA) {
-          setStyleDNA(result.styleDNA);
+          setStyleDNA(result.styleDNA as string); 
           setAnalysisCompleted(true);
           toast({
             title: "Style DNA Updated!",
@@ -96,8 +96,8 @@ export default function DashboardPage() {
           });
         } else {
           let errorMessage = "Analysis did not return a valid Style DNA.";
-          if (result && 'error' in result) {
-            errorMessage = result.error; // Use the error from the action result
+          if (result && 'error' in result && typeof result.error === 'string') {
+            errorMessage = result.error;
           }
           throw new Error(errorMessage);
         }
@@ -106,7 +106,7 @@ export default function DashboardPage() {
         setAnalysisError(`Analysis Failed: ${errorMessage}`);
         toast({
           title: "Analysis Failed",
-          description: errorMessage || "Could not analyze Style DNA.", // Fallback description
+          description: errorMessage || "Could not analyze Style DNA.",
           variant: "destructive",
         });
       }

@@ -1,9 +1,9 @@
-
+// src/app/layout.tsx
 import type { Metadata } from "next";
 import { Dosis, IBM_Plex_Mono, Kaushan_Script } from "next/font/google";
-import dynamic from "next/dynamic";
 import "./globals.css";
 
+// --- Providers & UI ---
 import { ThemeProvider } from "@/hooks/use-theme";
 import AppSidebar from "@/components/layout/AppSidebar";
 import { Toaster } from "@/components/ui/toaster";
@@ -13,11 +13,13 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import Header from "@/components/layout/Header";
 
-const FirebaseClientProvider = dynamic(
-  () => import("@/firebase/client-provider").then((mod) => mod.FirebaseClientProvider),
-  { ssr: false }
-);
+// ✅ FIX: Import directly. Do NOT use dynamic(..., { ssr: false }) here.
+// The FirebaseClientProvider itself handles client-side safety.
+import { FirebaseClientProvider } from "@/firebase/client-provider";
 
+/* ============================================================
+    FONTS
+============================================================ */
 const dosis = Dosis({ subsets: ["latin"], variable: "--font-dosis" });
 const ibmPlexMono = IBM_Plex_Mono({
   subsets: ["latin"],
@@ -32,11 +34,17 @@ const kaushanScript = Kaushan_Script({
   variable: "--font-kaushan-script",
 });
 
+/* ============================================================
+    METADATA
+============================================================ */
 export const metadata: Metadata = {
   title: "SkoMiDora AIoT Fashion Advisor",
   description: "Your personal AI-powered stylist for footwear and fashion.",
 };
 
+/* ============================================================
+    ROOT LAYOUT
+============================================================ */
 export default function RootLayout({
   children,
 }: {
@@ -56,6 +64,7 @@ export default function RootLayout({
           storageKey="skomidora-theme"
           defaultTheme="dark"
         >
+          {/* ✅ Wrapped directly. This is now safe for Next.js 15 build */}
           <FirebaseClientProvider>
             <TooltipProvider>
               <SidebarProvider>

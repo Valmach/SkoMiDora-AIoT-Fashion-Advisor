@@ -1,282 +1,156 @@
-"use client";
+'use client';
 
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
+import { useEffect, useState } from 'react';
+import { collection, getDocs } from 'firebase/firestore';
+import { firestore } from '@/lib/firebase';
+import { useLocalStorage } from '@/hooks/use-local-storage';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Loader2, Calendar } from 'lucide-react';
 
-import { useState, useEffect, useTransition, useCallback } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
-  Lightbulb,
-  LoaderCircle,
-  Sparkles,
-  AlertTriangle,
-} from "lucide-react";
-import Link from "next/link";
-import { useToast } from "@/hooks/use-toast";
-import { useLocalStorage } from "@/hooks/use-local-storage";
-import { generateOutfitForEventAction } from "@/app/actions";
-import OutfitCard from "@/components/OutfitCard";
-import type {
-  SingleOutfitOutput,
-  AnalyzedItem,
-  GoogleCalendarEvent,
-  RecommendOutfitInput,
-} from "@/types";
-import { safeToMillis } from "@/types";
-import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
-import type { DocumentData } from "firebase/firestore";
-import { useFirebase } from "@/firebase/provider";
-import { mockAnalyzeStyleDNAInput } from "@/lib/mockData";
+import { generateOutfitForEventAction } from '@/app/actions/generate-outfit-for-event';
+import { normalizeWardrobeType } from '@/lib/normalizeWardrobeType';
 
-const STYLE_DNA_LOCAL_STORAGE_KEY = "skomidoraStyleDNA";
+/* -----------------------------------------------------------
+   TYPES
+----------------------------------------------------------- */
+
+type ClosetItem = {
+  id: string;
+  itemName: string;
+  itemType: string;
+};
+
+type OutfitRecommendation = {
+  eventName: string;
+  date: string;
+  styleCategory: string;
+  description: string;
+  footwear: string;
+  suitabilityScore: number;
+  imageUrl: string;
+};
+
+const STYLE_DNA_KEY = 'skomidoraStyleDNA';
+
+/* -----------------------------------------------------------
+   PAGE
+----------------------------------------------------------- */
 
 export default function RecommendationsPage() {
-  const firebase = useFirebase();
-  const [styleDNA] = useLocalStorage<string | null>(
-    STYLE_DNA_LOCAL_STORAGE_KEY,
-    null
-  );
+  const [styleDNA] = useLocalStorage<string | null>(STYLE_DNA_KEY, null);
+  const [closetItems, setClosetItems] = useState<ClosetItem[]>([]);
+  // Changed from string to Array of Recommendations
+  const [recommendations, setRecommendations] = useState<OutfitRecommendation[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const [recommendations, setRecommendations] = useState<
-    SingleOutfitOutput[]
-  >([]);
-  const [isGenerating, startGeneratingTransition] = useTransition();
-  const { toast } = useToast();
-  const [generationError, setGenerationError] = useState<string | null>(null);
+  /* ---------------- LOAD CLOSET ---------------- */
 
-  const [wardrobeItems, setWardrobeItems] = useState<AnalyzedItem[]>([]);
-  const [isDataLoading, setIsDataLoading] = useState(true);
-  const [hasGenerated, setHasGenerated] = useState(false);
-
-  /* ============================
-     FETCH WARDROBE
-  ============================ */
   useEffect(() => {
-    if (!firebase) {
-      setIsDataLoading(false);
-      setGenerationError("Firebase not available");
-      return;
-    }
+    const loadCloset = async () => {
+      const snapshot = await getDocs(
+        collection(firestore, 'publicWardrobeItems'),
+      );
 
-    // 🔥 This query path should be using `__app_id` and `userId` for security in a real application.
-    // For now, retaining the original structure which queries a global collection.
-    const q = query(
-      collection(firebase.firestore, "publicWardrobeItems"),
-      orderBy("createdAt", "desc")
-    );
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const items: AnalyzedItem[] = [];
-        snapshot.forEach((doc: DocumentData) => {
-          const data = doc.data();
-          if (data?.itemName) {
-            items.push({
-              id: doc.id,
-              ...data,
-              createdAt: safeToMillis(data.createdAt),
-            } as AnalyzedItem);
-          }
-        });
-        setWardrobeItems(items);
-        setIsDataLoading(false);
-      },
-      () => {
-        setGenerationError("Failed to load wardrobe");
-        setIsDataLoading(false);
-      }
-    );
-
-    return () => unsubscribe();
-  }, [firebase]);
-
-  /* ============================
-     GENERATE OUTFITS
-  ============================ */
-  const handleGenerateRecommendations = useCallback(() => {
-    if (!styleDNA) {
-      toast({
-        title: "Style DNA Required",
-        description: "Analyze your Style DNA first.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (wardrobeItems.length === 0) {
-      toast({
-        title: "Closet Empty",
-        description: "Add items to your digital closet first.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    startGeneratingTransition(async () => {
-      setRecommendations([]);
-      setGenerationError(null);
-      setHasGenerated(true);
-
-      try {
-        /* ----------------------------
-           NORMALIZE INPUT (THIS FIXES TS2345)
-        ---------------------------- */
-
-        // 1. Create the structured array for shoe collection
-        const shoeCollectionArray: string[] = wardrobeItems
-          .filter((i) => i.itemType === "Shoes")
-          .map((i) => i.itemName);
-
-        // 2. Create the structured array for other wardrobe items
-        const wardrobeDataArray: RecommendOutfitInput["wardrobeData"] =
-          wardrobeItems
-            .filter((i) => i.itemType !== "Shoes")
-            .map((item) => ({
-              itemName: item.itemName,
-              itemType: item.itemType,
-              color: item.color ?? null,
-              generalMaterial: item.generalMaterial ?? null,
-              narrativeDescription: item.narrativeDescription ?? null,
-              styleKeywords: item.styleKeywords ?? [],
-            }));
-
-        const outfitPromises = [0, 1, 2].map(async (index) => {
-          const currentEvent =
-            mockAnalyzeStyleDNAInput.googleCalendarEvents[index % 3];
-
-          // 3. FIX: Construct the input object, stringifying the arrays (shoeCollection & wardrobeData)
-          // to match the expected `RawRecommendOutfitInput` structure where all complex fields are strings.
-          const rawRecommendInput = {
-            shoeCollection: JSON.stringify(shoeCollectionArray),
-            wardrobeData: JSON.stringify(wardrobeDataArray),
-            eventDetails: JSON.stringify(currentEvent),
-            weatherConditions: JSON.stringify({ temperature: 18 + index * 2 }),
-            stylePreferences: JSON.stringify(styleDNA),
-          };
-
-          // Use 'as any' to bypass the local type check on `RecommendOutfitInput` which is known to be
-          // incorrect for the server action's requirement (`RawRecommendOutfitInput`).
-          const result = await generateOutfitForEventAction(rawRecommendInput as any);
-          if ("error" in result) return null;
-          return result;
-        });
-
-        const results = (
-          await Promise.all(outfitPromises)
-        ).filter(Boolean) as SingleOutfitOutput[];
-
-        if (results.length === 0) {
-          setGenerationError("No outfits generated.");
-          return;
+      const items: ClosetItem[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data?.itemName && data?.itemType) {
+          items.push({
+            id: doc.id,
+            itemName: data.itemName,
+            itemType: data.itemType,
+          });
         }
+      });
 
-        setRecommendations(results);
-        toast({
-          title: "Outfits Ready",
-          description: `Generated ${results.length} looks`,
-        });
-      } catch (e: any) {
-        setGenerationError(e.message ?? "Generation failed");
-      }
+      setClosetItems(items);
+    };
+
+    loadCloset();
+  }, []);
+
+  /* ---------------- GENERATE OUTFITS ---------------- */
+
+  const generateOutfit = async () => {
+    if (!styleDNA || closetItems.length === 0) return;
+
+    setLoading(true);
+    setRecommendations([]);
+
+    const normalizedWardrobe = closetItems.map((item) => ({
+      id: item.id,
+      name: item.itemName,
+      type: normalizeWardrobeType(item.itemType),
+    }));
+
+    // This action should now return an array of 3 choices based on Calendar events
+    const result = await generateOutfitForEventAction({
+      wardrobeItems: normalizedWardrobe,
+      styleDNA,
     });
-  }, [styleDNA, wardrobeItems, toast]);
 
-  /* ============================
-     AUTO GENERATE
-  ============================ */
-  useEffect(() => {
-    if (
-      !isDataLoading &&
-      styleDNA &&
-      wardrobeItems.length > 0 &&
-      !hasGenerated &&
-      !isGenerating
-    ) {
-      handleGenerateRecommendations();
+    if (result?.recommendations) {
+      setRecommendations(result.recommendations);
     }
-  }, [
-    isDataLoading,
-    styleDNA,
-    wardrobeItems,
-    hasGenerated,
-    isGenerating,
-    handleGenerateRecommendations,
-  ]);
+    setLoading(false);
+  };
 
-  /* ============================
-     RENDER
-  ============================ */
-
-  const isLoading = isGenerating || isDataLoading;
+  /* ---------------- RENDER ---------------- */
 
   return (
-    <div className="container mx-auto space-y-8">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <Lightbulb className="h-8 w-8" />
-            <div>
-              <CardTitle>Outfits From Your Closet</CardTitle>
-              <CardDescription>
-                AI-generated looks using your actual wardrobe
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
+    <div className="container mx-auto py-10 space-y-8">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold font-calligraphy text-white">Outfit Recommendations</h1>
+        <Button 
+          onClick={generateOutfit} 
+          disabled={loading || !styleDNA}
+          className="bg-destructive hover:bg-destructive/90"
+        >
+          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Calendar className="mr-2 h-4 w-4" />}
+          {loading ? 'Consulting AI...' : 'Generate Calendar Outfits'}
+        </Button>
+      </div>
 
-        <CardContent>
-          <div className="flex justify-end">
-            <Button
-              onClick={handleGenerateRecommendations}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="mr-2 h-4 w-4" />
-              )}
-              Generate Outfits
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {generationError && (
-        <Card className="border-destructive">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <AlertTriangle />
-              <CardTitle>Error</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>{generationError}</CardContent>
+      {!styleDNA && (
+        <Card className="bg-destructive/10 border-destructive/20 text-center py-6">
+          <p className="text-destructive font-medium">
+            Style DNA is required. Please analyze your style on the dashboard first.
+          </p>
         </Card>
       )}
 
-      {recommendations.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {recommendations.map((outfit, index) => (
-            <OutfitCard
-              key={index}
-              outfit={outfit}
-              index={index}
-              eventDetails={
-                mockAnalyzeStyleDNAInput.googleCalendarEvents[
-                  index % 3
-                ] as GoogleCalendarEvent
-              }
-            />
-          ))}
-        </div>
-      )}
+      {/* THREE CARD GRID */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {recommendations.map((rec, index) => (
+          <Card key={index} className="bg-[#0a0a0a] border-zinc-800 text-white overflow-hidden shadow-2xl">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl font-bold">{rec.eventName}</CardTitle>
+              <p className="text-xs text-zinc-400">
+                {rec.date} • <span className="text-zinc-500">{rec.styleCategory}</span>
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-zinc-300 leading-relaxed min-h-[80px]">
+                {rec.description}
+              </p>
+              
+              <div className="space-y-1 py-3 border-t border-zinc-800">
+                <p className="text-[10px] font-bold text-zinc-500 uppercase">Shoe focus: {rec.footwear}</p>
+                <p className="text-[10px] text-zinc-500">Suitability score: {rec.suitabilityScore}/100</p>
+              </div>
+
+              <div className="aspect-[4/5] relative rounded-md overflow-hidden bg-zinc-900">
+                <img 
+                  src={rec.imageUrl} 
+                  alt={rec.eventName}
+                  className="object-cover w-full h-full hover:scale-105 transition-transform duration-500"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }
