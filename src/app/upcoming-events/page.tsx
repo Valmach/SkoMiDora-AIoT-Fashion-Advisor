@@ -4,9 +4,10 @@
  * FILE: src/app/upcoming-events/page.tsx
  *
  * PURPOSE:
- * - Render 3 upcoming event cards
- * - Consume AI recommendations[] correctly
- * - Anchor styling to the user's Digital Closet
+ * - Render 3 upcoming event cards (Paris, London, New York)
+ * - Shoe-first vs outfit-first AI logic
+ * - City-based weather (AccuWeather-ready)
+ * - Clear captions above & below images
  */
 
 import { useEffect, useState } from 'react';
@@ -26,6 +27,52 @@ import { Button } from '@/components/ui/button';
 import UpcomingEventAdviceCard from '@/components/UpcomingEventAdviceCard';
 import { generateOutfitForEventAction } from '@/app/actions/generate-outfit-for-event';
 import type { UpcomingEventStyleAdvice } from '@/types';
+
+/* -----------------------------------------------------------
+   CITY CONFIG
+----------------------------------------------------------- */
+
+const CITY_EVENTS = [
+  {
+    city: 'Paris',
+    country: 'France',
+    image:
+      'https://images.unsplash.com/photo-1502602898657-3e91760cbb34',
+  },
+  {
+    city: 'London',
+    country: 'United Kingdom',
+    image:
+      'https://images.unsplash.com/photo-1469474968028-56623f02e42e',
+  },
+  {
+    city: 'New York',
+    country: 'United States',
+    image:
+      'https://images.unsplash.com/photo-1549924231-f129b911e442',
+  },
+];
+
+/* -----------------------------------------------------------
+   WEATHER (STUB – ACCUWEATHER READY)
+----------------------------------------------------------- */
+
+function getCityWeather(city: string) {
+  switch (city) {
+    case 'Paris':
+      return { temperature: 16, condition: 'Overcast' };
+    case 'London':
+      return { temperature: 14, condition: 'Light Rain' };
+    case 'New York':
+      return { temperature: 19, condition: 'Clear' };
+    default:
+      return { temperature: 18, condition: 'Clear' };
+  }
+}
+
+/* -----------------------------------------------------------
+   PAGE
+----------------------------------------------------------- */
 
 export default function UpcomingEventsPage() {
   const [events, setEvents] = useState<UpcomingEventStyleAdvice[]>([]);
@@ -56,10 +103,20 @@ export default function UpcomingEventsPage() {
         return;
       }
 
-      // 2️⃣ Call AI (returns recommendations[])
+      // 2️⃣ Shoe-first vs outfit-first logic
+      const shoeCount = wardrobeItems.filter(
+        (i) => i.type === 'Shoes',
+      ).length;
+
+      const strategy =
+        shoeCount / wardrobeItems.length > 0.35
+          ? 'shoe-first'
+          : 'outfit-first';
+
+      // 3️⃣ AI call (returns recommendations[])
       const aiResult = await generateOutfitForEventAction({
         wardrobeItems,
-        styleDNA: 'Modern Elegant',
+        styleDNA: `Modern Elegant (${strategy})`,
       });
 
       if (!aiResult?.recommendations) {
@@ -67,38 +124,43 @@ export default function UpcomingEventsPage() {
         return;
       }
 
-      // 3️⃣ Map recommendations → UpcomingEventStyleAdvice
+      // 4️⃣ Map to UpcomingEventStyleAdvice
       const formatted: UpcomingEventStyleAdvice[] =
-        aiResult.recommendations.slice(0, 3).map((rec, index) => ({
-          id: `event-${index}`,
-          eventName: rec.eventName,
-          eventType: rec.styleCategory,
-          advice: rec.description,
+        CITY_EVENTS.map((cityCfg, index) => {
+          const rec = aiResult.recommendations[index];
+          const weather = getCityWeather(cityCfg.city);
 
-          eventImageUrl:
-            rec.imageUrl ??
-            'https://images.unsplash.com/photo-1521334884684-d80222895322',
+          return {
+            id: `event-${cityCfg.city}`,
+            eventName: `${cityCfg.city} Engagement`,
+            eventType: rec?.styleCategory ?? 'Lifestyle',
+            advice: rec?.description ?? 'Curated styling recommendation',
 
-          temperature: 18 + index * 2,
-          weatherCondition: 'Partly Cloudy',
+            eventImageUrl: cityCfg.image,
 
-          eventStartDateTime: new Date(
-            Date.now() + index * 86400000,
-          ).toISOString(),
-          eventEndDateTime: new Date(
-            Date.now() + index * 86400000 + 7200000,
-          ).toISOString(),
+            temperature: weather.temperature,
+            weatherCondition: weather.condition,
 
-          eventLocation: 'Global',
-          eventCountry: 'Global',
+            eventStartDateTime: new Date(
+              Date.now() + index * 86400000,
+            ).toISOString(),
+            eventEndDateTime: new Date(
+              Date.now() + index * 86400000 + 7200000,
+            ).toISOString(),
 
-          outfitRecommendation: {
-            description: rec.description,
-            suitabilityScore: rec.suitabilityScore,
-            reasoning:
-              'Generated from your Digital Closet and event context.',
-          },
-        }));
+            eventLocation: cityCfg.city,
+            eventCountry: cityCfg.country,
+
+            outfitRecommendation: {
+              description: rec?.description ?? '',
+              suitabilityScore: rec?.suitabilityScore ?? 85,
+              reasoning:
+                strategy === 'shoe-first'
+                  ? 'Footwear anchored the outfit selection.'
+                  : 'Outfit silhouette guided footwear pairing.',
+            },
+          };
+        });
 
       setEvents(formatted);
     } catch (err) {
@@ -120,18 +182,18 @@ export default function UpcomingEventsPage() {
      RENDER
   ----------------------------------------------------------- */
   return (
-    <div className="container mx-auto space-y-8 py-10">
+    <div className="container mx-auto space-y-10 py-12">
       <Card className="shadow-2xl">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <CalendarDays className="h-8 w-8 text-primary" />
+            <div className="flex items-center gap-4">
+              <CalendarDays className="h-9 w-9 text-primary" />
               <div>
-                <CardTitle className="text-3xl font-bold">
-                  Upcoming Events & Style Advice
+                <CardTitle className="text-4xl font-bold tracking-tight">
+                  Upcoming Events & Style Intelligence
                 </CardTitle>
-                <CardDescription>
-                  AI styling synced to your calendar and Smart Closet
+                <CardDescription className="text-lg">
+                  City-aware, weather-aware, wardrobe-anchored AI styling
                 </CardDescription>
               </div>
             </div>
@@ -150,11 +212,11 @@ export default function UpcomingEventsPage() {
 
         <CardContent>
           {loading ? (
-            <div className="flex justify-center py-20">
-              <Loader2 className="h-10 w-10 animate-spin text-primary/40" />
+            <div className="flex justify-center py-24">
+              <Loader2 className="h-12 w-12 animate-spin text-primary/40" />
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
               {events.map((event, index) => (
                 <UpcomingEventAdviceCard
                   key={event.id}
@@ -166,7 +228,7 @@ export default function UpcomingEventsPage() {
           )}
 
           {!loading && events.length === 0 && (
-            <p className="text-center text-muted-foreground italic py-16">
+            <p className="text-center text-lg text-muted-foreground italic py-20">
               No upcoming events available.
             </p>
           )}
