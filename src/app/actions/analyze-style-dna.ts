@@ -4,7 +4,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
 /* ============================================================
-   SCHEMAS (STRICT + DEFENSIVE)
+   SCHEMAS (STRICT INPUT, FLEXIBLE OUTPUT)
 ============================================================ */
 
 const AccuWeatherSchema = z.object({
@@ -22,111 +22,75 @@ const GoogleCalendarEventSchema = z.object({
 });
 
 const AnalyzeStyleDNAInputSchema = z.object({
-  wardrobeData: z.string().min(1).default('Assorted wardrobe items'),
-  shoeCollectionData: z.string().min(1).default('Assorted footwear'),
-  accuWeatherInfo: AccuWeatherSchema,
-  googleCalendarEvents: z.array(GoogleCalendarEventSchema).default([]),
+  wardrobeData: z.string().min(1).catch('Assorted wardrobe items'),
+  shoeCollectionData: z.string().min(1).catch('Assorted footwear'),
+  accuWeatherInfo: AccuWeatherSchema.catch({ temperature: 20, condition: 'Clear' }),
+  googleCalendarEvents: z.array(GoogleCalendarEventSchema).catch([]),
 });
 
-export type AnalyzeStyleDNAInput = z.infer<
-  typeof AnalyzeStyleDNAInputSchema
->;
-
-const AnalyzeStyleDNAOutputSchema = z.object({
-  styleDNA: z.string(),
-});
+export type AnalyzeStyleDNAInput = z.infer<typeof AnalyzeStyleDNAInputSchema>;
 
 /* ============================================================
-   FALLBACK (ABSOLUTE LAST RESORT)
+   FALLBACKS & CONSTANTS
 ============================================================ */
 
 const FALLBACK_STYLE_DNA =
   'The client presents a refined, fashion-conscious aesthetic, favouring versatile pieces with an elevated, modern sensibility. Their wardrobe suggests thoughtful curation, balancing comfort and polish, with footwear choices that complement both professional and lifestyle settings.';
 
 /* ============================================================
-   PROMPT (STRICT OUTPUT RULES)
+   PROMPT (SIMPLIFIED FOR STABILITY)
 ============================================================ */
 
-const analyzeStyleDNAPrompt = ai.definePrompt({
+const stylePrompt = ai.definePrompt({
   name: 'analyzeStyleDNAPrompt',
   input: { schema: AnalyzeStyleDNAInputSchema },
-  output: { schema: AnalyzeStyleDNAOutputSchema },
   prompt: `
-You are a personal stylist.
+    You are a luxury personal stylist for the SkoMiDora brand.
+    
+    TASK: Generate a concise "Style DNA" summary.
+    RULES: 
+    - 3-4 sentences maximum. 
+    - British English.
+    - No bullet points, no JSON, no markdown code blocks.
+    - Focus on how their footwear (Shoebox) matches their wardrobe.
 
-CRITICAL RULES:
-- Output MUST be a single plain-text paragraph
-- Use British English
-- DO NOT output JSON
-- DO NOT include bullet points
-- DO NOT repeat input data verbatim
-
-Base your analysis primarily on wardrobe and footwear.
-
-Wardrobe: {{{wardrobeData}}}
-Footwear: {{{shoeCollectionData}}}
-
-Weather: {{{accuWeatherInfo.temperature}}}°C, {{{accuWeatherInfo.condition}}}
-
-Events:
-{{#each googleCalendarEvents}}
-- {{eventName}} ({{eventType}})
-{{/each}}
-
-Return a concise, 3–4 line Style DNA summary.
-`,
+    INPUT DATA:
+    Wardrobe: {{wardrobeData}}
+    Footwear: {{shoeCollectionData}}
+    Weather: {{accuWeatherInfo.temperature}}°C, {{accuWeatherInfo.condition}}
+    Events: {{#each googleCalendarEvents}}{{eventName}} ({{eventType}}), {{/each}}
+  `,
 });
 
 /* ============================================================
-   FLOW (NEVER THROWS)
+   PUBLIC ENTRY (THE TANK-PROOF VERSION)
 ============================================================ */
 
-const analyzeStyleDNAFlow = ai.defineFlow(
-  {
-    name: 'analyzeStyleDNAFlow',
-    inputSchema: AnalyzeStyleDNAInputSchema,
-    outputSchema: AnalyzeStyleDNAOutputSchema,
-  },
-  async (input) => {
-    try {
-      const { output } = await analyzeStyleDNAPrompt(input);
+export async function analyzeStyleDNA(rawInput: unknown): Promise<{ styleDNA: string }> {
+  try {
+    // 1. Defensive Parsing
+    const validated = AnalyzeStyleDNAInputSchema.parse(rawInput || {});
 
-      const text = output?.styleDNA?.trim();
+    // 2. Direct Model Call
+    const response = await stylePrompt(validated);
+    
+    // 3. Robust Text Extraction
+    let text = response.text.trim();
 
-      // 🛡 HARD GUARDRAILS
-      if (
-        !text ||
-        text.length < 40 ||
-        text.startsWith('{') ||
-        text.includes('```')
-      ) {
-        return { styleDNA: FALLBACK_STYLE_DNA };
-      }
+    // 4. Cleanup AI "chatter" or accidental JSON markers
+    text = text.replace(/```json|```|{|}/g, '').trim();
 
-      return {
-        styleDNA: text.replace(/\s+/g, ' '),
-      };
-    } catch (err) {
-      console.error('Style DNA flow failed:', err);
+    // 5. Final Validation Check
+    if (!text || text.length < 20) {
       return { styleDNA: FALLBACK_STYLE_DNA };
     }
-  },
-);
 
-/* ============================================================
-   PUBLIC ENTRY (SAFE)
-============================================================ */
+    return { 
+      styleDNA: text.replace(/\s+/g, ' ') 
+    };
 
-export async function analyzeStyleDNA(
-  rawInput: unknown,
-): Promise<{ styleDNA: string }> {
-  try {
-    const validated =
-      AnalyzeStyleDNAInputSchema.parse(rawInput);
-
-    return await analyzeStyleDNAFlow(validated);
   } catch (err) {
-    console.error('Style DNA validation failed:', err);
+    console.error('CRITICAL: Style DNA Action failed:', err);
     return { styleDNA: FALLBACK_STYLE_DNA };
   }
 }
