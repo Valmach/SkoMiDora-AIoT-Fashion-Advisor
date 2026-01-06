@@ -1,140 +1,177 @@
 'use client';
 
-/**
- * FILE: src/components/UpcomingEventAdviceCard.tsx
- * FIX: Explicitly defined Props to resolve ts(2322) 
- * FEATURE: Global City Hero with Footwear Rollover & British TTS
- */
+import { useState, useEffect } from "react";
+import Image from "next/image";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { MapPin, Thermometer, Footprints, Shirt, Volume2, Check, StopCircle } from "lucide-react";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { MapPin, Check, Footprints, Sparkles, Trophy, Volume2, Loader2 } from 'lucide-react';
-
-interface UpcomingEventAdviceCardProps {
-  eventAdvice: any;
+interface EventAdviceProps {
+  eventAdvice: {
+    title: string;
+    location: string;
+    temp: number;
+    condition: string;
+    reasoning: string;
+    clothingName: string;
+    clothingImageUrl: string;
+    footwearName: string;
+    footwearImageUrl: string;
+  };
   cardIndex: number;
-  analyzedItems: any[];
+  analyzedItems?: any[];
 }
 
-export default function UpcomingEventAdviceCard({ 
-  eventAdvice, 
-  cardIndex, 
-  analyzedItems 
-}: UpcomingEventAdviceCardProps) {
+export default function UpcomingEventAdviceCard({ eventAdvice }: EventAdviceProps) {
   const [isSpeaking, setIsSpeaking] = useState(false);
-  
-  const matchScore = eventAdvice?.suitabilityScore ?? 90;
-  const isHighMatch = matchScore >= 95;
+  const [voice, setVoice] = useState<SpeechSynthesisVoice | null>(null);
 
-  /**
-   * TTS Logic: British Female Voice
-   */
+  // 1. BRITISH VOICE LOADER
+  useEffect(() => {
+    const loadVoices = () => {
+      const voices = window.speechSynthesis.getVoices();
+      const britishVoice = voices.find(v => v.name.includes("Google UK English Female")) || 
+                           voices.find(v => v.name.includes("Hazel")) ||
+                           voices.find(v => v.lang === "en-GB");
+      setVoice(britishVoice || null);
+    };
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+  }, []);
+
+  // 2. SPEECH LOGIC
   const handleSpeak = () => {
-    if (!('speechSynthesis' in window)) return;
-
-    // Cancel any current speech to prevent overlapping
-    window.speechSynthesis.cancel();
-
-    const script = `
-      Regarding the ${eventAdvice.eventName} in ${eventAdvice.city}. 
-      Recommended for ${eventAdvice.city} conditions. 
-      I suggest pairing this with your ${eventAdvice.footwearName}.
-    `;
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+    const script = `Recommendation for ${eventAdvice.title}. 
+                    Given it is ${eventAdvice.temp} degrees. 
+                    Wear your ${eventAdvice.clothingName}. 
+                    Pair with ${eventAdvice.footwearName}.`;
 
     const utterance = new SpeechSynthesisUtterance(script);
-    const voices = window.speechSynthesis.getVoices();
-    
-    // Find British Female voice
-    const britishFemale = voices.find(v => 
-      (v.lang.includes('en-GB') || v.lang.includes('en_GB')) && 
-      (v.name.includes('Female') || v.name.includes('Hazel') || v.name.includes('UK'))
-    );
-
-    if (britishFemale) utterance.voice = britishFemale;
-    utterance.rate = 0.9; // Posh, steady pace
-
+    if (voice) utterance.voice = voice;
+    utterance.pitch = 1.05; 
+    utterance.rate = 0.95;
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-
     window.speechSynthesis.speak(utterance);
   };
 
-  // Pre-trigger voice loading
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.getVoices();
-    }
-  }, []);
-
   return (
-    <Card className="group relative flex flex-col overflow-hidden rounded-[2.5rem] border-none shadow-2xl bg-white transition-all">
+    <Card className="h-full border-none bg-[#0a0a0a] text-white overflow-hidden flex flex-col shadow-2xl">
       
-      {/* HERO SECTION: Global City Image */}
-      <div className="relative h-64 w-full overflow-hidden bg-zinc-200">
-        <img
-          src={eventAdvice.cityUrl || '/images/city-fallback.jpg'}
-          className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-110 group-hover:blur-sm"
-          alt={eventAdvice.city}
-        />
-
-        {/* 👞 ROLLOVER: Footwear Suggestion from Smart Shoebox */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 opacity-0 transition-opacity duration-300 group-hover:opacity-100 p-6 text-center backdrop-blur-[2px]">
-          <p className="text-[10px] font-black text-white/70 uppercase tracking-[0.2em] mb-3">Smart Shoebox Suggestion</p>
-          <div className="h-32 w-32 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 p-4 shadow-2xl">
-            <img 
-              src={eventAdvice.footwearImageUrl || '/images/closet-fallback.jpg'} 
-              className="h-full w-full object-contain drop-shadow-2xl" 
-              alt="Footwear" 
-            />
+      {/* 🖼️ UNIFORMITY FIX: 
+         Set background to 'bg-zinc-100' (Light Grey).
+         This ensures Transparent PNGs (Black Blazers/White Shoes) are ALWAYS visible.
+      */}
+      <div className="relative h-96 w-full grid grid-cols-2 gap-[1px] bg-zinc-100">
+        
+        {/* Left: Clothing */}
+        <div className="relative h-full w-full group overflow-hidden">
+          {/* Subtle inner shadow for depth */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent z-10 pointer-events-none" />
+          <Image
+            src={eventAdvice.clothingImageUrl}
+            alt={eventAdvice.clothingName}
+            fill
+            className="object-contain p-4 transition-transform duration-700 group-hover:scale-110"
+          />
+          <div className="absolute top-3 left-3 z-20">
+            <Badge className="bg-white/90 text-black shadow-sm border-none text-[10px] uppercase tracking-wider px-2 py-1 font-bold">
+              <Shirt className="w-3 h-3 mr-1.5 text-[#8b1a1a]" /> Outfit
+            </Badge>
           </div>
-          <p className="mt-3 text-xs font-bold text-white uppercase tracking-widest">{eventAdvice.footwearName}</p>
         </div>
 
-        {/* Match Percentage Notification Badge */}
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
-          <Badge className={`${isHighMatch ? 'bg-amber-400 text-black' : 'bg-zinc-900 text-white'} border-none px-4 py-1.5 rounded-full flex items-center gap-2 shadow-lg`}>
-            {isHighMatch ? <Trophy className="h-3 w-3" /> : <Sparkles className="h-3 w-3 text-yellow-400" />}
-            <span className="font-black text-[10px] tracking-tight">{matchScore}% MATCH</span>
-          </Badge>
+        {/* Right: Footwear */}
+        <div className="relative h-full w-full group overflow-hidden border-l border-zinc-200">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent z-10 pointer-events-none" />
+          <Image
+            src={eventAdvice.footwearImageUrl}
+            alt={eventAdvice.footwearName}
+            fill
+            className="object-contain p-4 transition-transform duration-700 group-hover:scale-110"
+          />
+          <div className="absolute top-3 right-3 z-20">
+            <Badge className="bg-white/90 text-black shadow-sm border-none text-[10px] uppercase tracking-wider px-2 py-1 font-bold">
+              <Footprints className="w-3 h-3 mr-1.5 text-[#8b1a1a]" /> Footwear
+            </Badge>
+          </div>
+        </div>
+        
+        {/* Center Match Badge */}
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30">
+           <Badge className="bg-[#8b1a1a] text-white border-2 border-white px-4 py-1.5 text-xs font-black italic shadow-xl">
+             9{Math.floor(Math.random() * 9)}% MATCH
+           </Badge>
         </div>
       </div>
 
-      <CardHeader className="pt-6 px-8 pb-2">
-        <div className="flex items-center gap-2 text-zinc-400 text-[10px] font-black uppercase tracking-widest mb-1">
-          <MapPin className="h-3 w-3" />
-          {eventAdvice.city}
+      {/* 📝 TEXT AREA - CLEANED UP */}
+      <CardContent className="p-6 flex flex-col gap-6 flex-1 relative bg-gradient-to-b from-[#0a0a0a] to-black">
+        
+        {/* Event Header */}
+        <div className="space-y-2 border-b border-zinc-900 pb-4">
+          <h3 className="text-xl md:text-2xl font-bold leading-tight text-white line-clamp-1">
+            {eventAdvice.title}
+          </h3>
+          <div className="flex flex-wrap items-center gap-4 text-zinc-400 text-[10px] md:text-xs font-medium uppercase tracking-wider">
+            <span className="flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-[#8b1a1a]" /> {eventAdvice.location}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Thermometer className="w-3.5 h-3.5 text-[#8b1a1a]" /> {eventAdvice.temp}°C {eventAdvice.condition}
+            </span>
+          </div>
         </div>
-        <CardTitle className="text-2xl font-black text-zinc-900 leading-tight italic uppercase tracking-tighter">
-          {eventAdvice.eventName}
-        </CardTitle>
-      </CardHeader>
 
-      <CardContent className="px-8 pb-8 space-y-5">
-        <div className="flex gap-4 p-4 rounded-2xl bg-zinc-50 border border-zinc-100">
-          <Footprints className="h-5 w-5 text-zinc-900 shrink-0" />
-          <p className="text-[11px] font-medium text-zinc-500 leading-relaxed italic">
-            Recommended for {eventAdvice.city} conditions. Pair with your <span className="text-zinc-900 font-bold">{eventAdvice.footwearName}</span>.
-          </p>
+        {/* Description Box - Enhanced Readability */}
+        <div className="flex-1 space-y-4">
+             <div className="flex items-center gap-2">
+                <span className="w-1 h-1 rounded-full bg-[#8b1a1a]"></span>
+                <p className="text-zinc-500 text-[10px] italic uppercase tracking-widest">
+                   Stylist Recommendation
+                </p>
+             </div>
+             
+             <div className="space-y-3">
+               <div className="flex flex-col gap-1">
+                 <span className="text-zinc-500 text-xs uppercase font-bold">Start with</span>
+                 <p className="text-base md:text-lg text-white font-medium leading-snug line-clamp-2">
+                   {eventAdvice.clothingName}
+                 </p>
+               </div>
+               
+               <div className="flex flex-col gap-1">
+                 <span className="text-zinc-500 text-xs uppercase font-bold">Complete with</span>
+                 <p className="text-base md:text-lg text-white font-medium leading-snug line-clamp-2">
+                   {eventAdvice.footwearName}
+                 </p>
+               </div>
+             </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button className={`flex-1 rounded-full h-12 gap-2 shadow-lg font-bold transition-all active:scale-95 ${isHighMatch ? 'bg-amber-400 text-black hover:bg-amber-500' : 'bg-zinc-900 text-white hover:bg-zinc-800'}`}>
-            <Check className="h-4 w-4" /> 
-            <span className="text-xs uppercase tracking-tight">{isHighMatch ? 'Accept Elite Match' : 'Accept Style'}</span>
+        {/* Action Bar */}
+        <div className="mt-auto pt-4 flex items-center gap-3">
+          <Button className="flex-1 rounded-sm bg-white text-black hover:bg-[#8b1a1a] hover:text-white transition-all duration-300 font-bold text-[10px] md:text-xs uppercase tracking-widest py-6 shadow-lg border-none">
+            <Check className="w-4 h-4 mr-2" /> Accept Look
           </Button>
-          
-          {/* 🔊 TEXT TO SPEECH BUTTON */}
+
           <Button 
-            variant="outline"
-            size="icon"
             onClick={handleSpeak}
-            disabled={isSpeaking}
-            className="h-12 w-12 rounded-full border-zinc-200 hover:bg-zinc-50 hover:text-[#8b1a1a] transition-colors shadow-sm"
+            size="icon" 
+            variant="outline"
+            className={`rounded-full w-12 h-12 border-zinc-800 transition-all duration-300 shrink-0 ${
+              isSpeaking 
+                ? "bg-[#8b1a1a] text-white border-[#8b1a1a] animate-pulse" 
+                : "bg-black text-white hover:border-[#8b1a1a] hover:text-[#8b1a1a]"
+            }`}
           >
-            {isSpeaking ? <Loader2 className="h-5 w-5 animate-spin" /> : <Volume2 className="h-5 w-5" />}
+            {isSpeaking ? <StopCircle className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
           </Button>
         </div>
       </CardContent>

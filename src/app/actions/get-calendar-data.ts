@@ -6,82 +6,90 @@ export async function getCalendarDataAction(wardrobeItems: any[]) {
   const SERP_API_KEY = process.env.SERP_API_KEY;
 
   try {
-    console.log(`🔍 AI Stylist: Received ${wardrobeItems.length} items.`);
+    console.log(`🔍 AI Processing: ${wardrobeItems.length} items`);
 
-    // 1. IMPROVED FILTER LOGIC
-    // We explicitly define "Footwear" and treat EVERYTHING else as "Clothing"
-    // This ensures dresses, tops, accessories, etc. are never ignored.
-    const footwearKeywords = ['shoe', 'boot', 'sandal', 'heel', 'pump', 'sneaker', 'loafer', 'flat', 'wedge', 'footwear'];
+    // 1. ROBUST SPLIT: Single Pass Loop (Fixes "Missing Clothing" Bug)
+    const shoes: any[] = [];
+    let clothing: any[] = [];
     
-    const shoes = wardrobeItems.filter(item => {
-      const type = (item.itemType || "").toLowerCase();
-      const cat = (item.category || "").toLowerCase();
-      const name = (item.itemName || "").toLowerCase();
-      return footwearKeywords.some(k => type.includes(k) || cat.includes(k) || name.includes(k));
+    // Define what "looks like a shoe"
+    const footwearKeywords = ['shoe', 'boot', 'sandal', 'heel', 'pump', 'sneaker', 'loafer', 'flat', 'wedge', 'footwear', 'slippers', 'trainer', 'slide'];
+
+    wardrobeItems.forEach(item => {
+      const text = (item.itemType + " " + item.category + " " + item.itemName).toLowerCase();
+      const isFootwear = footwearKeywords.some(k => text.includes(k));
+
+      if (isFootwear) {
+        shoes.push(item);
+      } else {
+        clothing.push(item);
+      }
     });
 
-    // 🏆 "Non-Shoes" = Clothing (Simple and safe)
-    const clothing = wardrobeItems.filter(item => !shoes.includes(item));
+    console.log(`📊 Split Result: ${shoes.length} Shoes | ${clothing.length} Clothing Items`);
 
-    console.log(`📊 Split: ${shoes.length} Shoes, ${clothing.length} Clothing items.`);
+    // ⚠️ EMERGENCY FALLBACK:
+    // If we found NO clothes (maybe everything is labeled "shoe"?), use the shoes as clothes.
+    // This prevents the "Gray Box" error.
+    if (clothing.length === 0 && shoes.length > 0) {
+      console.warn("⚠️ No clothing identified. Using shoes as fallback to prevent empty cards.");
+      clothing = [...shoes];
+    }
 
-    // 2. Fetch Events (Real or Mock)
-    let rawEvents = [];
+    // 2. MOCK EVENTS (Guarantees 3 cards even if API fails)
+    let rawEvents = [
+        { title: "London Design Week", address: ["London, UK"], event_id: "mock-1" },
+        { title: "Vogue Fashion Night", address: ["Soho, London"], event_id: "mock-2" },
+        { title: "Tech & Style Summit", address: ["Shoreditch"], event_id: "mock-3" }
+    ];
+
     try {
       if (SERP_API_KEY) {
         const serpUrl = `https://serpapi.com/search.json?engine=google_events&q=Fashion+Events+London&api_key=${SERP_API_KEY}`;
-        const response = await fetch(serpUrl, { next: { revalidate: 3600 } }); 
+        const response = await fetch(serpUrl, { next: { revalidate: 3600 } });
         const data = await response.json();
-        rawEvents = data.events_results || [];
+        if (data.events_results && data.events_results.length > 0) {
+            rawEvents = data.events_results.slice(0, 3);
+        }
       }
-    } catch (apiError) {
-      console.warn("⚠️ API Failed, using Mock Data");
-    }
+    } catch (e) { console.warn("API Error, using mocks."); }
 
-    // Mock Fallback
-    if (rawEvents.length === 0) {
-      rawEvents = [
-        { title: "London Fashion Week Opening", address: ["London, UK"], event_id: "mock-1" },
-        { title: "Vogue Networking Night", address: ["Soho, London"], event_id: "mock-2" },
-        { title: "Sustainable Style Gala", address: ["Shoreditch, London"], event_id: "mock-3" }
-      ];
-    }
+    // 3. BUILD 3 CARDS
+    const cards = await Promise.all(rawEvents.map(async (event: any, index: number) => {
+      const city = event.address?.[0] || 'London';
+      let climate = { temp: 15, condition: "Cloudy" };
+      try { climate = await getCityWeather(city); } catch (e) {}
 
-    // 3. Match Events to Outfits
-    return await Promise.all(
-      rawEvents.slice(0, 3).map(async (event: any, index: number) => {
-        const city = event.address?.[0] || 'London';
+      // 🔄 MODULO SELECTION: Ensures we never run out of items.
+      const shoeItem = shoes.length > 0 ? shoes[index % shoes.length] : null;
+      const clothItem = clothing.length > 0 ? clothing[index % clothing.length] : null;
+
+      // 🛡️ FINAL FALLBACK IMAGES
+      const clothImg = clothItem?.imageUrl || "https://placehold.co/400x600/2a2a2a/FFF?text=Add+Clothing";
+      const shoeImg = shoeItem?.imageUrl || "https://placehold.co/400x600/2a2a2a/FFF?text=Add+Shoes";
+
+      return {
+        id: event.event_id || `rec-${index}`,
+        title: event.title,
+        location: city,
+        temp: climate.temp || 15,
+        condition: climate.condition || "Good",
         
-        let climate = { temp: 15, condition: "Cloudy" }; 
-        try {
-           climate = await getCityWeather(city);
-        } catch (e) { /* ignore */ }
+        // Pass full names for Text-to-Speech readability
+        clothingName: clothItem?.itemName || "Signature Look",
+        clothingImageUrl: clothImg,
+        
+        footwearName: shoeItem?.itemName || "Statement Pair",
+        footwearImageUrl: shoeImg,
+        
+        reasoning: `Curated for ${event.title} in ${city}.`
+      };
+    }));
 
-        // 🏆 CYCLICAL SELECTION
-        // If you only have 1 dress, it will use it for all 3 events (instead of leaving 2 blank)
-        const selectedShoe = shoes.length > 0 ? shoes[index % shoes.length] : null;
-        const selectedOutfit = clothing.length > 0 ? clothing[index % clothing.length] : null;
+    return cards;
 
-        return {
-          id: event.event_id || `rec-${index}`,
-          title: event.title,
-          location: city,
-          temp: climate.temp || 15,
-          condition: climate.condition || "Moderate",
-          
-          // 🛡️ DISPLAY LOGIC
-          clothingName: selectedOutfit?.itemName || "Signature Look",
-          clothingImageUrl: selectedOutfit?.imageUrl || "https://placehold.co/400x600?text=No+Clothing+Found", 
-          
-          footwearName: selectedShoe?.itemName || "Statement Shoes",
-          footwearImageUrl: selectedShoe?.imageUrl || "https://placehold.co/400x600?text=No+Shoes+Found",
-          
-          reasoning: `Curated for ${event.title} in ${city}.`
-        };
-      })
-    );
   } catch (error) {
-    console.error("❌ Critical AI Error:", error);
+    console.error("❌ CRITICAL ERROR:", error);
     return [];
   }
 }
