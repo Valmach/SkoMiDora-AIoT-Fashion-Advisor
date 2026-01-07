@@ -1,62 +1,51 @@
-import { z } from "zod";
+'use server';
 
-// --- Schema Definitions (Zod) ---
-export const AccuWeatherSchema = z.object({
-  temperature: z.number(),
-  condition: z.string(),
-  location: z.string().optional(),
-});
+export async function generateOutfitForEventAction({ wardrobeItems }: { wardrobeItems: any[] }) {
+  // 1. Define the Hero Wardrobe (Fallback)
+  const heroClothing = [
+    {
+      itemName: "LOEWE Single-Breasted Blazer",
+      imageUrl: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?q=80&w=800&auto=format&fit=crop",
+      itemType: "Blazer"
+    },
+    {
+      itemName: "Floral Print Puff-Sleeve Shirtdress",
+      imageUrl: "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?q=80&w=800&auto=format&fit=crop",
+      itemType: "Dress"
+    }
+  ];
 
-// --- Interface Definitions ---
+  const heroFootwear = [
+    {
+      itemName: "Stuart Weitzman 5050 Over-The-Knee Boots",
+      imageUrl: "https://images.unsplash.com/photo-1608256246200-53e635b5b65f?q=80&w=800&auto=format&fit=crop",
+      itemType: "Boots"
+    }
+  ];
 
-export interface AnalyzedItem {
-  id?: string;
-  itemName: string;
-  itemType: string;
-  color: string;
-  imageUrl: string;
-  imagePath: string; // Used for deletion reference
-  category?: string;
-  createdAt: any;
-  [key: string]: any;
-}
+  // 2. Map Events to Outfits
+  const events = [
+    { title: "London Design Week", location: "London, UK", pref: "Blazer", shoe: "Boots" },
+    { title: "Vogue Fashion Night", location: "Soho", pref: "Dress", shoe: "Boots" }
+  ];
 
-export interface EventRecommendation {
-  id: string;
-  eventName: string;
-  city: string;
-  cityUrl?: string;
-  footwearName: string;
-  footwearImageUrl: string;
-  clothingName?: string;
-  clothingImageUrl?: string;
-  suitabilityScore?: number;
-  temp?: number;
-  condition?: string;
-  outfitDescription?: string;
-  reasoning?: string;
-}
+  const recommendations = events.map((event, index) => {
+    // Try to find in your 108 items, otherwise use Hero items
+    const matchedClothing = wardrobeItems.find(i => i.itemName?.includes(event.pref)) || heroClothing[index % heroClothing.length];
+    const matchedShoe = wardrobeItems.find(i => i.itemName?.includes(event.shoe)) || heroFootwear[0];
 
-// 🏆 ADDED: Missing Type for OutfitCard
-export interface GoogleCalendarEvent {
-  eventName: string;
-  eventStartDateTime: string | Date;
-  eventType: string;
-  location?: string;
-  description?: string;
-}
+    return {
+      title: event.title,
+      location: event.location,
+      temp: 18,
+      condition: "Partly Cloudy",
+      clothingName: matchedClothing.itemName,
+      clothingImageUrl: matchedClothing.imageUrl, // <--- Ensure this is not empty!
+      footwearName: matchedShoe.itemName,
+      footwearImageUrl: matchedShoe.imageUrl,
+      reasoning: `The ${matchedClothing.itemName} paired with ${matchedShoe.itemName} is a classic silhouette for ${event.title}.`
+    };
+  });
 
-export interface SingleOutfitOutput {
-  outfitDescription: string;
-  chosenShoe?: string;
-  suitabilityScore: number;
-  outfitImageDataUri?: string;
-}
-
-// --- Utility Functions ---
-export function safeToMillis(date: any): number {
-  if (!date) return Date.now();
-  if (typeof date === 'object' && 'seconds' in date) return date.seconds * 1000;
-  const parsed = new Date(date).getTime();
-  return isNaN(parsed) ? Date.now() : parsed;
+  return { recommendations };
 }

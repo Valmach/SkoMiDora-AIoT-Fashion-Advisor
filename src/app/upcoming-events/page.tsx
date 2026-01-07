@@ -1,117 +1,110 @@
 'use client';
 
-/**
- * FILE: src/app/upcoming-events/page.tsx
- * NAME: Google Events Calendar (Camel Case & Refined Scale)
- * THEME: Dashboard Noir & Crimson | FONT: Alegreya
- */
+import { useState, useEffect } from 'react';
+import Image from 'next/image';
+import { Thermometer, MapPin, Volume2, Loader2 } from 'lucide-react';
 
-import { useState, useEffect, useTransition } from 'react';
-import { Button } from "@/components/ui/button";
-import { CalendarDays, RotateCcw, Loader2 } from 'lucide-react';
-import { collection, onSnapshot, query, orderBy, Timestamp } from 'firebase/firestore';
-import { firestore } from '@/lib/firebase';
+interface EventAdvice {
+  title: string;
+  location: string;
+  temp: number;
+  condition: string;
+  clothingName: string;
+  clothingImageUrl: string;
+  footwearName: string;
+  footwearImageUrl: string;
+  reasoning: string;
+}
 
-import { generateOutfitForEventAction } from '@/app/actions';
-import UpcomingEventAdviceCard from '@/components/UpcomingEventAdviceCard';
-import { useToast } from "@/hooks/use-toast";
+export default function UpcomingEventAdviceCard({ 
+  eventAdvice, 
+  cardIndex 
+}: { 
+  eventAdvice: EventAdvice; 
+  cardIndex: number 
+}) {
+  const [hasMounted, setHasMounted] = useState(false);
 
-export default function UpcomingEventsPage() {
-  const [isClient, setIsClient] = useState(false);
-  const [events, setEvents] = useState<any[]>([]);
-  const [wardrobeItems, setWardrobeItems] = useState<any[]>([]);
-  const [isPending, startTransition] = useTransition();
-  const { toast } = useToast();
-
-  useEffect(() => { setIsClient(true); }, []);
-
-  // 1. Real-time Shoebox Sync [cite: 2025-12-16]
+  // 🛡️ HYDRATION FIX: Wait for client mount
   useEffect(() => {
-    if (!isClient) return;
-    const q = query(collection(firestore, 'publicWardrobeItems'), orderBy('createdAt', 'desc'));
-    return onSnapshot(q, (snapshot) => {
-      const items = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt instanceof Timestamp ? doc.data().createdAt.toMillis() : Date.now(),
-      }));
-      setWardrobeItems(items);
-    });
-  }, [isClient]);
+    setHasMounted(true);
+  }, []);
 
-  // 2. Refresh Action
-  const handleRefreshCalendar = () => {
-    if (wardrobeItems.length === 0) return;
-    startTransition(async () => {
-      try {
-        const result = await generateOutfitForEventAction({ wardrobeItems });
-        if (result?.recommendations) {
-          setEvents(result.recommendations);
-          toast({ title: "Calendar Synced", description: "Weather and events updated via Open-Meteo." });
-        }
-      } catch (err: any) {
-        toast({ title: "Sync Failed", description: "Check connection.", variant: "destructive" });
-      }
-    });
+  const speakAdvice = (text: string) => {
+    if (typeof window === 'undefined') return;
+    const utterance = new SpeechSynthesisUtterance(text);
+    const voices = window.speechSynthesis.getVoices();
+    const ukVoice = voices.find(v => v.name.includes("Google UK English Female") || v.lang === "en-GB");
+    if (ukVoice) utterance.voice = ukVoice;
+    window.speechSynthesis.speak(utterance);
   };
 
-  if (!isClient) return null;
+  if (!hasMounted) {
+    return <div className="h-[500px] w-full bg-zinc-900/20 border border-zinc-800 rounded-2xl animate-pulse" />;
+  }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white" style={{ fontFamily: "'Alegreya', serif" }}>
-      <div className="container mx-auto py-12 px-6">
-        
-        {/* REFINED HEADER: Smaller & Camel Case */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-16 gap-8 border-b border-zinc-900 pb-10">
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-               <div className="bg-[#8b1a1a] p-1.5 rounded-sm shadow-md">
-                  <CalendarDays className="h-4 w-4 text-white" />
-               </div>
-               <span className="text-[9px] font-bold uppercase tracking-[0.4em] text-[#8b1a1a]">
-                 SkomiDora Intelligence
-               </span>
-            </div>
-            
-            {/* 🐫 Camel Case & Scaled Down Title */}
-            <h1 className="text-3xl md:text-4xl font-black italic tracking-tight text-white">
-              Google <span className="text-[#8b1a1a]">Events Calendar</span>
-            </h1>
-            
-            {/* ⚪ Picket Fence White Description */}
-            <p className="text-white text-xs font-medium max-w-lg italic leading-relaxed opacity-95">
-              Your personal AI-powered stylist for footwear and fashion. Mapping your shoebox inventory to premier global destinations.
-            </p>
+    <div className="flex flex-col h-full bg-[#0d0d0d] border border-zinc-800 rounded-2xl overflow-hidden group transition-all hover:border-[#8b1a1a]/40">
+      
+      {/* CLOTHING SECTION (Loewe Blazer Slot) */}
+      <div className="relative h-64 w-full bg-zinc-950">
+        {/* 🛡️ EMPTY STRING GUARD */}
+        {eventAdvice.clothingImageUrl && eventAdvice.clothingImageUrl.trim() !== "" ? (
+          <Image
+            src={eventAdvice.clothingImageUrl}
+            alt={eventAdvice.clothingName}
+            fill
+            className="object-cover transition-transform duration-700 group-hover:scale-105"
+            priority={cardIndex < 3}
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full text-zinc-800">
+             <span className="text-xl">👗</span>
+             <p className="text-[9px] uppercase tracking-widest font-bold">Syncing Wardrobe</p>
           </div>
+        )}
+        <div className="absolute top-4 left-4 z-20 bg-black/70 backdrop-blur-md px-3 py-1 rounded-sm border border-white/10 text-white text-[9px] font-black uppercase tracking-widest">
+          Style selection
+        </div>
+      </div>
 
-          <Button 
-            onClick={handleRefreshCalendar} 
-            disabled={isPending}
-            className="rounded-sm bg-[#8b1a1a] text-white px-6 py-4 h-auto hover:bg-[#a31f1f] transition-all shadow-lg font-bold italic text-xs uppercase tracking-wider border-none"
-          >
-            {isPending ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="mr-2 h-3.5 w-3.5" />}
-            Update Style Logic
-          </Button>
+      <div className="p-6 flex flex-col flex-grow space-y-4">
+        <div className="flex justify-between items-start">
+          <div className="space-y-1">
+            <h3 className="text-xl font-bold italic text-white">{eventAdvice.title}</h3>
+            <div className="flex items-center gap-1.5 text-zinc-500 text-[10px] uppercase tracking-wider">
+              <MapPin className="h-3 w-3 text-[#8b1a1a]" /> {eventAdvice.location}
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="flex items-center justify-end gap-1 text-[#8b1a1a] font-black text-sm">
+              <Thermometer className="h-3.5 w-3.5" /> {eventAdvice.temp}°C
+            </div>
+            <div className="text-[9px] text-zinc-600 uppercase font-bold">{eventAdvice.condition}</div>
+          </div>
         </div>
 
-        {/* GALLERY GRID */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
-          {events.length > 0 ? (
-            events.map((event, index) => (
-              <UpcomingEventAdviceCard 
-                key={index} 
-                eventAdvice={event} 
-                cardIndex={index}
-                analyzedItems={wardrobeItems} 
-              />
-            ))
-          ) : (
-            <div className="col-span-full py-32 text-center border border-dashed border-zinc-900 bg-[#0a0a0a]">
-              <p className="text-zinc-500 font-medium italic text-base">
-                No active events found. Sync your Google Events via SerpApi to begin.
-              </p>
-            </div>
-          )}
+        <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-900">
+          <p className="text-zinc-400 text-xs leading-relaxed italic">"{eventAdvice.reasoning}"</p>
+          <button onClick={() => speakAdvice(eventAdvice.reasoning)} className="mt-3 flex items-center gap-2 text-[#8b1a1a] hover:text-white transition-colors">
+            <Volume2 className="h-3.5 w-3.5" />
+            <span className="text-[9px] font-black uppercase tracking-widest">Play Stylist Note</span>
+          </button>
+        </div>
+
+        {/* FOOTWEAR SECTION (Stuart Weitzman Slot) */}
+        <div className="mt-auto pt-4 border-t border-zinc-900 flex items-center gap-4">
+          <div className="relative h-14 w-14 rounded-lg overflow-hidden border border-zinc-800 bg-zinc-900">
+            {eventAdvice.footwearImageUrl && eventAdvice.footwearImageUrl.trim() !== "" ? (
+              <Image src={eventAdvice.footwearImageUrl} alt="Shoes" fill className="object-cover" />
+            ) : (
+              <div className="h-full w-full bg-zinc-800 flex items-center justify-center text-xs">👢</div>
+            )}
+          </div>
+          <div>
+            <span className="text-[8px] text-[#8b1a1a] font-bold uppercase tracking-widest">Recommended</span>
+            <p className="text-xs font-bold text-white">{eventAdvice.footwearName}</p>
+          </div>
         </div>
       </div>
     </div>
