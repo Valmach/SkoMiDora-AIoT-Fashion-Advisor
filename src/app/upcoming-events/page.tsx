@@ -1,110 +1,155 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import Image from 'next/image';
-import { Thermometer, MapPin, Volume2, Loader2 } from 'lucide-react';
+import { useState, useEffect, useTransition } from 'react';
+import {
+  collection,
+  onSnapshot,
+  query,
+  orderBy,
+  Timestamp,
+} from 'firebase/firestore';
 
-interface EventAdvice {
-  title: string;
-  location: string;
-  temp: number;
-  condition: string;
-  clothingName: string;
-  clothingImageUrl: string;
-  footwearName: string;
-  footwearImageUrl: string;
-  reasoning: string;
-}
+// ✅ FIX: Import 'firestore' and alias it as 'db' to match your code
+import { firestore as db } from '@/lib/firebase'; 
+import { getCalendarDataAction } from '@/app/actions/get-calendar-data';
+import UpcomingEventAdviceCard from '@/components/UpcomingEventAdviceCard';
 
-export default function UpcomingEventAdviceCard({ 
-  eventAdvice, 
-  cardIndex 
-}: { 
-  eventAdvice: EventAdvice; 
-  cardIndex: number 
-}) {
-  const [hasMounted, setHasMounted] = useState(false);
+import { Loader2, Sparkles, RefreshCcw, Mic } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
-  // 🛡️ HYDRATION FIX: Wait for client mount
+export default function UpcomingEventsPage() {
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [closet, setCloset] = useState<any[]>([]);
+  const [isPending, startTransition] = useTransition();
+  const [closetLoaded, setClosetLoaded] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+
+  // =====================================================
+  // 1. LIVE WIRE: Single Firestore Listener (Closet only)
+  // =====================================================
   useEffect(() => {
-    setHasMounted(true);
+    // 🛡️ Safety Check: Ensure db is initialized
+    if (!db) return;
+
+    const q = query(
+      collection(db, 'publicWardrobeItems'),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const items = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          createdAt:
+            data.createdAt instanceof Timestamp
+              ? data.createdAt.toMillis()
+              : Date.now(),
+        };
+      });
+
+      setCloset(items);
+
+      // Server Action → force 3 recommendations
+      startTransition(async () => {
+        const data = await getCalendarDataAction(items);
+        setRecommendations(data);
+        setClosetLoaded(true);
+      });
+    });
+
+    return () => unsubscribe(); // ✅ clean listener
   }, []);
 
-  const speakAdvice = (text: string) => {
-    if (typeof window === 'undefined') return;
-    const utterance = new SpeechSynthesisUtterance(text);
-    const voices = window.speechSynthesis.getVoices();
-    const ukVoice = voices.find(v => v.name.includes("Google UK English Female") || v.lang === "en-GB");
-    if (ukVoice) utterance.voice = ukVoice;
-    window.speechSynthesis.speak(utterance);
+  // =====================================================
+  // UI CONTROLS
+  // =====================================================
+  const handleMicClick = () => {
+    setIsListening((prev) => !prev);
+    if (!isListening) {
+      console.log('Listening for commands...');
+    }
   };
 
-  if (!hasMounted) {
-    return <div className="h-[500px] w-full bg-zinc-900/20 border border-zinc-800 rounded-2xl animate-pulse" />;
-  }
-
+  // =====================================================
+  // RENDER
+  // =====================================================
   return (
-    <div className="flex flex-col h-full bg-[#0d0d0d] border border-zinc-800 rounded-2xl overflow-hidden group transition-all hover:border-[#8b1a1a]/40">
-      
-      {/* CLOTHING SECTION (Loewe Blazer Slot) */}
-      <div className="relative h-64 w-full bg-zinc-950">
-        {/* 🛡️ EMPTY STRING GUARD */}
-        {eventAdvice.clothingImageUrl && eventAdvice.clothingImageUrl.trim() !== "" ? (
-          <Image
-            src={eventAdvice.clothingImageUrl}
-            alt={eventAdvice.clothingName}
-            fill
-            className="object-cover transition-transform duration-700 group-hover:scale-105"
-            priority={cardIndex < 3}
-          />
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full text-zinc-800">
-             <span className="text-xl">👗</span>
-             <p className="text-[9px] uppercase tracking-widest font-bold">Syncing Wardrobe</p>
-          </div>
-        )}
-        <div className="absolute top-4 left-4 z-20 bg-black/70 backdrop-blur-md px-3 py-1 rounded-sm border border-white/10 text-white text-[9px] font-black uppercase tracking-widest">
-          Style selection
-        </div>
-      </div>
-
-      <div className="p-6 flex flex-col flex-grow space-y-4">
-        <div className="flex justify-between items-start">
-          <div className="space-y-1">
-            <h3 className="text-xl font-bold italic text-white">{eventAdvice.title}</h3>
-            <div className="flex items-center gap-1.5 text-zinc-500 text-[10px] uppercase tracking-wider">
-              <MapPin className="h-3 w-3 text-[#8b1a1a]" /> {eventAdvice.location}
+    <div className="min-h-screen bg-black text-white p-8 lg:p-16">
+      <div className="max-w-7xl mx-auto">
+        {/* HEADER */}
+        <header className="flex flex-col md:flex-row justify-between items-end mb-12 border-b border-zinc-800 pb-8 gap-6">
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 text-zinc-300">
+              <Sparkles
+                size={24}
+                className={
+                  isListening
+                    ? 'animate-pulse text-red-500'
+                    : 'text-zinc-300'
+                }
+              />
+              <span className="text-sm font-bold uppercase tracking-[0.3em]">
+                SkomiDora Intelligence
+              </span>
             </div>
-          </div>
-          <div className="text-right">
-            <div className="flex items-center justify-end gap-1 text-[#8b1a1a] font-black text-sm">
-              <Thermometer className="h-3.5 w-3.5" /> {eventAdvice.temp}°C
-            </div>
-            <div className="text-[9px] text-zinc-600 uppercase font-bold">{eventAdvice.condition}</div>
-          </div>
-        </div>
 
-        <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-900">
-          <p className="text-zinc-400 text-xs leading-relaxed italic">"{eventAdvice.reasoning}"</p>
-          <button onClick={() => speakAdvice(eventAdvice.reasoning)} className="mt-3 flex items-center gap-2 text-[#8b1a1a] hover:text-white transition-colors">
-            <Volume2 className="h-3.5 w-3.5" />
-            <span className="text-[9px] font-black uppercase tracking-widest">Play Stylist Note</span>
-          </button>
-        </div>
+            <h1 className="text-4xl font-bold text-white uppercase tracking-tight">
+              Upcoming Events
+            </h1>
+          </div>
 
-        {/* FOOTWEAR SECTION (Stuart Weitzman Slot) */}
-        <div className="mt-auto pt-4 border-t border-zinc-900 flex items-center gap-4">
-          <div className="relative h-14 w-14 rounded-lg overflow-hidden border border-zinc-800 bg-zinc-900">
-            {eventAdvice.footwearImageUrl && eventAdvice.footwearImageUrl.trim() !== "" ? (
-              <Image src={eventAdvice.footwearImageUrl} alt="Shoes" fill className="object-cover" />
-            ) : (
-              <div className="h-full w-full bg-zinc-800 flex items-center justify-center text-xs">👢</div>
-            )}
+          <div className="flex gap-4">
+            {/* Mic */}
+            <Button
+              onClick={handleMicClick}
+              className={`rounded-full h-14 w-14 p-0 border-2 transition-all ${
+                isListening
+                  ? 'bg-red-900 border-red-600 text-white animate-pulse'
+                  : 'bg-black border-zinc-700 text-zinc-400 hover:text-white hover:border-white'
+              }`}
+            >
+              <Mic size={24} />
+            </Button>
+
+            {/* Reset */}
+            <Button
+              onClick={() => window.location.reload()}
+              variant="outline"
+              className="rounded-full h-14 px-8 border-zinc-700 bg-black text-white hover:bg-zinc-900 hover:text-white uppercase font-bold tracking-wider text-xs"
+            >
+              <RefreshCcw
+                className={`mr-2 h-4 w-4 ${
+                  isPending ? 'animate-spin' : ''
+                }`}
+              />
+              Reset Logic
+            </Button>
           </div>
-          <div>
-            <span className="text-[8px] text-[#8b1a1a] font-bold uppercase tracking-widest">Recommended</span>
-            <p className="text-xs font-bold text-white">{eventAdvice.footwearName}</p>
-          </div>
+        </header>
+
+        {/* 3-CARD GRID */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
+          {!closetLoaded ? (
+            [1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="h-[600px] rounded-[4rem] bg-zinc-900 animate-pulse border border-zinc-800 flex items-center justify-center"
+              >
+                <Loader2 className="animate-spin text-zinc-600" />
+              </div>
+            ))
+          ) : (
+            recommendations.map((event, idx) => (
+              <UpcomingEventAdviceCard
+                key={event.id ?? idx}
+                eventAdvice={event}
+                cardIndex={idx}
+                analyzedItems={closet}
+              />
+            ))
+          )}
         </div>
       </div>
     </div>

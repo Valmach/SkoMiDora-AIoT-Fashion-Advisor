@@ -1,40 +1,25 @@
-'use client';
-
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { initializeFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
-
-/* ============================================================
-   FIREBASE CONFIG
-============================================================ */
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
-  authDomain: 'styleai-footwear.firebaseapp.com',
-  projectId: 'styleai-footwear',
-  storageBucket: 'styleai-footwear.firebasestorage.app',
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  // 🛑 CRITICAL FIX: Point directly to the bucket where your files live
+  storageBucket: "styleai-footwear.appspot.com", 
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-/* ============================================================
-   APP (SINGLETON)
-============================================================ */
+// 1. Initialize App (Singleton Pattern)
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-export const app = getApps().length
-  ? getApp()
-  : initializeApp(firebaseConfig);
+// 2. Initialize Services
+const auth = getAuth(app);
+const firestore = getFirestore(app);
+const storage = getStorage(app); // This now uses the correct bucket automatically
 
-/* ============================================================
-   SERVICES
-============================================================ */
-
-// Auth (required for onAuthStateChanged)
-export const auth = getAuth(app);
-
-// Firestore (Firebase Studio–safe)
-export const firestore = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-});
-
-// Storage
-export const storage = getStorage(app);
+// 3. Export Everything
+export { app, auth, firestore, storage };

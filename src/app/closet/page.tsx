@@ -5,7 +5,7 @@ export const fetchCache = "force-no-store";
 
 import { useEffect, useState, useCallback, useRef, useTransition } from "react";
 import Image from "next/image";
-import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, Timestamp } from "firebase/firestore";
 import { ref, getDownloadURL } from "firebase/storage";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,7 +29,7 @@ import { analyzeAndSaveClothingItem, deleteClothingItem } from "@/app/actions";
 import { firestore, storage } from "@/lib/firebase";
 
 /* -----------------------------------------------------------
-   TYPES (SAFE + EXPLICIT)
+   TYPES
 ----------------------------------------------------------- */
 type ClosetItem = {
   id: string;
@@ -39,28 +39,38 @@ type ClosetItem = {
   narrativeDescription?: string;
   styleKeywords?: string[];
   imagePath?: string;
+  imageUrl?: string; 
   createdAt?: any;
 };
 
 /* -----------------------------------------------------------
-   NORMALIZE LEGACY STORAGE PATHS
+   HELPER: STANDARD FOLDER PATHS
+   This ensures the app looks inside 'public_wardrobe_items/'
 ----------------------------------------------------------- */
 function normalizeImagePath(path: string): string {
   let p = path;
+  
+  // 1. If path is just "shoe.png" (no slash), add the folder prefix
+  if (!p.includes("/") && !p.startsWith("http")) {
+    p = `public_wardrobe_items/${p}`;
+  }
 
-  // legacy folder
+  // 2. If path starts with generic "public/", fix the folder name
   if (p.startsWith("public/")) {
     p = p.replace(/^public\//, "public_wardrobe_items/");
   }
 
-  // broken UTF-8 dash → real en dash
-  p = p.replace(/â/g, "–");
-
+  // 3. Clean up special characters
+  p = p.replace(/â€“/g, "–");
+  
   return p;
 }
 
 export default function ClosetPage() {
   const { toast } = useToast();
+
+  // 1. HYDRATION FIX: Track if we are on the client
+  const [isMounted, setIsMounted] = useState(false);
 
   const [items, setItems] = useState<ClosetItem[]>([]);
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
@@ -70,6 +80,11 @@ export default function ClosetPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [, startTransition] = useTransition();
+
+  // 2. MOUNT CHECK: Run once on load
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   /* -----------------------------------------------------------
      FIRESTORE LISTENER
@@ -83,10 +98,16 @@ export default function ClosetPage() {
     const unsub = onSnapshot(
       q,
       (snap) => {
-        const next: ClosetItem[] = snap.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as any),
-        }));
+        const next: ClosetItem[] = snap.docs.map((d) => {
+            const data = d.data();
+            return {
+                id: d.id,
+                ...data,
+                createdAt: data.createdAt instanceof Timestamp 
+                  ? data.createdAt.toMillis() 
+                  : Date.now(),
+            };
+        });
         setItems(next);
         setLoading(false);
       },
@@ -101,52 +122,55 @@ export default function ClosetPage() {
   }, []);
 
   /* -----------------------------------------------------------
-     RESOLVE STORAGE URLS (ROBUST + SAFE)
+     IMAGE RESOLVER
   ----------------------------------------------------------- */
   useEffect(() => {
     items.forEach(async (item) => {
-      if (!item.id || !item.imagePath) return;
-      if (imageUrls[item.id]) return;
-      if (brokenImages.has(item.id)) return;
+      if (imageUrls[item.id] || brokenImages.has(item.id)) return;
+
+      if (item.imageUrl && item.imageUrl.startsWith("http")) {
+        setImageUrls((prev) => ({ ...prev, [item.id]: item.imageUrl! }));
+        return;
+      }
+
+      if (!item.imagePath) {
+        setBrokenImages((prev) => new Set(prev).add(item.id));
+        return;
+      }
 
       try {
+        // ✅ Standard Logic: Trusts the path includes the folder
         const normalizedPath = normalizeImagePath(item.imagePath);
+        
         const url = await getDownloadURL(ref(storage, normalizedPath));
-
-        setImageUrls((prev) => ({
-          ...prev,
-          [item.id]: url,
-        }));
-      } catch (err) {
-        console.warn("Image failed:", item.imagePath, err);
-        setBrokenImages((prev) => new Set(prev).add(item.id));
+        setImageUrls((prev) => ({ ...prev, [item.id]: url }));
+      } catch (err: any) {
+        // Zombie Data Protection
+        if (item.imagePath.startsWith("http")) {
+            setImageUrls((prev) => ({ ...prev, [item.id]: item.imagePath! }));
+        } else {
+            // console.warn(`Missing file: ${item.imagePath}`);
+            setBrokenImages((prev) => new Set(prev).add(item.id));
+        }
       }
     });
-  }, [items, imageUrls, brokenImages]);
+  }, [items]);
 
   /* -----------------------------------------------------------
      ACTIONS
   ----------------------------------------------------------- */
-  const handleUpload = useCallback(
-    async (file: File) => {
+  const handleUpload = useCallback(async (file: File) => {
       const fd = new FormData();
       fd.append("file", file);
-
       startTransition(async () => {
         try {
           await analyzeAndSaveClothingItem(fd);
           toast({ title: "Item added to closet" });
         } catch (e: any) {
-          toast({
-            title: "Upload failed",
-            description: e?.message ?? "Unknown error",
-            variant: "destructive",
-          });
+          toast({ title: "Upload failed", description: e?.message, variant: "destructive" });
         }
       });
-    },
-    [toast]
-  );
+    }, [toast]);
 
   const handleDelete = async (item: ClosetItem) => {
     if (!item.id) return;
@@ -158,11 +182,13 @@ export default function ClosetPage() {
     });
   };
 
+  if (!isMounted) return null; 
+
   /* -----------------------------------------------------------
      RENDER
   ----------------------------------------------------------- */
   return (
-    <div className="container mx-auto space-y-8 pb-12">
+    <div className="container mx-auto space-y-8 pb-12 h-[85vh] overflow-y-auto">
       <Card>
         <CardContent className="pt-6 flex justify-between items-center">
           <div>
@@ -216,7 +242,6 @@ export default function ClosetPage() {
                   {item.itemName ?? "Untitled Item"}
                 </h2>
 
-                {/* IMAGE */}
                 <div className="rounded-xl bg-muted flex items-center justify-center min-h-[300px]">
                   {!url || isBroken ? (
                     <div className="flex flex-col items-center justify-center">
@@ -232,20 +257,16 @@ export default function ClosetPage() {
                       width={360}
                       height={360}
                       className="object-contain max-h-[300px] w-auto"
-                      unoptimized
+                      unoptimized 
                     />
                   )}
                 </div>
 
-                <Button
-                  variant="destructive"
-                  onClick={() => handleDelete(item)}
-                >
+                <Button variant="destructive" onClick={() => handleDelete(item)}>
                   <Trash2 className="h-4 w-4 mr-2" />
                   Remove
                 </Button>
 
-                {/* METADATA */}
                 <div className="space-y-2 text-sm">
                   {item.itemType && (
                     <Badge variant="outline">
@@ -253,21 +274,18 @@ export default function ClosetPage() {
                       {item.itemType}
                     </Badge>
                   )}
-
                   {item.color && (
                     <div className="flex items-center gap-2">
                       <Palette className="h-4 w-4" />
                       {item.color}
                     </div>
                   )}
-
                   {item.narrativeDescription && (
                     <div className="italic text-muted-foreground text-xs">
                       <FileText className="inline h-3 w-3 mr-1" />
                       {item.narrativeDescription}
                     </div>
                   )}
-
                   {item.styleKeywords?.length ? (
                     <div className="flex flex-wrap gap-1">
                       {item.styleKeywords.map((k, i) => (

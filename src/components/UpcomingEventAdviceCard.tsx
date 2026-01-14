@@ -1,78 +1,109 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
-import { Thermometer, MapPin, Volume2, Loader2 } from 'lucide-react';
 
-export default function UpcomingEventAdviceCard({ eventAdvice, cardIndex }: any) {
-  const [hasMounted, setHasMounted] = useState(false);
+// 🛡️ Use 'any' to stop TypeScript fighting with your data structure
+interface Props {
+  eventAdvice: any;
+  cardIndex: number;
+  analyzedItems?: any[]; 
+}
 
-  useEffect(() => {
-    setHasMounted(true);
-  }, []);
+// A clean placeholder for when images are missing (Zombie Data)
+const FALLBACK_IMAGE = "https://placehold.co/400x600/f3f4f6/1f2937?text=Image+Missing";
 
-  // 🛡️ THE TOTAL GUARD: 
-  // If eventAdvice is missing OR we haven't mounted yet, STOP.
-  // This prevents the "can't access property" error entirely.
-  if (!hasMounted || !eventAdvice || typeof eventAdvice !== 'object') {
-    return (
-      <div className="h-[450px] w-full bg-zinc-900/20 border border-zinc-800 rounded-3xl animate-pulse flex flex-col items-center justify-center">
-        <Loader2 className="h-6 w-6 text-zinc-800 animate-spin mb-2" />
-        <p className="text-[10px] text-zinc-700 uppercase tracking-widest font-bold italic">
-          Logic Synchronizing...
-        </p>
-      </div>
-    );
-  }
+export default function UpcomingEventAdviceCard({ eventAdvice, cardIndex }: Props) {
+  // Track errors for specific images
+  const [clothingError, setClothingError] = useState(false);
+  const [footwearError, setFootwearError] = useState(false);
 
-  // Use optional chaining (?.) for every single property for triple safety
-  const clothingSrc = eventAdvice?.clothingImageUrl || "";
-  const footwearSrc = eventAdvice?.footwearImageUrl || "";
+  // 1. Guard Clause: If data is completely missing, don't render
+  if (!eventAdvice) return null;
+
+  // 2. Safe Data Extraction (Prevents crashes if fields are missing)
+  const city = eventAdvice.city || "Global Location";
+  const temp = eventAdvice.temp ?? "--";
+  const reasoning = eventAdvice.reasoning || "AI Analysis based on wardrobe.";
+  const clothingName = eventAdvice.clothingName || "Wardrobe Item";
+  const footwearName = eventAdvice.footwearName || "Footwear";
+  
+  // 3. Image Logic: Use Fallback if error detected OR if URL is missing
+  const clothingSrc = !clothingError && eventAdvice.clothingImageUrl ? eventAdvice.clothingImageUrl : FALLBACK_IMAGE;
+  const footwearSrc = !footwearError && eventAdvice.footwearImageUrl ? eventAdvice.footwearImageUrl : FALLBACK_IMAGE;
+  
+  // 4. Background Logic: Fallback to a default city image if missing
+  const cityBg = eventAdvice.cityBg || "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?q=80&w=1200";
 
   return (
-    <div className="flex flex-col h-full bg-[#0d0d0d] border border-zinc-800 rounded-2xl overflow-hidden group">
-      {/* CLOTHING SECTION */}
-      <div className="relative h-64 w-full bg-zinc-950">
-        {clothingSrc && clothingSrc.trim() !== "" ? (
-          <Image
-            src={clothingSrc}
-            alt={eventAdvice?.clothingName || "Match"}
-            fill
-            className="object-cover transition-transform duration-700 group-hover:scale-105"
-            priority={cardIndex < 3}
-          />
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full text-zinc-800">
-             <span className="text-xl">👗</span>
-             <p className="text-[9px] uppercase tracking-widest font-bold">Metadata Awaiting</p>
-          </div>
-        )}
+    <div className="group relative h-[620px] w-full bg-white rounded-[4rem] overflow-hidden shadow-2xl border border-zinc-100 transition-all duration-500 hover:scale-[1.01]">
+      
+      {/* Cityscape Background Layer */}
+      <div className="absolute inset-0 z-0">
+        <Image 
+          src={cityBg} 
+          alt={city} 
+          fill 
+          className="object-cover opacity-20 grayscale group-hover:grayscale-0 transition-all duration-1000"
+          unoptimized // ⚡️ Critical: Bypasses Next.js server optimization for external URLs
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-white via-white/30 to-transparent"></div>
       </div>
 
-      <div className="p-6 flex flex-col flex-grow space-y-4">
+      <div className="relative z-10 p-12 h-full flex flex-col">
+        {/* Header */}
         <div className="flex justify-between items-start">
-          <h3 className="text-xl font-bold italic text-white tracking-tight">
-            {eventAdvice?.title || "Upcoming Event"}
-          </h3>
-          <div className="text-[#8b1a1a] font-bold text-sm">
-            {eventAdvice?.temp || "--"}°C
+          <div>
+            <h2 className="text-4xl font-black italic tracking-tighter text-zinc-900 uppercase leading-none">
+              {city}
+            </h2>
+            <div className="flex items-center gap-1 mt-2">
+               <div className="bg-zinc-900 text-white px-3 py-1 rounded-full text-[10px] font-bold">
+                 {temp}°C
+               </div>
+            </div>
           </div>
         </div>
 
-        <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-900">
-          <p className="text-zinc-400 text-xs italic">
-            "{eventAdvice?.reasoning || "Analyzing shoebox items..."}"
+        {/* 1. CLOTHING IMAGE (Main) */}
+        <div className="flex-grow flex items-center justify-center relative">
+          <div className="relative w-full h-80 transition-all duration-500 group-hover:blur-md group-hover:opacity-20 group-hover:scale-90">
+            <Image 
+              src={clothingSrc} 
+              alt={clothingName} 
+              fill 
+              className="object-contain drop-shadow-2xl" 
+              unoptimized
+              onError={() => setClothingError(true)} // ✅ Catches the XML error
+            />
+          </div>
+
+          {/* 2. FOOTWEAR OVERLAY (Hover) */}
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 z-30">
+            <div className="bg-white/90 backdrop-blur-2xl p-10 rounded-full shadow-2xl border border-zinc-200 scale-50 group-hover:scale-100 transition-transform duration-500">
+              <div className="relative w-40 h-40">
+                <Image 
+                  src={footwearSrc} 
+                  alt={footwearName} 
+                  fill 
+                  className="object-contain" 
+                  unoptimized
+                  onError={() => setFootwearError(true)} // ✅ Catches the XML error
+                />
+              </div>
+              <p className="text-[9px] font-black text-center text-[#8b1a1a] uppercase tracking-widest mt-4">
+                {footwearName}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-auto">
+          <p className="text-[9px] font-black text-[#8b1a1a] uppercase tracking-widest mb-1 italic">— Match Logic</p>
+          <p className="text-zinc-900 font-bold italic text-sm leading-tight line-clamp-2">
+            "{reasoning}"
           </p>
-        </div>
-
-        {/* FOOTWEAR SECTION */}
-        <div className="mt-auto pt-4 border-t border-zinc-900 flex items-center gap-4">
-          <div className="relative h-14 w-14 rounded-lg overflow-hidden border border-zinc-800 bg-zinc-900">
-            {footwearSrc && footwearSrc.trim() !== "" && (
-              <Image src={footwearSrc} alt="Shoes" fill className="object-cover" />
-            )}
-          </div>
-          <p className="text-xs font-bold text-white">{eventAdvice?.footwearName || "Selecting..."}</p>
         </div>
       </div>
     </div>

@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { Dosis, IBM_Plex_Mono, Kaushan_Script } from "next/font/google";
 import "./globals.css";
 
-// --- Providers & UI ---
-import { ThemeProvider } from "@/hooks/use-theme";
+// --- UI Components ---
+
 import AppSidebar from "@/components/layout/AppSidebar";
 import { Toaster } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
@@ -13,12 +13,20 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import Header from "@/components/layout/Header";
 
-// ✅ FIX: Import directly. Do NOT use dynamic(..., { ssr: false }) here.
-// The FirebaseClientProvider itself handles client-side safety.
+// ✅ FIX 1: Import the Client-Side Provider Wrapper
+// If you don't have this file yet, create it (code provided below).
+// This isolates the hydration logic from the main server layout chunk.
+// ✅ Correct Import
+import { ThemeProvider } from "@/components/theme-provider";
+
+// ❌ Delete this old line if it exists:
+// import { ThemeProvider } from "@/hooks/use-theme";
+// ✅ FIX 2: Firebase Client Provider
+// This handles the auth state safely on the client side.
 import { FirebaseClientProvider } from "@/firebase/client-provider";
 
 /* ============================================================
-    FONTS
+   FONTS
 ============================================================ */
 const dosis = Dosis({ subsets: ["latin"], variable: "--font-dosis" });
 const ibmPlexMono = IBM_Plex_Mono({
@@ -35,7 +43,7 @@ const kaushanScript = Kaushan_Script({
 });
 
 /* ============================================================
-    METADATA
+   METADATA
 ============================================================ */
 export const metadata: Metadata = {
   title: "SkoMiDora AIoT Fashion Advisor",
@@ -43,7 +51,7 @@ export const metadata: Metadata = {
 };
 
 /* ============================================================
-    ROOT LAYOUT
+   ROOT LAYOUT
 ============================================================ */
 export default function RootLayout({
   children,
@@ -60,18 +68,24 @@ export default function RootLayout({
           kaushanScript.variable
         )}
       >
+        {/* ✅ FIX 3: Using the specific Client Component wrapper 
+           This prevents the 'ChunkLoadError' by ensuring the theme logic
+           only executes in the browser, not during the initial HTML stream.
+        */}
         <ThemeProvider
-          storageKey="skomidora-theme"
+          attribute="class"
           defaultTheme="dark"
+          enableSystem={false}
+          storageKey="skomidora-theme"
         >
-          {/* ✅ Wrapped directly. This is now safe for Next.js 15 build */}
           <FirebaseClientProvider>
             <TooltipProvider>
               <SidebarProvider>
                 <div className="flex flex-1">
                   <AppSidebar />
-                  <div className="flex flex-col flex-1 min-h-screen">
+                  <div className="flex flex-col flex-1 min-h-screen overflow-hidden">
                     <Header />
+                    {/* AppMain handles the scrolling area */}
                     <AppMain>{children}</AppMain>
                   </div>
                 </div>

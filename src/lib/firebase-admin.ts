@@ -1,30 +1,20 @@
-// src/lib/firebase-admin.ts
-import * as admin from "firebase-admin";
+import * as admin from 'firebase-admin';
 
-let adminApp: admin.app.App | undefined;
-
-/**
- * ===========================================================
- * FIREBASE ADMIN — SINGLE SOURCE OF TRUTH
- * ===========================================================
- *
- * Bucket in use (CONFIRMED, DO NOT CHANGE):
- *   gs://styleai-footwear.firebasestorage.app
- */
-export function getAdmin(): admin.app.App {
-  if (adminApp) return adminApp;
-
-  if (admin.apps.length > 0) {
-    adminApp = admin.apps[0]!;
-    return adminApp;
-  }
-
-  adminApp = admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
-
-    // ✅ CRITICAL: MUST MATCH CLIENT BUCKET EXACTLY
-    storageBucket: "styleai-footwear.firebasestorage.app",
+// Initialize only once
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+      // The replace fix ensures newlines in the private key work in Cloud Workstations
+      privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    }),
+    databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
   });
-
-  return adminApp;
 }
+
+// Directly export the service instances
+export const db = admin.firestore();
+export const auth = admin.auth();
+export const storage = admin.storage();
+export const messaging = admin.messaging();

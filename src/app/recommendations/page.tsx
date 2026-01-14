@@ -1,146 +1,154 @@
 'use client';
 
-/**
- * FILE: src/app/recommendations/page.tsx
- * NAME: Outfit Recommendations (Camel Case & Purple Rain Edge)
- * THEME: Dashboard Noir, Picket Fence White, & Crimson
- */
-
 import { useState, useEffect, useTransition } from 'react';
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import { Loader2, RotateCcw, Sparkles, Database, ShieldCheck } from 'lucide-react';
+import {
+  collection,
+  onSnapshot,
+  query,
+  orderBy,
+  Timestamp,
+} from 'firebase/firestore';
 
-// STABLE SERVER ACTIONS (Keep this logic as it fixes the image proxy issues)
+// ✅ FIX: Import 'firestore' and alias it as 'db' to match your code
+import { firestore as db } from '@/lib/firebase'; 
 import { getCalendarDataAction } from '@/app/actions/get-calendar-data';
-import { getClosetDataAdmin } from '@/app/actions/get-closet-data';
-
-// COMPONENTS
 import UpcomingEventAdviceCard from '@/components/UpcomingEventAdviceCard';
 
-export default function OutfitRecommendationsPage() {
+import { Loader2, Sparkles, RefreshCcw, Mic } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
+export default function UpcomingEventsPage() {
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [closet, setCloset] = useState<any[]>([]);
   const [isPending, startTransition] = useTransition();
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
-  const { toast } = useToast();
+  const [closetLoaded, setClosetLoaded] = useState(false);
+  const [isListening, setIsListening] = useState(false);
 
-  // 1. Initial Load (Server-Side Admin SDK to bypass proxy)
+  // =====================================================
+  // 1. LIVE WIRE: Single Firestore Listener (Closet only)
+  // =====================================================
   useEffect(() => {
-    const init = async () => {
-      try {
-        const data = await getClosetDataAdmin();
-        setCloset(data || []);
-      } catch (err) {
-        console.error("Initial Sync Failed:", err);
-      } finally {
-        setIsInitialLoading(false);
-      }
-    };
-    init();
+    // 🛡️ Safety Check: Ensure db is initialized
+    if (!db) return;
+
+    const q = query(
+      collection(db, 'publicWardrobeItems'),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const items = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          createdAt:
+            data.createdAt instanceof Timestamp
+              ? data.createdAt.toMillis()
+              : Date.now(),
+        };
+      });
+
+      setCloset(items);
+
+      // Server Action → force 3 recommendations
+      startTransition(async () => {
+        const data = await getCalendarDataAction(items);
+        setRecommendations(data);
+        setClosetLoaded(true);
+      });
+    });
+
+    return () => unsubscribe(); // ✅ clean listener
   }, []);
 
-  // 2. Refresh Logic
-  const handleRefresh = () => {
-    const safeCloset = closet || [];
-    startTransition(async () => {
-      try {
-        // Fetch fresh data
-        const currentCloset = await getClosetDataAdmin();
-        setCloset(currentCloset);
-
-        // Sanitize & AI Handshake
-        const plainCloset = JSON.parse(JSON.stringify(currentCloset));
-        const data = await getCalendarDataAction(plainCloset);
-        
-        if (data && data.length > 0) {
-          setRecommendations(data);
-          toast({ title: "Style Logic Updated", description: "Calendar & Wardrobe Synced." });
-        } else {
-          toast({ title: "No Matches", description: "AI could not find outfits." });
-        }
-      } catch (err) {
-        console.error("AI Sync Error:", err);
-        toast({ title: "Stylist Timeout", variant: "destructive" });
-      }
-    });
+  // =====================================================
+  // UI CONTROLS
+  // =====================================================
+  const handleMicClick = () => {
+    setIsListening((prev) => !prev);
+    if (!isListening) {
+      console.log('Listening for commands...');
+    }
   };
 
+  // =====================================================
+  // RENDER
+  // =====================================================
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white" style={{ fontFamily: "'Alegreya', serif" }}>
-      <div className="container mx-auto py-12 px-6">
-        
-        {/* HEADER: Aligned with Upcoming Events Page */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-16 gap-8 border-b border-zinc-900 pb-10">
+    <div className="min-h-screen bg-black text-white p-8 lg:p-16">
+      <div className="max-w-7xl mx-auto">
+        {/* HEADER */}
+        <header className="flex flex-col md:flex-row justify-between items-end mb-12 border-b border-zinc-800 pb-8 gap-6">
           <div className="space-y-3">
-            <div className="flex items-center gap-3">
-               <div className="bg-[#8b1a1a] p-1.5 rounded-sm shadow-md">
-                  <Sparkles className="h-4 w-4 text-white" />
-               </div>
-               <span className="text-[9px] font-bold uppercase tracking-[0.4em] text-[#8b1a1a]">
-                 SkomiDora Intelligence
-               </span>
+            <div className="flex items-center gap-3 text-zinc-300">
+              <Sparkles
+                size={24}
+                className={
+                  isListening
+                    ? 'animate-pulse text-red-500'
+                    : 'text-zinc-300'
+                }
+              />
+              <span className="text-sm font-bold uppercase tracking-[0.3em]">
+                SkomiDora Intelligence
+              </span>
             </div>
-            
-            {/* 🐫 Camel Case Title */}
-            <h1 className="text-3xl md:text-4xl font-black italic tracking-tight text-white">
-              Outfit <span className="text-[#8b1a1a]">Recommendations</span>
+
+            <h1 className="text-4xl font-bold text-white uppercase tracking-tight">
+              Upcoming Events
             </h1>
-            
-            {/* ⚪ Picket Fence White Description */}
-            <div className="flex flex-col gap-1">
-              <p className="text-white text-xs font-medium max-w-lg italic leading-relaxed opacity-95">
-                Your personal AI-powered stylist. Curating your digital wardrobe for London's premier fashion events.
-              </p>
-              <div className="flex items-center gap-2 mt-2">
-                <ShieldCheck className="h-3 w-3 text-green-500" />
-                <span className="text-zinc-500 text-[10px] uppercase tracking-wider">
-                  Inventory Verified: {closet.length} Items
-                </span>
-              </div>
-            </div>
           </div>
 
-          <Button 
-            onClick={handleRefresh} 
-            disabled={isPending || isInitialLoading} 
-            className="rounded-sm bg-[#8b1a1a] text-white px-6 py-4 h-auto hover:bg-[#a31f1f] transition-all shadow-[0_0_15px_rgba(139,26,26,0.4)] font-bold italic text-xs uppercase tracking-wider border-none"
-          >
-            {isPending ? <Loader2 className="animate-spin mr-2 h-3.5 w-3.5" /> : <RotateCcw className="mr-2 h-3.5 w-3.5" />}
-            Update Style Logic
-          </Button>
-        </div>
+          <div className="flex gap-4">
+            {/* Mic */}
+            <Button
+              onClick={handleMicClick}
+              className={`rounded-full h-14 w-14 p-0 border-2 transition-all ${
+                isListening
+                  ? 'bg-red-900 border-red-600 text-white animate-pulse'
+                  : 'bg-black border-zinc-700 text-zinc-400 hover:text-white hover:border-white'
+              }`}
+            >
+              <Mic size={24} />
+            </Button>
 
-        {/* GRID: 3-Card Layout with Purple Rain Edge */}
+            {/* Reset */}
+            <Button
+              onClick={() => window.location.reload()}
+              variant="outline"
+              className="rounded-full h-14 px-8 border-zinc-700 bg-black text-white hover:bg-zinc-900 hover:text-white uppercase font-bold tracking-wider text-xs"
+            >
+              <RefreshCcw
+                className={`mr-2 h-4 w-4 ${
+                  isPending ? 'animate-spin' : ''
+                }`}
+              />
+              Reset Logic
+            </Button>
+          </div>
+        </header>
+
+        {/* 3-CARD GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
-          {isInitialLoading ? (
-            <div className="col-span-full flex flex-col items-center justify-center py-32 space-y-4">
-              <Loader2 className="h-10 w-10 animate-spin text-[#8b1a1a]" />
-              <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Accessing Digital Closet...</p>
-            </div>
-          ) : recommendations.length > 0 ? (
-            recommendations.map((rec, idx) => (
-              // 🔮 THE EDGE: Prince Purple Rain Gradient Border
-              <div 
-                key={idx} 
-                className="relative group rounded-3xl p-[1px] bg-gradient-to-br from-zinc-800 via-[#0a0a0a] to-[#8839d4] hover:shadow-[0_0_25px_rgba(136,57,212,0.15)] transition-all duration-500"
+          {!closetLoaded ? (
+            [1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="h-[600px] rounded-[4rem] bg-zinc-900 animate-pulse border border-zinc-800 flex items-center justify-center"
               >
-                <div className="bg-[#0a0a0a] rounded-[23px] h-full overflow-hidden">
-                  <UpcomingEventAdviceCard 
-                    eventAdvice={rec} 
-                    cardIndex={idx} 
-                    analyzedItems={closet} 
-                  />
-                </div>
+                <Loader2 className="animate-spin text-zinc-600" />
               </div>
             ))
           ) : (
-            <div className="col-span-full py-32 text-center border border-dashed border-zinc-900 bg-[#0a0a0a] rounded-3xl">
-               <Database className="h-8 w-8 text-zinc-800 mx-auto mb-4" />
-               <p className="text-zinc-500 font-medium italic text-base">
-                  Your inventory is ready. <br/> Click <span className="text-[#8b1a1a] font-bold">Update Style Logic</span> to view recommendations.
-               </p>
-            </div>
+            recommendations.map((event, idx) => (
+              <UpcomingEventAdviceCard
+                key={event.id ?? idx}
+                eventAdvice={event}
+                cardIndex={idx}
+                analyzedItems={closet}
+              />
+            ))
           )}
         </div>
       </div>
