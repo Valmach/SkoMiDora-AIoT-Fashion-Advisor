@@ -3,9 +3,16 @@
 import { db } from "@/lib/firebase-admin";
 
 export async function getClosetDataAdmin() {
+  // 1. SAFETY CHECK: Stop if database didn't connect
+  if (!db) {
+    console.error("❌ Database connection failed. Check server logs for missing keys.");
+    return [];
+  }
+
   try {
-    // Assuming your collection is 'wardrobe' based on your RFID sync setup
-    const snapshot = await db.collection('wardrobe').get();
+    // 2. FETCH DATA
+    // We use 'publicWardrobeItems' to match the collection used in your frontend
+    const snapshot = await db.collection('publicWardrobeItems').get();
     
     const items = snapshot.docs.map(doc => ({
       id: doc.id,

@@ -1,109 +1,91 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Image from 'next/image';
+import { Dancing_Script } from 'next/font/google';
+import { Calendar, CloudSun, MapPin } from 'lucide-react';
 
-// 🛡️ Use 'any' to stop TypeScript fighting with your data structure
 interface Props {
   eventAdvice: any;
   cardIndex: number;
-  analyzedItems?: any[]; 
+  analyzedItems?: any[]; // Kept for compatibility, but ignored for now
 }
 
-// A clean placeholder for when images are missing (Zombie Data)
-const FALLBACK_IMAGE = "https://placehold.co/400x600/f3f4f6/1f2937?text=Image+Missing";
+const dancingScript = Dancing_Script({
+  subsets: ['latin'],
+  weight: ['400', '700'],
+});
 
-export default function UpcomingEventAdviceCard({ eventAdvice, cardIndex }: Props) {
-  // Track errors for specific images
-  const [clothingError, setClothingError] = useState(false);
-  const [footwearError, setFootwearError] = useState(false);
+function camelCase(text: string) {
+  return text?.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
+}
 
-  // 1. Guard Clause: If data is completely missing, don't render
+export default function UpcomingEventAdviceCard({ eventAdvice }: Props) {
   if (!eventAdvice) return null;
 
-  // 2. Safe Data Extraction (Prevents crashes if fields are missing)
-  const city = eventAdvice.city || "Global Location";
-  const temp = eventAdvice.temp ?? "--";
-  const reasoning = eventAdvice.reasoning || "AI Analysis based on wardrobe.";
-  const clothingName = eventAdvice.clothingName || "Wardrobe Item";
-  const footwearName = eventAdvice.footwearName || "Footwear";
+  // 1. EXTRACT DATA (Focusing on City, Event, Weather)
+  const city = camelCase(eventAdvice.city || 'Global Destination');
+  const eventName = eventAdvice.eventName || 'Scheduled Event';
+  const time = eventAdvice.eventStartDateTime || 'Upcoming';
+  const temp = eventAdvice.temp ?? '--';
+  const weather = eventAdvice.weatherCondition || 'Forecast Pending';
   
-  // 3. Image Logic: Use Fallback if error detected OR if URL is missing
-  const clothingSrc = !clothingError && eventAdvice.clothingImageUrl ? eventAdvice.clothingImageUrl : FALLBACK_IMAGE;
-  const footwearSrc = !footwearError && eventAdvice.footwearImageUrl ? eventAdvice.footwearImageUrl : FALLBACK_IMAGE;
-  
-  // 4. Background Logic: Fallback to a default city image if missing
-  const cityBg = eventAdvice.cityBg || "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?q=80&w=1200";
+  // 2. BACKGROUND IMAGE (Cityscape)
+  const cityBg = eventAdvice.cityBg || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&q=80';
 
   return (
-    <div className="group relative h-[620px] w-full bg-white rounded-[4rem] overflow-hidden shadow-2xl border border-zinc-100 transition-all duration-500 hover:scale-[1.01]">
+    <div className="group relative h-[600px] w-full overflow-hidden rounded-[3rem] shadow-2xl transition-all duration-500 hover:scale-[1.02] border border-zinc-800">
       
-      {/* Cityscape Background Layer */}
+      {/* BACKGROUND: Cityscape Image */}
       <div className="absolute inset-0 z-0">
-        <Image 
-          src={cityBg} 
-          alt={city} 
-          fill 
-          className="object-cover opacity-20 grayscale group-hover:grayscale-0 transition-all duration-1000"
-          unoptimized // ⚡️ Critical: Bypasses Next.js server optimization for external URLs
+        <Image
+          src={cityBg}
+          alt={city}
+          fill
+          className="object-cover transition-transform duration-1000 group-hover:scale-110"
+          unoptimized
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-white via-white/30 to-transparent"></div>
+        {/* Gradient Overlay to make text readable */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/10" />
       </div>
 
-      <div className="relative z-10 p-12 h-full flex flex-col">
-        {/* Header */}
-        <div className="flex justify-between items-start">
-          <div>
-            <h2 className="text-4xl font-black italic tracking-tighter text-zinc-900 uppercase leading-none">
+      {/* CONTENT LAYER */}
+      <div className="relative z-10 h-full flex flex-col justify-between p-8 text-white">
+        
+        {/* TOP: Weather Badge */}
+        <div className="flex justify-end">
+          <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md px-4 py-2 rounded-full border border-white/10">
+            <CloudSun size={18} className="text-[#DC143C]" />
+            <span className="text-sm font-medium">{temp}°F • {weather}</span>
+          </div>
+        </div>
+
+        {/* CENTER: Empty space to let the image shine */}
+        <div className="flex-grow" />
+
+        {/* BOTTOM: Event Details */}
+        <div className="bg-black/60 backdrop-blur-md rounded-3xl p-6 border border-white/10 space-y-4">
+          
+          {/* City Name (Dancing Script) */}
+          <div className="flex items-center gap-2">
+            <MapPin size={20} className="text-[#DC143C]" />
+            <h2 className={`${dancingScript.className} text-5xl text-white tracking-wide`}>
               {city}
             </h2>
-            <div className="flex items-center gap-1 mt-2">
-               <div className="bg-zinc-900 text-white px-3 py-1 rounded-full text-[10px] font-bold">
-                 {temp}°C
-               </div>
+          </div>
+
+          <div className="h-px bg-white/20 w-full" />
+
+          {/* Event Name & Time */}
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-[#DC143C] text-xs font-bold uppercase tracking-widest">
+              <Calendar size={14} />
+              <span>Google Calendar Event</span>
             </div>
-          </div>
-        </div>
-
-        {/* 1. CLOTHING IMAGE (Main) */}
-        <div className="flex-grow flex items-center justify-center relative">
-          <div className="relative w-full h-80 transition-all duration-500 group-hover:blur-md group-hover:opacity-20 group-hover:scale-90">
-            <Image 
-              src={clothingSrc} 
-              alt={clothingName} 
-              fill 
-              className="object-contain drop-shadow-2xl" 
-              unoptimized
-              onError={() => setClothingError(true)} // ✅ Catches the XML error
-            />
+            <h3 className="text-xl font-semibold text-white">{eventName}</h3>
+            <p className="text-zinc-300 text-sm">{time}</p>
           </div>
 
-          {/* 2. FOOTWEAR OVERLAY (Hover) */}
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 z-30">
-            <div className="bg-white/90 backdrop-blur-2xl p-10 rounded-full shadow-2xl border border-zinc-200 scale-50 group-hover:scale-100 transition-transform duration-500">
-              <div className="relative w-40 h-40">
-                <Image 
-                  src={footwearSrc} 
-                  alt={footwearName} 
-                  fill 
-                  className="object-contain" 
-                  unoptimized
-                  onError={() => setFootwearError(true)} // ✅ Catches the XML error
-                />
-              </div>
-              <p className="text-[9px] font-black text-center text-[#8b1a1a] uppercase tracking-widest mt-4">
-                {footwearName}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="mt-auto">
-          <p className="text-[9px] font-black text-[#8b1a1a] uppercase tracking-widest mb-1 italic">— Match Logic</p>
-          <p className="text-zinc-900 font-bold italic text-sm leading-tight line-clamp-2">
-            "{reasoning}"
-          </p>
         </div>
       </div>
     </div>

@@ -1,83 +1,127 @@
 'use server';
 
-import { db } from "@/lib/firebase-admin";
+import { generateObject } from 'ai';
+import { google } from '@ai-sdk/google';
+import { z } from 'zod';
 
-// 🛠️ HELPER: Hunts for any image field in your database
-function extractImage(item: any): string {
-  if (!item) return "";
-  return item.imageUrl || item.image || item.url || item.imagePath || item.mediaUrl || "";
+/* =========================================================
+   SCHEMA
+========================================================= */
+const schema = z.object({
+  recommendations: z.array(
+    z.object({
+      id: z.string().optional(),
+      eventName: z.string(),
+      eventStartDateTime: z.string().optional(),
+      location: z.string(),
+      weatherCondition: z.string().optional(),
+      temperature: z.number().optional(),
+      outfitIdea: z.string().optional(),
+      reasoning: z.string(),
+      items: z.array(z.string()).optional(),
+      colorPalette: z.string().optional(),
+    })
+  ),
+});
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+// Safely pick an item with image from closet based on keywords
+function pickItem(items: any[], keywords: string[]) {
+  if (!Array.isArray(items) || items.length === 0) return null;
+
+  // 1. Try to find item matching keyword AND has an image
+  const match = items.find(i => 
+    (i.imageUrl || i.image) && 
+    keywords.some(k => (i.itemName || '').toLowerCase().includes(k))
+  );
+
+  // 2. Fallback to any item with an image if no keyword match
+  return match || items.find(i => i.imageUrl || i.image) || null;
 }
 
-// 🛠️ HELPER: Cleans Firestore data so Next.js doesn't crash
-function sanitizeItem(doc: any) {
-  const data = doc.data();
-  return {
-    id: doc.id,
-    ...data,
-    // Convert Firestore Timestamps to simple numbers
-    createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : Date.now(),
-    updatedAt: data.updatedAt?.toMillis ? data.updatedAt.toMillis() : null,
-  };
+function resolveImage(item: any): string | null {
+  if (!item) return null;
+  return item.imageUrl || item.image || item.url || null;
 }
 
-export async function getCalendarDataAction(providedItems?: any[]) {
+// Static Backgrounds (Unsplash Source is dead, so we use specific IDs)
+const CITY_IMAGES: Record<string, string> = {
+  'Paris': 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=800&q=80',
+  'Oslo': 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=800&q=80',
+  'London': 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=800&q=80',
+};
+
+const CITIES = ['Paris', 'Oslo', 'London'];
+
+/* =========================================================
+   ACTION
+========================================================= */
+export async function getUpcomingEventsStyleAdviceAction(closetItems: any[] = []) {
+  
+  const simulatedEvents = [
+    { title: 'Fashion Week Mixer', time: 'Tomorrow, 8:00 PM', location: 'Paris', context: 'Chic, high fashion' },
+    { title: 'Nordic Design Summit', time: 'Friday, 9:00 AM', location: 'Oslo', context: 'Minimalist, warm layers' },
+    { title: 'Tech Innovation Gala', time: 'Sunday, 7:00 PM', location: 'London', context: 'Elegant, modern, rain-ready' },
+  ];
+
+  const prompt = `
+    You are a luxury personal stylist.
+    Create outfit advice for these events:
+    ${JSON.stringify(simulatedEvents, null, 2)}
+
+    CRITICAL:
+    - Return EXACTLY 3 recommendations
+    - First location MUST be Paris
+    - Second MUST be Oslo
+    - Third MUST be London
+  `;
+
   try {
-    let closet = providedItems || [];
+    const result = await generateObject({
+      model: google('gemini-2.5-flash'),
+      schema,
+      prompt,
+    });
 
-    // 1. Fallback: If no items passed, fetch fresh from Admin SDK
-    if (closet.length === 0) {
-      console.log("Action: Fetching fresh wardrobe from Firestore...");
-      const snapshot = await db.collection('publicWardrobeItems').orderBy('createdAt', 'desc').get();
-      closet = snapshot.docs.map(sanitizeItem);
-    }
+    /* =====================================================
+       ENRICH AI OUTPUT WITH REAL CLOSET DATA
+    ===================================================== */
+    const enriched = result.object.recommendations.map((rec, index) => {
+      const city = CITIES[index] || rec.location;
 
-    console.log(`Action: Processing ${closet.length} items for Global Events.`);
-
-    // 2. Define 3 Hardcoded Global Events
-    const cityConfigs = [
-      { name: "London", lat: 51.5, lon: -0.1, bg: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?q=80&w=1200" },
-      { name: "New York", lat: 40.7, lon: -74.0, bg: "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?q=80&w=1200" },
-      { name: "Oslo", lat: 59.9, lon: 10.7, bg: "https://images.unsplash.com/photo-1513115044-a69999057223?q=80&w=1200" }
-    ];
-
-    // 3. Map Closet Items to Cities
-    const recommendations = await Promise.all(cityConfigs.map(async (city, index) => {
-      let temp = 15;
-      try {
-        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&current_weather=true`);
-        const w = await res.json();
-        temp = Math.round(w.current_weather?.temperature || 15);
-      } catch (e) { console.error("Weather fetch failed"); }
-
-      // 🎯 WIRED: Pick distinct items from your closet
-      // Use modulo to cycle through items if you have fewer than 3
-      const clothingItem = closet[index % closet.length];
-      
-      // Try to find boots, or fallback to another item
-      const footwearItem = closet.find(i => 
-        (i.itemName || "").toLowerCase().includes("boot")
-      ) || closet[(index + 3) % closet.length];
+      // Logic: Pick 1 Top/Body item and 1 Footwear item
+      const clothing = pickItem(closetItems, ['dress', 'coat', 'jacket', 'blazer', 'top', 'shirt']);
+      const footwear = pickItem(closetItems, ['boot', 'heel', 'sandal', 'shoe', 'loafer', 'sneaker']);
 
       return {
-        id: `event-${index}`,
-        city: city.name,
-        cityBg: city.bg,
-        temp: temp,
-        
-        // Mapped Data
-        clothingName: clothingItem?.itemName || "Digital Closet Item",
-        clothingImageUrl: extractImage(clothingItem) || "https://placehold.co/400x600?text=No+Image",
-        
-        footwearName: footwearItem?.itemName || "Matched Footwear",
-        footwearImageUrl: extractImage(footwearItem) || "https://placehold.co/400x600?text=No+Image",
-        
-        reasoning: `Matched ${clothingItem?.itemName} to ${city.name} weather.`
-      };
-    }));
+        ...rec,
+        // Card Contract
+        city,
+        eventName: city, 
+        location: city,
+        temp: rec.temperature ?? 65,
 
-    return JSON.parse(JSON.stringify(recommendations));
-  } catch (error) {
-    console.error("Wiring Error:", error);
-    return [];
+        // 👗 Clothing
+        clothingName: clothing?.itemName || 'Statement Piece',
+        clothingImageUrl: resolveImage(clothing),
+
+        // 👠 Footwear
+        footwearName: footwear?.itemName || 'Footwear',
+        footwearImageUrl: resolveImage(footwear),
+
+        // 🌆 City background
+        cityBg: CITY_IMAGES[city] || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&q=80',
+
+        reasoning: rec.reasoning || `Curated for ${city} based on your wardrobe.`
+      };
+    });
+
+    return enriched;
+  } catch (error: any) {
+    console.error('AI Error:', error);
+    throw new Error('Failed to generate style advice');
   }
 }

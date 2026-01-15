@@ -12,6 +12,7 @@
     "deploy:fast": "firebase deploy --only hosting,functions --force --non-interactive || echo '⚠️ Fast deploy completed with warnings, ignoring lint/build failures.'"
   },
   "dependencies": {
+    "@ai-sdk/google": "^3.0.7",
     "@genkit-ai/firebase": "^1.0.0",
     "@genkit-ai/google-genai": "^1.0.6",
     "@opentelemetry/exporter-jaeger": "^2.0.1",
@@ -37,6 +38,7 @@
     "@radix-ui/react-tabs": "^1.1.0",
     "@radix-ui/react-toast": "^1.2.1",
     "@radix-ui/react-tooltip": "^1.1.1",
+    "ai": "^6.0.33",
     "axios": "^1.13.2",
     "build": "^0.1.4",
     "class-variance-authority": "^0.7.0",

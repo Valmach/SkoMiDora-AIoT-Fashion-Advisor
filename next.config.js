@@ -1,14 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // --------------------------------------------------
-  // 1. Disable strict mode (prevents double execution)
-  // --------------------------------------------------
+  // 1. Disable strict mode
   reactStrictMode: false,
 
-  // --------------------------------------------------
-  // 2. FORCE DYNAMIC DEV BEHAVIOR (CRITICAL)
-  //    - Prevents stale RSC + chunk reuse
-  // --------------------------------------------------
+  // 2. FORCE DYNAMIC DEV BEHAVIOR
   experimental: {
     staleTimes: {
       dynamic: 0,
@@ -16,34 +11,22 @@ const nextConfig = {
     },
   },
 
-  // --------------------------------------------------
-  // 3. Webpack overrides for Firebase Studio
-  // --------------------------------------------------
+  // 3. Webpack overrides
   webpack: (config, { isServer, dev }) => {
-    // ----------------------------------------------
-    // 3a. FORCE POLLING (fixes wss:// errors)
-    // ----------------------------------------------
     if (!isServer) {
       config.watchOptions = {
         poll: 1000,
         aggregateTimeout: 300,
       };
     }
-
-    // ----------------------------------------------
-    // 3b. DISABLE HASHED CHUNKS IN DEV (CRITICAL FIX)
-    // ----------------------------------------------
     if (dev && !isServer) {
       config.output.filename = 'static/chunks/[name].js';
       config.output.chunkFilename = 'static/chunks/[name].js';
     }
-
     return config;
   },
 
-  // --------------------------------------------------
-  // 4. Image Domains (Closet / Footwear / Cityscapes)
-  // --------------------------------------------------
+  // 4. Image Domains
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'firebasestorage.googleapis.com' },
@@ -53,6 +36,18 @@ const nextConfig = {
       { protocol: 'https', hostname: 'placehold.co' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
     ],
+  },
+
+  // 5. REDIRECTS (THE FIX FOR YOUR LINK)
+  // This automatically fixes the broken link in your navbar
+  async redirects() {
+    return [
+      {
+        source: '/recommendations',
+        destination: '/outfit-recommendations',
+        permanent: false,
+      },
+    ];
   },
 };
 

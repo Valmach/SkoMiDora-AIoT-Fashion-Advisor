@@ -1,0 +1,140 @@
+'use server';
+
+import { generateObject } from 'ai';
+import { google } from '@ai-sdk/google';
+import { z } from 'zod';
+
+/* ======================================================
+   SCHEMA
+====================================================== */
+
+const schema = z.object({
+  recommendations: z.array(
+    z.object({
+      eventName: z.string(),
+      eventTime: z.string(),
+      location: z.string(),
+      weather: z.string(),
+      outfitIdea: z.string(),
+      reasoning: z.string(),
+      items: z.array(z.string()),
+      colorPalette: z.string(),
+    })
+  ),
+});
+
+/* ======================================================
+   HELPERS
+====================================================== */
+
+// Normalize image fields safely
+function resolveImage(item: any): string | null {
+  return item?.imageUrl || item?.image || item?.url || null;
+}
+
+// Attach real closet items to AI-selected names
+function resolveOutfitItems(
+  itemNames: string[],
+  closet: any[]
+) {
+  const matched = itemNames
+    .map(name =>
+      closet.find(c =>
+        c.itemName?.toLowerCase() === name.toLowerCase()
+      )
+    )
+    .filter(Boolean);
+
+  const clothing =
+    matched.find(i =>
+      ['dress', 'coat', 'jacket', 'blazer', 'top', 'pant'].includes(i.itemType)
+    ) || matched[0];
+
+  const footwear =
+    matched.find(i =>
+      ['shoe', 'boot', 'heel', 'sandal', 'loafer'].includes(i.itemType)
+    ) || matched[1];
+
+  return {
+    clothing,
+    footwear,
+  };
+}
+
+/* ======================================================
+   ACTION
+====================================================== */
+
+export async function getDailyOutfitsAction(closetItems: any[]) {
+  if (!closetItems || closetItems.length === 0) {
+    return [];
+  }
+
+  const today = new Date();
+  const dateString = today.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
+
+  const closetText = closetItems
+    .slice(0, 50)
+    .map(i => `- ${i.itemName} (${i.color} ${i.itemType})`)
+    .join('\n');
+
+  const prompt = `
+You are a luxury personal stylist.
+
+Today is ${dateString}.
+
+Create exactly 3 Outfit of the Day recommendations:
+
+1. Professional / Day
+2. Casual / Lifestyle
+3. Evening / Social
+
+CRITICAL RULE:
+- You must use the EXACT item names from the inventory.
+- Do not invent items.
+
+WARDROBE INVENTORY:
+${closetText}
+`;
+
+  try {
+    const result = await generateObject({
+      model: google('gemini-2.5-flash'),
+      schema,
+      prompt,
+    });
+
+    /* ==================================================
+       ENRICH WITH REAL CLOSET DATA
+    ================================================== */
+
+    return result.object.recommendations.map((rec, index) => {
+      const { clothing, footwear } = resolveOutfitItems(
+        rec.items,
+        closetItems
+      );
+
+      return {
+        ...rec,
+
+        // 👗 Clothing
+        clothingName: clothing?.itemName || 'Wardrobe Item',
+        clothingImageUrl: resolveImage(clothing),
+
+        // 👠 Footwear
+        footwearName: footwear?.itemName || 'Footwear',
+        footwearImageUrl: resolveImage(footwear),
+
+        // Optional polish
+        city: ['Paris', 'Oslo', 'London'][index] || 'Global',
+      };
+    });
+  } catch (error: any) {
+    console.error('❌ DAILY OUTFIT AI ERROR:', error);
+    throw new Error('Failed to generate daily outfits');
+  }
+}
