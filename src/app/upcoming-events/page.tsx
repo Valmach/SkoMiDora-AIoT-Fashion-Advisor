@@ -50,7 +50,6 @@ export default function UpcomingEventsPage() {
           setAnalyzedItemsFromCloset(items);
           setIsLoadingCloset(false);
 
-          // ONLY fetch if we haven't already
           if (upcomingEventsAdvice.length === 0) {
              fetchUpcomingEventsAdvice(items); 
           }
@@ -71,7 +70,6 @@ export default function UpcomingEventsPage() {
       try {
         toast({ title: "Fetching Event Advice...", description: "Consulting AI Stylist..." });
         
-        // FIX: Passed 'currentCloset' instead of [] so images work!
         const adviceResults = await getUpcomingEventsStyleAdviceAction(currentCloset); 
         
         setUpcomingEventsAdvice(adviceResults);
@@ -97,8 +95,9 @@ export default function UpcomingEventsPage() {
           <div className="space-y-3">
              <div className="flex items-center gap-3 text-zinc-300">
               <CalendarDays size={24} className="text-[#DC143C]" />
+              {/* UPDATED TEXT HERE */}
               <span className="text-sm font-bold uppercase tracking-[0.3em] text-[#DC143C]">
-                Schedule & Style
+                Google Events Calendar
               </span>
             </div>
             
@@ -122,7 +121,7 @@ export default function UpcomingEventsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
           {isLoading && upcomingEventsAdvice.length === 0 && (
              [1, 2, 3].map((i) => (
-              <div key={i} className="h-[620px] rounded-[4rem] bg-zinc-900 animate-pulse border border-zinc-800"></div>
+              <div key={i} className="h-[600px] rounded-[3rem] bg-zinc-900 animate-pulse border border-zinc-800"></div>
             ))
           )}
 
