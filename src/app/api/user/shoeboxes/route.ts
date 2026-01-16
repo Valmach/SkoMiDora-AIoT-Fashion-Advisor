@@ -1,24 +1,21 @@
-// 🛡️ FIX: Import 'db' directly from your admin library
+import { NextResponse } from "next/server";
 import { db } from "@/lib/firebase-admin";
-
-export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    // 🏆 The 'db' is already initialized and exported as a singleton
-    // No need to call getAdmin() anymore
-    const snapshot = await db.collection("shoeboxes").get();
-    
+    // FIX: The '!' forces the strict builder to accept that db exists.
+    const snapshot = await db!.collection("shoeboxes").get();
+
     const shoeboxes = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));
 
-    return Response.json({ shoeboxes });
-  } catch (e: any) {
-    console.error("Shoebox API Error:", e);
-    return Response.json(
-      { error: e?.message ?? "Failed to fetch shoeboxes from Smart Shoebox hardware" },
+    return NextResponse.json({ shoeboxes });
+  } catch (error) {
+    console.error("Error fetching shoeboxes:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch shoeboxes" },
       { status: 500 }
     );
   }
