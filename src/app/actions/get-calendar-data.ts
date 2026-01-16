@@ -28,14 +28,17 @@ const schema = z.object({
    HELPERS
 ========================================================= */
 
+// Safely pick an item with image from closet based on keywords
 function pickItem(items: any[], keywords: string[]) {
   if (!Array.isArray(items) || items.length === 0) return null;
 
+  // 1. Try to find item matching keyword AND has an image
   const match = items.find(i => 
     (i.imageUrl || i.image) && 
     keywords.some(k => (i.itemName || '').toLowerCase().includes(k))
   );
 
+  // 2. Fallback to any item with an image if no keyword match
   return match || items.find(i => i.imageUrl || i.image) || null;
 }
 
@@ -44,6 +47,7 @@ function resolveImage(item: any): string | null {
   return item.imageUrl || item.image || item.url || null;
 }
 
+// Static Backgrounds (Unsplash Source is dead, so we use specific IDs)
 const CITY_IMAGES: Record<string, string> = {
   'Paris': 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=800&q=80',
   'Oslo': 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=800&q=80',
@@ -77,29 +81,40 @@ export async function getUpcomingEventsStyleAdviceAction(closetItems: any[] = []
 
   try {
     const result = await generateObject({
-      // ✅ CORRECTED: Using the latest Gemini 2.5 Flash model
       model: google('gemini-2.5-flash'),
       schema,
       prompt,
     });
 
+    /* =====================================================
+       ENRICH AI OUTPUT WITH REAL CLOSET DATA
+    ===================================================== */
     const enriched = result.object.recommendations.map((rec, index) => {
       const city = CITIES[index] || rec.location;
 
+      // Logic: Pick 1 Top/Body item and 1 Footwear item
       const clothing = pickItem(closetItems, ['dress', 'coat', 'jacket', 'blazer', 'top', 'shirt']);
       const footwear = pickItem(closetItems, ['boot', 'heel', 'sandal', 'shoe', 'loafer', 'sneaker']);
 
       return {
         ...rec,
+        // Card Contract
         city,
         eventName: city, 
         location: city,
         temp: rec.temperature ?? 65,
+
+        // 👗 Clothing
         clothingName: clothing?.itemName || 'Statement Piece',
         clothingImageUrl: resolveImage(clothing),
+
+        // 👠 Footwear
         footwearName: footwear?.itemName || 'Footwear',
         footwearImageUrl: resolveImage(footwear),
+
+        // 🌆 City background
         cityBg: CITY_IMAGES[city] || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&q=80',
+
         reasoning: rec.reasoning || `Curated for ${city} based on your wardrobe.`
       };
     });
@@ -107,6 +122,6 @@ export async function getUpcomingEventsStyleAdviceAction(closetItems: any[] = []
     return enriched;
   } catch (error: any) {
     console.error('AI Error:', error);
-    return [];
+    throw new Error('Failed to generate style advice');
   }
 }
