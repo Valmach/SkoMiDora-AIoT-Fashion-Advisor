@@ -88,7 +88,7 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
                       />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900 p-2 gap-1">
-                         <span className="text-[24px] opacity-20">👕</span>
+                          <span className="text-[24px] opacity-20">👕</span>
                       </div>
                     )}
                   </div>
@@ -103,18 +103,18 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
           </div>
         </div>
 
-        {/* REASONING TEXT */}
+        {/* REASONING TEXT - FIXED QUOTES HERE */}
         <div className="relative pl-3 border-l-2 border-[#DC143C]/30 mt-4">
           <p className="text-sm text-zinc-300 leading-relaxed italic">
-            "{outfit.reasoning}"
+            &ldquo;{outfit.reasoning}&rdquo;
           </p>
         </div>
 
         {/* Palette Footer */}
         {outfit.colorPalette && (
           <div className="mt-2 pt-3 border-t border-zinc-800/50 flex flex-col gap-1">
-             <span className="text-[9px] text-zinc-600 uppercase tracking-wider font-bold">Color Palette</span>
-             <span className="text-xs text-zinc-400 font-serif italic">{outfit.colorPalette}</span>
+              <span className="text-[9px] text-zinc-600 uppercase tracking-wider font-bold">Color Palette</span>
+              <span className="text-xs text-zinc-400 font-serif italic">{outfit.colorPalette}</span>
           </div>
         )}
 

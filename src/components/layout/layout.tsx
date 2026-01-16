@@ -1,6 +1,6 @@
 import './globals.css';
 import ClientProviders from '@/components/ClientProviders';
-import AutoRefreshOnCrash from '@/components/AutoRefreshOnCrash'; // Optional: Remove if you deleted this file
+import AutoRefreshOnCrash from '@/components/AutoRefreshOnCrash';
 
 export const metadata = {
   title: 'SkoMiDora',
@@ -17,7 +17,7 @@ export default function RootLayout({
       {/* 1. FLEX LAYOUT: Forces footer to the bottom */}
       <body className="bg-black text-white antialiased min-h-screen flex flex-col">
         
-        {/* Optional Safety Fix */}
+        {/* Safety Mechanism for chunk errors */}
         <AutoRefreshOnCrash />
 
         <ClientProviders>

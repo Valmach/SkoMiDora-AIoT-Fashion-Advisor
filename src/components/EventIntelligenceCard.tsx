@@ -6,7 +6,7 @@ import { Dancing_Script } from 'next/font/google';
 
 interface Props {
   eventAdvice: any;
-  cardIndex: number;
+  // cardIndex: number; // Removed to prevent "unused variable" build warning
   analyzedItems?: any[];
 }
 
@@ -26,7 +26,6 @@ function camelCase(text: string) {
 
 export default function UpcomingEventAdviceCard({
   eventAdvice,
-  cardIndex,
 }: Props) {
   const [clothingError, setClothingError] = useState(false);
   const [footwearError, setFootwearError] = useState(false);
@@ -115,7 +114,7 @@ export default function UpcomingEventAdviceCard({
             — Outfit Logic
           </p>
           <p className="text-purple-100 font-semibold italic text-sm leading-tight line-clamp-3">
-            “{reasoning}”
+            &ldquo;{reasoning}&rdquo;
           </p>
         </div>
       </div>
