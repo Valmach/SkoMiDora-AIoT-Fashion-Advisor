@@ -81,7 +81,8 @@ export async function getUpcomingEventsStyleAdviceAction(closetItems: any[] = []
 
   try {
     const result = await generateObject({
-      model: google('gemini-2.5-flash'),
+      // FIX: Changed 'gemini-2.5-flash' to 'gemini-1.5-flash'
+      model: google('gemini-1.5-flash'),
       schema,
       prompt,
     });
@@ -122,6 +123,7 @@ export async function getUpcomingEventsStyleAdviceAction(closetItems: any[] = []
     return enriched;
   } catch (error: any) {
     console.error('AI Error:', error);
-    throw new Error('Failed to generate style advice');
+    // Return empty array instead of crashing so UI handles it gracefully
+    return [];
   }
 }
