@@ -3,18 +3,31 @@
 /**
  * ⚠️ CRITICAL CLIENT BOUNDARY
  *
- * This file intentionally isolates ALL client-only providers
- * (ThemeProvider, future analytics, etc.).
+ * This file intentionally isolates ALL client-only providers:
+ * - ThemeProvider
+ * - Firebase client SDK
+ * - Radix UI providers (Tooltip, etc.)
  *
  * ❌ DO NOT import this into server components
- * ❌ DO NOT move ThemeProvider back into app/layout.tsx
+ * ❌ DO NOT move providers back into app/layout.tsx
  *
- * Breaking this rule WILL cause ChunkLoadError
- * in Firebase Studio / Cloud Workstations.
+ * Breaking this rule WILL cause:
+ * - ChunkLoadError
+ * - hydration mismatches
+ * - Firebase double initialization
+ * - Radix / floating-ui crashes
+ *
+ * Firebase Studio / Cloud Workstations SAFE.
  */
 
 import { useEffect, useState } from 'react';
 import { ThemeProvider } from 'next-themes';
+
+// 🔐 Firebase (client-only)
+import { FirebaseProvider } from '@/firebase/provider';
+
+// 🎯 UI Providers
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 export default function ClientProviders({
   children,
@@ -25,9 +38,11 @@ export default function ClientProviders({
    * Mounted guard prevents:
    * - hydration mismatches
    * - stale chunk execution
-   * - ThemeProvider running before window exists
+   * - providers running before `window` exists
    *
-   * This is especially important in Firebase Studio.
+   * This is especially important in:
+   * - Next.js 15
+   * - Firebase Studio / Cloud Workstations
    */
   const [mounted, setMounted] = useState(false);
 
@@ -36,7 +51,7 @@ export default function ClientProviders({
   }, []);
 
   if (!mounted) {
-    return null; // 🔒 Prevents SSR/client mismatch
+    return null; // 🔒 INTENTIONAL: prevents SSR/client mismatch
   }
 
   return (
@@ -46,7 +61,11 @@ export default function ClientProviders({
       enableSystem={false}
       storageKey="skomidora-theme"
     >
-      {children}
+      <FirebaseProvider>
+        <TooltipProvider>
+          {children}
+        </TooltipProvider>
+      </FirebaseProvider>
     </ThemeProvider>
   );
 }
