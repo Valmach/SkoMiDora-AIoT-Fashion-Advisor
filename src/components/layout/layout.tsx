@@ -1,8 +1,11 @@
 // src/app/layout.tsx
 import './globals.css';
-
 import ClientProviders from '@/components/ClientProviders';
 import AutoRefreshOnCrash from '@/components/AutoRefreshOnCrash';
+
+// ✅ 1. ADD THESE IMPORTS
+import { SidebarProvider } from "@/components/ui/sidebar";
+import AppSidebar from "@/components/layout/AppSidebar"; 
 
 export const metadata = {
   title: 'SkoMiDora',
@@ -16,43 +19,30 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      {/* 
-        FLEX COLUMN LAYOUT
-        - Ensures footer stays at bottom
-        - Prevents layout shift
-      */}
       <body className="bg-black text-white antialiased min-h-screen flex flex-col">
         
-        {/* 
-          SAFETY NET
-          - Auto-reloads on ChunkLoadError
-          - Firebase Studio / Cloud Workstation safe
-        */}
         <AutoRefreshOnCrash />
 
-        {/* 
-          🚧 CLIENT BOUNDARY
-          - ALL client-only providers live here
-          - ThemeProvider
-          - Future analytics
-          - Firebase client hydration
-        */}
         <ClientProviders>
-          {/* 
-            MAIN CONTENT
-            - flex-grow pushes footer down
-            - pages render safely here
-          */}
-          <main className="flex-grow">
-            {children}
-          </main>
+          
+          {/* ✅ 2. WRAP CONTENT IN SIDEBAR PROVIDER */}
+          <SidebarProvider>
+            
+            <div className="flex flex-1 w-full">
+              
+              {/* ✅ 3. ADD THE SIDEBAR HERE */}
+              <AppSidebar />
+              
+              <main className="flex-grow flex flex-col min-h-screen w-full overflow-hidden">
+                {children}
+              </main>
+
+            </div>
+
+          </SidebarProvider>
+
         </ClientProviders>
 
-        {/* 
-          GLOBAL FOOTER
-          - Always rendered
-          - Never hydrated by client providers
-        */}
         <footer className="py-8 bg-black border-t border-zinc-900 text-center z-50 relative mt-auto">
           <p className="text-[10px] text-zinc-600 tracking-wider uppercase font-medium">
             App Designed, Created & Developed by{' '}
