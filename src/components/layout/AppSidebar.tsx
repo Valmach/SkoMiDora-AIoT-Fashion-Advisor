@@ -68,7 +68,8 @@ export default function AppSidebar() {
       color: "text-amber-500",
     },
     {
-      href: "/recommendations",
+      // ✅ FIXED: Changed from /recommendations to /outfit-recommendations
+      href: "/outfit-recommendations", 
       label: "Outfits",
       icon: Lightbulb,
       color: "text-yellow-400",

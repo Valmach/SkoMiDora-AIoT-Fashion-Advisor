@@ -3,7 +3,7 @@ import './globals.css';
 import ClientProviders from '@/components/ClientProviders';
 import AutoRefreshOnCrash from '@/components/AutoRefreshOnCrash';
 
-// ✅ 1. ADD THESE IMPORTS
+// ✅ IMPORT THE MISSING PROVIDER
 import { SidebarProvider } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/layout/AppSidebar"; 
 
@@ -25,21 +25,18 @@ export default function RootLayout({
 
         <ClientProviders>
           
-          {/* ✅ 2. WRAP CONTENT IN SIDEBAR PROVIDER */}
+          {/* ✅ THE FIX: Wrap Sidebar and Content in SidebarProvider */}
           <SidebarProvider>
             
             <div className="flex flex-1 w-full">
-              
-              {/* ✅ 3. ADD THE SIDEBAR HERE */}
               <AppSidebar />
-              
               <main className="flex-grow flex flex-col min-h-screen w-full overflow-hidden">
                 {children}
               </main>
-
             </div>
 
           </SidebarProvider>
+          {/* ✅ END FIX */}
 
         </ClientProviders>
 
