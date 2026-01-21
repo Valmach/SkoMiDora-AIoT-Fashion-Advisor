@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Playfair_Display } from 'next/font/google'; 
 
-// 1. ADD ELEGANT FONT (Vogue Style)
 const playfair = Playfair_Display({ 
   subsets: ['latin'], 
   weight: ['400', '700', '900'],
@@ -26,10 +25,13 @@ interface AdviceProps {
   cardIndex: number;
 }
 
+// ✅ UPDATED: Added 'Roma' specific image
 const CITY_IMAGES: Record<string, string> = {
   'Paris': 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=800&q=80', 
   'New York': 'https://images.unsplash.com/photo-1496442226666-8d4a0e62e6e9?auto=format&fit=crop&w=800&q=80', 
-  'Oslo': 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=800&q=80', 
+  'Oslo': 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=800&q=80',
+  'Roma': 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=800&q=80', // The Colosseum
+  'Rome': 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=800&q=80',
   'Default': 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&q=80' 
 };
 
@@ -40,7 +42,13 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
     if (name.includes("Paris")) return CITY_IMAGES['Paris'];
     if (name.includes("New York")) return CITY_IMAGES['New York'];
     if (name.includes("Oslo")) return CITY_IMAGES['Oslo'];
+    if (name.includes("Roma") || name.includes("Rome")) return CITY_IMAGES['Roma']; // ✅ FIX
     return CITY_IMAGES['Default'];
+  };
+
+  const getCityColor = (name: string) => {
+    if (name.includes("Roma") || name.includes("Rome")) return "border-l-[#DC143C] group hover:border-[#DC143C]/50";
+    return "border-l-[#DC143C] group hover:border-[#DC143C]/50"; // Defaulting all to Crimson for brand consistency
   };
 
   return (
@@ -48,11 +56,10 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
       className={`animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-backwards`}
       style={{ animationDelay }}
     >
-      {/* 2. CRIMSON BORDER LOGIC (#DC143C) */}
-      <Card className="bg-zinc-900/80 border-zinc-800 overflow-hidden h-full flex flex-col border-l-4 border-l-[#DC143C] group hover:border-[#DC143C]/30 transition-all duration-300">
+      <Card className={`bg-zinc-900/80 border-zinc-800 overflow-hidden h-full flex flex-col border-l-4 ${getCityColor(eventAdvice.eventName)} transition-all duration-300`}>
         
         {/* IMAGE SECTION */}
-        <div className="h-56 w-full bg-zinc-800 relative overflow-hidden">
+        <div className="h-56 w-full bg-zinc-800 relative overflow-hidden group">
           <img 
             src={getCityImage(eventAdvice.eventName)} 
             alt={eventAdvice.eventName}
@@ -69,13 +76,12 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
         <CardHeader className="pb-2 relative -mt-8 z-10 px-6">
           <div className="flex justify-between items-end">
             <div>
-              {/* 3. APPLY ELEGANT FONT HERE */}
               <CardTitle className={`text-3xl text-white mb-1 drop-shadow-xl ${playfair.className} italic`}>
-                {eventAdvice.eventName.split(' ')[0]} {/* Just "Paris", "New York" */}
+                {eventAdvice.eventName.split(' ')[0]} 
               </CardTitle>
               <div className="flex items-center gap-2 text-zinc-400 text-xs tracking-wider uppercase font-medium">
                 <MapPin size={12} className="text-[#DC143C]" />
-                <span>{eventAdvice.eventName.split(' ').slice(1).join(' ')}</span> {/* "Fashion Week" */}
+                <span>{eventAdvice.eventName.split(' ').slice(1).join(' ')}</span>
               </div>
             </div>
           </div>
@@ -83,13 +89,11 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
 
         <CardContent className="space-y-5 flex-grow flex flex-col justify-between pt-4 px-6 pb-6">
           
-          {/* Weather */}
           <div className="flex items-center gap-2 text-xs text-zinc-300/80">
                <CloudSun size={14} className="text-[#DC143C]" />
                {eventAdvice.weatherForecast}
           </div>
 
-          {/* Stylist Note */}
           <div className="relative pl-4 border-l-2 border-[#DC143C]/50">
             <div className="text-[10px] text-[#DC143C] uppercase tracking-[0.2em] font-bold mb-2">
               Stylist Notes
@@ -99,7 +103,6 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
             </p>
           </div>
 
-          {/* Keywords */}
           <div className="flex flex-wrap gap-2 mt-auto">
             {eventAdvice.styleKeywords && eventAdvice.styleKeywords.map((keyword, i) => (
               <Badge key={i} variant="outline" className="border-zinc-700 text-zinc-400 text-[10px] uppercase tracking-widest hover:text-white hover:border-[#DC143C] transition-colors bg-transparent">
