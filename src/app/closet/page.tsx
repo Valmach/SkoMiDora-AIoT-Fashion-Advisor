@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback, useRef, useTransition } from "react";
 import Image from "next/image";
 import { collection, query, orderBy, onSnapshot, Timestamp } from "firebase/firestore";
 import { ref, getDownloadURL } from "firebase/storage";
+import { Bonheur_Royale } from 'next/font/google'; // ✅ ADDED FONT IMPORT
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,12 @@ import {
 
 import { analyzeAndSaveClothingItem, deleteClothingItem } from "@/app/actions";
 import { firestore, storage } from "@/lib/firebase";
+
+// ✅ CONFIGURE FONT
+const bonheur = Bonheur_Royale({ 
+  subsets: ['latin'], 
+  weight: ['400'],
+});
 
 /* -----------------------------------------------------------
    TYPES
@@ -87,7 +94,7 @@ export default function ClosetPage() {
   }, []);
 
   /* -----------------------------------------------------------
-     FIRESTORE LISTENER
+      FIRESTORE LISTENER
   ----------------------------------------------------------- */
   useEffect(() => {
     const q = query(
@@ -122,7 +129,7 @@ export default function ClosetPage() {
   }, []);
 
   /* -----------------------------------------------------------
-     IMAGE RESOLVER
+      IMAGE RESOLVER
   ----------------------------------------------------------- */
   useEffect(() => {
     items.forEach(async (item) => {
@@ -157,7 +164,7 @@ export default function ClosetPage() {
   }, [items]);
 
   /* -----------------------------------------------------------
-     ACTIONS
+      ACTIONS
   ----------------------------------------------------------- */
   const handleUpload = useCallback(async (file: File) => {
       const fd = new FormData();
@@ -185,14 +192,15 @@ export default function ClosetPage() {
   if (!isMounted) return null; 
 
   /* -----------------------------------------------------------
-     RENDER
+      RENDER
   ----------------------------------------------------------- */
   return (
     <div className="container mx-auto space-y-8 pb-12 h-[85vh] overflow-y-auto">
       <Card>
         <CardContent className="pt-6 flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold">Digital Closet</h1>
+            {/* ✅ UPDATED: Applies Bonheur Royale Font Here */}
+            <h1 className={`${bonheur.className} text-6xl font-bold tracking-wide`}>Digital Closet</h1>
             <p className="text-muted-foreground">
               {items.length} curated items
             </p>
