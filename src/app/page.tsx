@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
 import { useState, useEffect, useTransition } from "react";
+import { Bonheur_Royale } from "next/font/google"; 
 import {
   Card,
   CardContent,
@@ -20,6 +21,11 @@ import { useLocalStorage } from "@/hooks/use-local-storage";
 import StyleDnaDisplay from "@/components/StyleDnaDisplay";
 import { collection, query, onSnapshot } from "firebase/firestore";
 import { useFirebase } from "@/firebase/provider";
+
+const bonheur = Bonheur_Royale({
+  subsets: ["latin"],
+  weight: ["400"],
+});
 
 const STYLE_DNA_LOCAL_STORAGE_KEY = "skomidoraStyleDNA";
 
@@ -86,7 +92,6 @@ export default function DashboardPage() {
       try {
         const result = await analyzeStyleDNAAction();
   
-        // FIX: Casting result.styleDNA to string to resolve ts(2322)
         if (result && 'styleDNA' in result && result.styleDNA) {
           setStyleDNA(result.styleDNA as string); 
           setAnalysisCompleted(true);
@@ -120,8 +125,10 @@ export default function DashboardPage() {
     <div className="container mx-auto space-y-8">
       <Card className="shadow-xl border-primary/20">
         <CardHeader>
-          <CardTitle className="text-3xl font-bold text-foreground font-calligraphy">
-            Welcome to SkoMiDora
+          {/* ✅ UPDATED: Distinct Colors */}
+          <CardTitle className={`${bonheur.className} text-7xl font-bold pb-2`}>
+            <span className="text-white">Welcome to </span>
+            <span className="text-[#DC143C]">SkoMiDora</span>
           </CardTitle>
           <CardDescription className="text-muted-foreground font-sans">
             Your personal AI-powered stylist for footwear and fashion.
