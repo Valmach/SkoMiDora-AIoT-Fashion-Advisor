@@ -1,55 +1,64 @@
 'use server';
 
-import { z } from 'zod';
-
-// Helper: Find the best item from the user's real closet
-function findBestItem(items: any[], keywords: string[]) {
-  if (!items || items.length === 0) return null;
-  
-  const match = items.find(item => {
-    const name = (item.name || item.itemName || "").toLowerCase();
-    const category = (item.category || "").toLowerCase();
-    return keywords.some(k => name.includes(k) || category.includes(k));
+// Helper to find the best item from the closet based on multiple keyword matches
+function findBestItems(items: any[], keywords: string[], limit: number = 3) {
+  const scored = items.map(item => {
+    let score = 0;
+    const itemData = JSON.stringify(item).toLowerCase();
+    keywords.forEach(kw => {
+      if (itemData.includes(kw.toLowerCase())) score++;
+    });
+    return { ...item, score };
   });
 
-  return match || items[0];
+  return scored
+    .filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
 }
 
 export async function getUpcomingEventsStyleAdviceAction(closetItems: any[]) {
-  // 1. Pick items for specific cities
-  const parisItem = findBestItem(closetItems, ["leather", "jacket", "top", "chic", "black"]);
-  const romaItem = findBestItem(closetItems, ["linen", "dress", "skirt", "sundress", "sandals", "white", "beige"]);
-  const osloItem = findBestItem(closetItems, ["coat", "parka", "sweater", "wool", "warm", "scarf"]);
-
-  // 2. Return Events (Paris, Roma, Oslo)
-  return [
+  // 1. Define specific city "Vibe" keywords based on Winter 2026 trends
+  const cityConfigs = [
     {
-      eventName: "Paris Fashion Week",
-      date: "Feb 28, 2026 • 8:00 PM",
-      weatherForecast: "Overcast, 12°C",
-      reasoning: `Paris calls for effortless layers. Your ${parisItem?.name || "Leather Jacket"} is perfect for the Seine breeze and evening events.`,
-      styleKeywords: ["Chic", "Edgy", "Layered"],
-      suggestedItemName: parisItem?.name || "Statement Piece",
-      suggestedItemImage: parisItem?.imageUrl || parisItem?.image || null
+      name: "Paris Fashion Week",
+      city: "Paris, France",
+      date: "Jan 24, 2026",
+      weather: "4°C - 10°C | Foggy morning, clear afternoon",
+      keywords: ["leather", "wide-leg", "fur", "chic", "tweed", "square-toe", "beret", "foulard"],
+      reasoning: "Paris is embracing 'Sporty Chic' with wide-leg silhouettes and faux-fur trims. Layering a leather jacket or a tweed blazer is essential for the transition from foggy mornings to afternoon clearings."
     },
     {
-      eventName: "Roma Weekend",
-      date: "Mar 15, 2026 • 10:00 AM",
-      weatherForecast: "Sunny, 24°C",
-      // ✅ FIX: Reasoning now matches Roma (Cobblestones/Sun), not NYC (Skyline/Lights)
-      reasoning: `The Eternal City demands 'La Dolce Vita' style. This ${romaItem?.name || "Breezy Look"} is ideal for walking cobblestone streets in the warm sun.`,
-      styleKeywords: ["Romantic", "Mediterranean", "Classic"],
-      suggestedItemName: romaItem?.name || "Day Wear",
-      suggestedItemImage: romaItem?.imageUrl || romaItem?.image || null
+      name: "Oslo Winter Summit",
+      city: "Oslo, Norway",
+      date: "Jan 26, 2026",
+      weather: "-5°C - 1°C | Heavy snow expected",
+      keywords: ["wool", "cashmere", "puffer", "boots", "thermal", "burgundy", "alpaca", "knitwear"],
+      reasoning: "Oslo requires heavy-duty Scandi-style layering. Prioritize your burgundy knits and cashmere wraps. Pair your most robust wool coat with tall boots to handle the deep snow."
     },
     {
-      eventName: "Oslo Design Summit",
-      date: "Apr 10, 2026 • 9:00 AM",
-      weatherForecast: "Rainy, 8°C",
-      reasoning: `Scandinavian minimalism meets practicality. Your ${osloItem?.name || "Wool Coat"} will keep you sharp, warm, and dry.`,
-      styleKeywords: ["Minimalist", "Practical", "Sharp"],
-      suggestedItemName: osloItem?.name || "Outerwear",
-      suggestedItemImage: osloItem?.imageUrl || osloItem?.image || null
+      name: "Rome Cultural Tour",
+      city: "Rome, Italy",
+      date: "Jan 28, 2026",
+      weather: "6°C - 12°C | Scattered rain",
+      keywords: ["silk", "velvet", "leather boots", "emerald", "trench", "platform", "cardigan"],
+      reasoning: "Italian winter style right now is about 'Royal Luxury'—velvet textures and emerald tones. Since it's rainy, tall leather boots or platform booties are your best bet to stay dry while looking polished."
     }
   ];
+
+  // 2. Map each event to a selection of items from your 108-item closet
+  return cityConfigs.map(config => {
+    const recommendations = findBestItems(closetItems, config.keywords, 1);
+    const topItem = recommendations[0];
+
+    return {
+      eventName: config.name,
+      date: config.date,
+      weatherForecast: config.weather,
+      reasoning: config.reasoning,
+      styleKeywords: config.keywords.slice(0, 5),
+      suggestedItemName: topItem?.itemName || "Classic Winter Coat",
+      suggestedItemImage: topItem?.imageUrl || null
+    };
+  });
 }

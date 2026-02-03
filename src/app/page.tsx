@@ -37,19 +37,17 @@ export default function DashboardPage() {
   );
   const [isAnalyzing, startAnalyzingTransition] = useTransition();
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [showDna, setShowDna] = useState(false); // Track if DNA should be visible
   const { toast } = useToast();
 
   const [wardrobeItemCount, setWardrobeItemCount] = useState(0);
   const [isDataLoading, setIsDataLoading] = useState(true);
-  const [analysisCompleted, setAnalysisCompleted] = useState(false);
 
   useEffect(() => {
     if (!firebase) {
       setIsDataLoading(false);
-      setAnalysisError("Could not connect to the wardrobe service. Firebase is not available.");
       return;
     }
-    setIsDataLoading(true);
     const itemsCollectionRef = collection(firebase.firestore, "publicWardrobeItems");
     const q = query(itemsCollectionRef);
 
@@ -60,22 +58,18 @@ export default function DashboardPage() {
         setIsDataLoading(false);
       },
       (err) => {
-        console.error("Error fetching wardrobe count on dashboard:", err);
         setIsDataLoading(false);
-        setAnalysisError("Could not connect to the wardrobe service.");
       },
     );
 
     return () => unsubscribe();
   }, [firebase]);
 
-
   const handleAnalyzeDNA = () => {
     if (wardrobeItemCount === 0) {
       toast({
         title: "Your Closet is Empty",
-        description:
-          "Please add some items to your Digital Closet before analyzing your Style DNA.",
+        description: "Please add some items to your Digital Closet before analyzing your Style DNA.",
         variant: "destructive",
       });
       return;
@@ -83,60 +77,42 @@ export default function DashboardPage() {
   
     startAnalyzingTransition(async () => {
       setAnalysisError(null);
-      setAnalysisCompleted(false);
-      toast({
-        title: "Analyzing Your Style DNA...",
-        description:
-          "The AI is looking at your collection. This might take a moment.",
-      });
+      setShowDna(false); // Hide while loading
       try {
         const result = await analyzeStyleDNAAction();
-  
         if (result && 'styleDNA' in result && result.styleDNA) {
           setStyleDNA(result.styleDNA as string); 
-          setAnalysisCompleted(true);
-          toast({
-            title: "Style DNA Updated!",
-            description: "Your personalized fashion profile is ready.",
-          });
-        } else {
-          let errorMessage = "Analysis did not return a valid Style DNA.";
-          if (result && 'error' in result && typeof result.error === 'string') {
-            errorMessage = result.error;
-          }
-          throw new Error(errorMessage);
+          setShowDna(true); // ✅ Only show after successful click/analysis
+          toast({ title: "Style DNA Updated!" });
         }
       } catch (e: any) {
-        const errorMessage = e instanceof Error ? e.message : String(e);
-        setAnalysisError(`Analysis Failed: ${errorMessage}`);
-        toast({
-          title: "Analysis Failed",
-          description: errorMessage || "Could not analyze Style DNA.",
-          variant: "destructive",
-        });
+        setAnalysisError("Analysis Failed");
       }
     });
   };
-
-  const isLoading = isAnalyzing || isDataLoading;
-  const error = analysisError;
 
   return (
     <div className="container mx-auto space-y-8">
       <Card className="shadow-xl border-primary/20">
         <CardHeader>
-          {/* ✅ UPDATED: Distinct Colors */}
           <CardTitle className={`${bonheur.className} text-7xl font-bold pb-2`}>
             <span className="text-white">Welcome to </span>
             <span className="text-[#DC143C]">SkoMiDora</span>
           </CardTitle>
           <CardDescription className="text-muted-foreground font-sans">
-            Your personal AI-powered stylist for footwear and fashion.
-            Let&apos;s discover your unique style.
+            Your personal AIoT Powered stylist for footwear and fashion.
+            Lets get you dressed.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {analysisCompleted && styleDNA && <StyleDnaDisplay styleDNA={styleDNA} />}
+          
+          {/* ✅ DNA DISPLAY: Only visible when showDna is true (after button click) */}
+          {showDna && styleDNA && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
+              <StyleDnaDisplay styleDNA={styleDNA} />
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row gap-4">
             <Button
               asChild
@@ -149,25 +125,21 @@ export default function DashboardPage() {
             </Button>
             <Button
               onClick={handleAnalyzeDNA}
-              disabled={isLoading}
+              disabled={isAnalyzing || isDataLoading}
               className="flex-1 font-calligraphy text-lg bg-black hover:bg-destructive text-white"
               variant="secondary"
             >
-              {isLoading ? (
+              {isAnalyzing ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Brain className="mr-2 h-4 w-4" />
               )}
-              {isAnalyzing
-                ? "Analyzing..."
-                : isDataLoading
-                  ? "Loading Closet..."
-                  : "Analyse My Style."}
+              {isAnalyzing ? "Analyzing..." : "Analyse My Style."}
             </Button>
           </div>
-          {error && (
+          {analysisError && (
             <div className="text-center py-2 text-destructive-foreground bg-destructive/20 p-2 rounded-md text-sm flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4" /> <p>{error}</p>
+              <AlertTriangle className="h-4 w-4" /> <p>{analysisError}</p>
             </div>
           )}
         </CardContent>
