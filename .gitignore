@@ -48,3 +48,4 @@ node_modules/
 functions/.next/
 functions/node_modules/
 src/app/.sh fixes/
+*.tar.gz

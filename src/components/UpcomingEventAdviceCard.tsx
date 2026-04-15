@@ -1,7 +1,8 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { MapPin, Calendar, CloudSun, Shirt } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { MapPin, Calendar, CloudSun, Volume2, Square, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Playfair_Display } from 'next/font/google'; 
@@ -25,41 +26,61 @@ interface AdviceProps {
   cardIndex: number;
 }
 
-// ✅ UPDATED: Added 'Roma' specific image
 const CITY_IMAGES: Record<string, string> = {
   'Paris': 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=800&q=80', 
   'New York': 'https://images.unsplash.com/photo-1496442226666-8d4a0e62e6e9?auto=format&fit=crop&w=800&q=80', 
   'Oslo': 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=800&q=80',
-  'Roma': 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=800&q=80', // The Colosseum
+  'Roma': 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=800&q=80',
   'Rome': 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=800&q=80',
   'Default': 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&q=80' 
 };
 
 export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, cardIndex }: AdviceProps) {
+  if (!eventAdvice) return null;
+
   const animationDelay = `${cardIndex * 150}ms`;
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  useEffect(() => {
+    return () => window.speechSynthesis.cancel();
+  }, []);
+
+  const handleSpeak = () => {
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    } else {
+      const text = `${eventAdvice.eventName}. ${eventAdvice.weatherForecast}. Stylist Notes: ${eventAdvice.reasoning}`;
+      const utterance = new SpeechSynthesisUtterance(text);
+      
+      const voices = window.speechSynthesis.getVoices();
+      const preferredVoice = voices.find(v => v.name.includes("Google UK English Female") || v.lang === "en-GB");
+      if (preferredVoice) utterance.voice = preferredVoice;
+      
+      utterance.rate = 0.9;
+      utterance.onend = () => setIsSpeaking(false);
+      
+      window.speechSynthesis.speak(utterance);
+      setIsSpeaking(true);
+    }
+  };
 
   const getCityImage = (name: string) => {
     if (name.includes("Paris")) return CITY_IMAGES['Paris'];
     if (name.includes("New York")) return CITY_IMAGES['New York'];
     if (name.includes("Oslo")) return CITY_IMAGES['Oslo'];
-    if (name.includes("Roma") || name.includes("Rome")) return CITY_IMAGES['Roma']; // ✅ FIX
+    if (name.includes("Roma") || name.includes("Rome")) return CITY_IMAGES['Roma'];
     return CITY_IMAGES['Default'];
-  };
-
-  const getCityColor = (name: string) => {
-    if (name.includes("Roma") || name.includes("Rome")) return "border-l-[#DC143C] group hover:border-[#DC143C]/50";
-    return "border-l-[#DC143C] group hover:border-[#DC143C]/50"; // Defaulting all to Crimson for brand consistency
   };
 
   return (
     <div 
-      className={`animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-backwards`}
+      className={`animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-backwards h-full`}
       style={{ animationDelay }}
     >
-      <Card className={`bg-zinc-900/80 border-zinc-800 overflow-hidden h-full flex flex-col border-l-4 ${getCityColor(eventAdvice.eventName)} transition-all duration-300`}>
+      <Card className={`bg-zinc-900/80 border-zinc-800 overflow-hidden h-full flex flex-col border-l-4 border-l-[#DC143C] group hover:border-[#DC143C]/50 transition-all duration-300`}>
         
-        {/* IMAGE SECTION */}
-        <div className="h-56 w-full bg-zinc-800 relative overflow-hidden group">
+        <div className="h-56 w-full bg-zinc-800 relative overflow-hidden group shrink-0">
           <img 
             src={getCityImage(eventAdvice.eventName)} 
             alt={eventAdvice.eventName}
@@ -73,7 +94,7 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
           </div>
         </div>
 
-        <CardHeader className="pb-2 relative -mt-8 z-10 px-6">
+        <CardHeader className="pb-2 relative -mt-8 z-10 px-6 shrink-0">
           <div className="flex justify-between items-end">
             <div>
               <CardTitle className={`text-3xl text-white mb-1 drop-shadow-xl ${playfair.className} italic`}>
@@ -90,14 +111,31 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
         <CardContent className="space-y-5 flex-grow flex flex-col justify-between pt-4 px-6 pb-6">
           
           <div className="flex items-center gap-2 text-xs text-zinc-300/80">
-               <CloudSun size={14} className="text-[#DC143C]" />
-               {eventAdvice.weatherForecast}
+            <CloudSun size={14} className="text-[#DC143C]" />
+            {eventAdvice.weatherForecast}
           </div>
 
           <div className="relative pl-4 border-l-2 border-[#DC143C]/50">
-            <div className="text-[10px] text-[#DC143C] uppercase tracking-[0.2em] font-bold mb-2">
-              Stylist Notes
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-[10px] text-[#DC143C] uppercase tracking-[0.2em] font-bold">
+                Stylist Notes
+              </div>
+              <button 
+                onClick={handleSpeak}
+                className={`flex items-center gap-1.5 text-[10px] uppercase tracking-wider transition-colors ${isSpeaking ? "text-[#DC143C] animate-pulse" : "text-zinc-500 hover:text-white"}`}
+              >
+                {isSpeaking ? (
+                  <>
+                    <Square size={10} className="fill-current" /> Stop
+                  </>
+                ) : (
+                  <>
+                    <Volume2 size={12} /> Listen
+                  </>
+                )}
+              </button>
             </div>
+            
             <p className={`text-sm text-zinc-300 leading-relaxed ${playfair.className}`}>
               "{eventAdvice.reasoning}"
             </p>
@@ -110,6 +148,14 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
               </Badge>
             ))}
           </div>
+
+          {/* THE NEW BUTTON */}
+          <Link href="/outfit-recommendations" className="mt-4 w-full">
+            <button className="w-full py-3 px-4 bg-zinc-800 hover:bg-[#DC143C] text-white text-xs font-bold uppercase tracking-widest rounded transition-colors flex items-center justify-center gap-2 group">
+              View 3 Outfit Options
+              <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+            </button>
+          </Link>
 
         </CardContent>
       </Card>

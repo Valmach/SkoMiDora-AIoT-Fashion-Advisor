@@ -147,7 +147,8 @@ export async function getDailyOutfitsAction(closetItems: any[]) {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
   });
 
-  const recentItems = closetItems.slice(0, 50);
+  // ✅ FIX: Removed the .slice(0, 50) limit. The AI now sees all 108+ items!
+  const recentItems = closetItems;
 
   const closetText = recentItems
     .map((item) => `- ${item.itemName} (type: ${item.itemType || 'unknown'}, color: ${item.color || 'unknown'})`)

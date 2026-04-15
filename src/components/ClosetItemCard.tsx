@@ -4,7 +4,8 @@ import React from 'react';
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trash2, ExternalLink, Info } from 'lucide-react';
+import { Trash2, Info } from 'lucide-react';
+import WardrobeMedia from './WardrobeMedia';
 
 interface ClosetItemProps {
   item: {
@@ -33,14 +34,11 @@ export default function ClosetItemCard({ item, onDelete }: ClosetItemProps) {
   return (
     <Card className="group relative overflow-hidden bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-all duration-300 flex flex-col h-full hover:shadow-xl">
       
-      {/* IMAGE - Reverted to fixed height (h-56) so it's not "too big" */}
       <div className="h-56 w-full bg-zinc-800 relative overflow-hidden border-b border-zinc-800">
-        <img
+        <WardrobeMedia
           src={displayImage}
           alt={displayName}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
-        {/* Category Badge */}
         <div className="absolute top-2 right-2">
            <Badge variant="secondary" className="bg-black/70 backdrop-blur-sm text-white border-white/10 text-[10px] uppercase tracking-wider font-semibold">
              {displayCategory}
@@ -48,10 +46,8 @@ export default function ClosetItemCard({ item, onDelete }: ClosetItemProps) {
         </div>
       </div>
 
-      {/* CONTENT - Metadata Restored */}
       <CardContent className="p-4 flex-grow flex flex-col space-y-3">
         
-        {/* Title & Brand */}
         <div>
           <h3 className="text-lg font-bold text-white leading-tight mb-1 truncate">
             {displayName}
@@ -61,7 +57,6 @@ export default function ClosetItemCard({ item, onDelete }: ClosetItemProps) {
           </p>
         </div>
 
-        {/* Description / Notes (Restored) */}
         {displayNotes && (
           <div className="bg-zinc-950/50 p-2.5 rounded-md border border-zinc-800/50">
             <p className="text-xs text-zinc-400 line-clamp-3 leading-relaxed">
@@ -70,7 +65,6 @@ export default function ClosetItemCard({ item, onDelete }: ClosetItemProps) {
           </div>
         )}
 
-        {/* Tags Row */}
         <div className="flex items-center gap-2 mt-auto pt-1">
            {item.size && (
              <Badge variant="outline" className="text-[10px] border-zinc-700 text-zinc-400 h-5 px-1.5">
@@ -86,7 +80,6 @@ export default function ClosetItemCard({ item, onDelete }: ClosetItemProps) {
         </div>
       </CardContent>
 
-      {/* FOOTER - Actions */}
       <CardFooter className="p-3 border-t border-zinc-800 bg-zinc-900/50 flex justify-between items-center">
         <Button size="sm" variant="ghost" className="h-7 text-xs text-zinc-500 hover:text-white px-2">
           <Info size={12} className="mr-1.5" /> Details
