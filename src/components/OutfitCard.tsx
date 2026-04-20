@@ -24,8 +24,8 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
   if (!outfit) return null;
   const items = outfit.items || [];
   
-  const VIDEO_URL = "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4";
-
+// Replace the old gtv-videos-bucket URL with this:
+const VIDEO_URL = "https://media.w3.org/2010/05/sintel/trailer_hd.mp4";
   // IMAGE FINDER
   const findClosetImage = (itemName: string) => {
     if (!analyzedItems || analyzedItems.length === 0) return null;

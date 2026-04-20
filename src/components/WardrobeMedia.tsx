@@ -18,8 +18,6 @@ const WardrobeMedia: React.FC<WardrobeMediaProps> = ({ src, alt }) => {
         loop
         muted
         playsInline
-        crossOrigin="anonymous"
-        {...({ referrerPolicy: 'no-referrer' } as any)}
         className="w-full h-full object-cover"
       />
     );
@@ -29,8 +27,6 @@ const WardrobeMedia: React.FC<WardrobeMediaProps> = ({ src, alt }) => {
     <img
       src={src}
       alt={alt}
-      crossOrigin="anonymous"
-      referrerPolicy="no-referrer"
       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
     />
   );
