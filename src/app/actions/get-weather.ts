@@ -1,42 +1,48 @@
 'use server';
 
-/**
- * FILE: src/app/actions/get-weather.ts
- * LOGIC: Open-Meteo Geocoding + Forecast
- */
+export async function getWeatherForLocation(location: string) {
+  const apiKey = process.env.WEATHER_API_KEY;
+  
+  if (!apiKey) {
+    throw new Error('Weather API key is missing');
+  }
 
-export async function getCityWeather(cityName: string) {
   try {
-    // 1. Convert City Name to Coordinates
-    const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=en&format=json`;
-    const geoRes = await fetch(geoUrl);
-    const geoData = await geoRes.json();
+    // Fetching a 3-day forecast to cover upcoming events
+    const response = await fetch(
+      `https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${encodeURIComponent(location)}&days=3&aqi=no&alerts=no`,
+      {
+        // Cache for 1 hour (3600 seconds) to avoid spamming the free tier
+        next: { revalidate: 3600 } 
+      }
+    );
 
-    if (!geoData.results || geoData.results.length === 0) return { temp: 20, condition: 'Clear' };
+    if (!response.ok) {
+      throw new Error(`WeatherAPI responded with status: ${response.status}`);
+    }
 
-    const { latitude, longitude } = geoData.results[0];
+    const data = await response.json();
 
-    // 2. Fetch current weather from Open-Meteo
-    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&temperature_unit=celsius`;
-    const weatherRes = await fetch(weatherUrl);
-    const weatherData = await weatherRes.json();
-
-    const current = weatherData.current_weather;
-    
-    // Map codes to posh condition names
-    const interpretCondition = (code: number) => {
-      if (code === 0) return 'Clear Skies';
-      if (code <= 3) return 'Partly Cloudy';
-      if (code >= 51 && code <= 67) return 'Rainy';
-      return 'Overcast';
-    };
-
+    // Extract exactly what your rule engine needs
     return {
-      temp: Math.round(current.temperature),
-      condition: interpretCondition(current.weathercode)
+      success: true,
+      current: {
+        temp_c: data.current.temp_c,
+        temp_f: data.current.temp_f,
+        condition: data.current.condition.text,
+        is_day: data.current.is_day,
+      },
+      forecast: data.forecast.forecastday.map((day: any) => ({
+        date: day.date,
+        max_temp_c: day.day.maxtemp_c,
+        min_temp_c: day.day.mintemp_c,
+        condition: day.day.condition.text,
+        chance_of_rain: day.day.daily_chance_of_rain,
+      }))
     };
+
   } catch (error) {
-    console.error("Climate Sync Failed:", error);
-    return { temp: 20, condition: 'Standard' };
+    console.error("Failed to fetch weather data:", error);
+    return { success: false, error: "Weather data unavailable" };
   }
 }
