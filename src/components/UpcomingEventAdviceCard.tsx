@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -40,28 +40,53 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
 
   const animationDelay = `${cardIndex * 150}ms`;
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
 
+  // Clean up audio if the component unmounts
   useEffect(() => {
-    return () => window.speechSynthesis.cancel();
-  }, []);
+    return () => {
+      if (audioElement) {
+        audioElement.pause();
+      }
+    };
+  }, [audioElement]);
 
-  const handleSpeak = () => {
-    if (isSpeaking) {
-      window.speechSynthesis.cancel();
+  const handleSpeak = async () => {
+    // If it is already playing, stop it
+    if (isSpeaking && audioElement) {
+      audioElement.pause();
       setIsSpeaking(false);
-    } else {
-      const text = `${eventAdvice.eventName}. ${eventAdvice.weatherForecast}. Stylist Notes: ${eventAdvice.reasoning}`;
-      const utterance = new SpeechSynthesisUtterance(text);
+      return;
+    }
+
+    setIsSpeaking(true);
+    
+    try {
+      const textToRead = `${eventAdvice.eventName}. ${eventAdvice.weatherForecast}. Stylist Notes: ${eventAdvice.reasoning}`;
+      const userLocale = navigator.language || 'en-US'; 
       
-      const voices = window.speechSynthesis.getVoices();
-      const preferredVoice = voices.find(v => v.name.includes("Google UK English Female") || v.lang === "en-GB");
-      if (preferredVoice) utterance.voice = preferredVoice;
+      // Call our new Next.js API route for premium Google Cloud TTS
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: textToRead, locale: userLocale }),
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch premium audio');
+
+      // Convert the response to an MP3 Blob and play it dynamically
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
       
-      utterance.rate = 0.9;
-      utterance.onend = () => setIsSpeaking(false);
+      audio.onended = () => setIsSpeaking(false);
       
-      window.speechSynthesis.speak(utterance);
-      setIsSpeaking(true);
+      setAudioElement(audio);
+      audio.play();
+
+    } catch (error) {
+      console.error("Audio playback failed:", error);
+      setIsSpeaking(false);
     }
   };
 
@@ -136,7 +161,8 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
               </button>
             </div>
             
-            <p className={`text-sm text-zinc-300 leading-relaxed ${playfair.className}`}>
+            {/* UPDATED TYPOGRAPHY: Thinner, lighter color, looser tracking */}
+            <p className={`font-normal text-sm text-zinc-200 tracking-wide leading-relaxed ${playfair.className}`}>
               "{eventAdvice.reasoning}"
             </p>
           </div>
@@ -149,7 +175,6 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
             ))}
           </div>
 
-          {/* THE NEW BUTTON */}
           <Link href="/outfit-recommendations" className="mt-4 w-full">
             <button className="w-full py-3 px-4 bg-zinc-800 hover:bg-[#DC143C] text-white text-xs font-bold uppercase tracking-widest rounded transition-colors flex items-center justify-center gap-2 group">
               View 3 Outfit Options

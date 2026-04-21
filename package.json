@@ -15,6 +15,7 @@
     "@ai-sdk/google": "^3.0.7",
     "@genkit-ai/firebase": "^1.0.0",
     "@genkit-ai/google-genai": "^1.0.6",
+    "@google-cloud/text-to-speech": "^6.4.0",
     "@opentelemetry/exporter-jaeger": "^2.0.1",
     "@opentelemetry/exporter-trace-otlp-http": "^0.52.0",
     "@opentelemetry/winston-transport": "^0.14.1",
