@@ -8,12 +8,11 @@ import { firestore } from '@/lib/firebase';
 import { Loader2, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
-import { Outfit } from "next/font/google"; // 1. Import sleek sans-serif font
+import { Outfit } from "next/font/google"; 
 
-// 2. Configure Font (Clean, Geometric, like Zalando)
 const outfit = Outfit({
   subsets: ["latin"],
-  weight: ["300", "400", "700"], // <-- Added '700' for the bold styling
+  weight: ["300", "400", "700"], 
 });
 
 export default function UpcomingEventsPage() {
@@ -30,7 +29,6 @@ export default function UpcomingEventsPage() {
         const snapshot = await getDocs(collection(firestore, 'publicWardrobeItems'));
         items = snapshot.docs.map(d => {
           const data = d.data();
-          // ✅ CRITICAL FIX: Sanitize Timestamps to prevent "Only plain objects" error
           return {
             ...data,
             createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : null,
@@ -69,21 +67,13 @@ export default function UpcomingEventsPage() {
              <span className="text-[#DC143C]">●</span> Synced Agenda
            </div>
            
-           {/* ✅ UPDATED TITLE: Outfit Font, NOT BOLD, Crimson/White Split */}
            <div className="flex items-center gap-3">
-             <Calendar className="h-8 w-8 text-[#DC143C]" />
-             <h1 className="text-3xl font-normal tracking-tight"> 
-               <span className="text-white">Your Google Calendar </span>
-               <span className="text-[#DC143C]">Events</span>
+             <Calendar className="h-8 md:h-10 w-8 md:w-10 text-[#DC143C]" />
+             <h1 className={`text-4xl md:text-6xl font-bold tracking-wide ${outfit.className}`}> 
+               <span className="text-white">Digital </span>
+               <span className="text-[#DC143C]">Closet</span>
              </h1>
-           </div><div className="flex items-center gap-3">
-  <Calendar className="h-10 w-10 text-[#DC143C]" />
-  <h1 className={`text-6xl font-bold tracking-wide ${outfit.className}`}> 
-    <span className="text-white">Your Google Calendar </span>
-    <span className="text-[#DC143C]">Events</span>
-  </h1>
-</div>
-           
+           </div>
         </div>
         
         <Button 
