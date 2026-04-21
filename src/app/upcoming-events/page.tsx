@@ -13,7 +13,7 @@ import { Outfit } from "next/font/google"; // 1. Import sleek sans-serif font
 // 2. Configure Font (Clean, Geometric, like Zalando)
 const outfit = Outfit({
   subsets: ["latin"],
-  weight: ["300", "400"], // Light and Normal weights only (No Bold)
+  weight: ["300", "400", "700"], // <-- Added '700' for the bold styling
 });
 
 export default function UpcomingEventsPage() {
@@ -76,7 +76,13 @@ export default function UpcomingEventsPage() {
                <span className="text-white">Your Google Calendar </span>
                <span className="text-[#DC143C]">Events</span>
              </h1>
-           </div>
+           </div><div className="flex items-center gap-3">
+  <Calendar className="h-10 w-10 text-[#DC143C]" />
+  <h1 className={`text-6xl font-bold tracking-wide ${outfit.className}`}> 
+    <span className="text-white">Your Google Calendar </span>
+    <span className="text-[#DC143C]">Events</span>
+  </h1>
+</div>
            
         </div>
         
