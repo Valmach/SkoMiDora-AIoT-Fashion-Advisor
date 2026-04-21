@@ -8,6 +8,7 @@ import AppSidebar from "@/components/layout/AppSidebar";
 export const metadata = {
   title: 'SkoMiDora',
   description: 'AI Fashion & Wardrobe Intelligence',
+  colorScheme: 'dark', // <-- This locks the browser into dark mode rendering
 };
 
 export default function RootLayout({

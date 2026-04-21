@@ -4,6 +4,7 @@
 
 @layer base {
   :root {
+    color-scheme: dark; /* Prevents Edge from muddying colors */
     --background: 0 0% 4%;
     --foreground: 0 0% 98%;
     --muted: 0 0% 12%;
@@ -32,6 +33,7 @@
   }
 
   .dark {
+    color-scheme: dark;
     --background: 0 0% 4%;
     --foreground: 0 0% 98%;
     --muted: 0 0% 12%;
@@ -59,6 +61,7 @@
   }
 
   .almost-dark {
+    color-scheme: dark;
     --background: 0 0% 4%;
     --foreground: 0 0% 98%;
     --muted: 0 0% 12%;
