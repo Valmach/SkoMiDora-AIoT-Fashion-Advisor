@@ -8,11 +8,17 @@ import { firestore } from '@/lib/firebase';
 import { Loader2, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
-import { Outfit } from "next/font/google"; 
+import { Outfit, Imperial_Script } from "next/font/google"; 
 
 const outfit = Outfit({
   subsets: ["latin"],
   weight: ["300", "400", "700"], 
+});
+
+// Configure the Imperial Script font
+const imperial = Imperial_Script({
+  subsets: ["latin"],
+  weight: ["400"], // Normal weight
 });
 
 export default function UpcomingEventsPage() {
@@ -69,9 +75,10 @@ export default function UpcomingEventsPage() {
            
            <div className="flex items-center gap-3">
              <Calendar className="h-8 md:h-10 w-8 md:w-10 text-[#DC143C]" />
-             <h1 className={`text-4xl md:text-6xl font-bold tracking-wide ${outfit.className}`}> 
-               <span className="text-white">Digital </span>
-               <span className="text-[#DC143C]">Closet</span>
+             {/* Updated to Imperial Script, normal weight, original text */}
+             <h1 className={`text-5xl md:text-6xl font-normal tracking-wide ${imperial.className}`}> 
+               <span className="text-white">Your Google Calendar </span>
+               <span className="text-[#DC143C]">Events</span>
              </h1>
            </div>
         </div>
