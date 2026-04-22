@@ -21,7 +21,7 @@ const schema = z.object({
   ),
 });
 
-// Helper: Shuffles the closet completely randomly
+// Helper 1: Scrambles the array
 function shuffleArray(array: any[]) {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -31,42 +31,51 @@ function shuffleArray(array: any[]) {
   return shuffled;
 }
 
+// Helper 2: THE FIX. Strips timestamps, hyphens, and file extensions.
+function cleanItemName(rawName: string): string {
+  if (!rawName) return 'Unknown Item';
+  return rawName
+    .replace(/^[0-9]+-/, '') // Removes leading Unix timestamps (e.g., 1751296561090-)
+    .replace(/\.[a-zA-Z0-9]+$/, '') // Removes file extensions like .png or .jpg
+    .replace(/-/g, ' ') // Replaces hyphens with spaces
+    .replace(/_/g, ' ') // Replaces underscores with spaces
+    .trim();
+}
+
 export async function getUpcomingEventsStyleAdviceAction(closetItems: any[] = []) {
   
   if (!closetItems || closetItems.length === 0) {
     throw new Error("No wardrobe items found. Please add items to the closet.");
   }
 
-  // 1. Shuffle the entire inventory
   const shuffledCloset = shuffleArray(closetItems);
 
-  // 2. SEED INJECTION: Extract 3 completely random items that the AI MUST use.
-  // Because the array is shuffled, these will be wildly different every time you click refresh.
-  const seedItem1 = shuffledCloset[0]?.itemName || '';
-  const seedItem2 = shuffledCloset[1]?.itemName || '';
-  const seedItem3 = shuffledCloset[2]?.itemName || '';
+  // SANITIZATION: Clean the names before feeding them to the AI
+  const availableItemsList = shuffledCloset.slice(0, 90).map(item => {
+    const cleanName = cleanItemName(item.itemName);
+    return `- ${cleanName} (Color: ${item.color || 'Any'}, Style: ${item.style || 'Versatile'}, OriginalID: ${item.itemName})`;
+  }).join('\n');
 
-  // 3. Provide a large chunk of the closet for the AI to build the REST of the outfit
-  const availableItemsList = shuffledCloset.slice(0, 90).map(item => 
-    `- ${item.itemName || 'Unknown Item'} (Color: ${item.color || 'Any'}, Style: ${item.style || 'Versatile'})`
-  ).join('\n');
+  // We still use seed injection, but with the CLEAN names.
+  const seedItem1 = cleanItemName(shuffledCloset[0]?.itemName || '');
+  const seedItem2 = cleanItemName(shuffledCloset[1]?.itemName || '');
+  const seedItem3 = cleanItemName(shuffledCloset[2]?.itemName || '');
 
   try {
     const { object } = await generateObject({
       model: google('gemini-1.5-pro'),
       schema: schema,
-      temperature: 0.9, // Cranked up to 0.9 for maximum styling chaos/creativity
+      temperature: 0.9, 
       system: `You are an elite, avant-garde AI fashion architect styling a digital closet. 
       Your task is to generate 3 highly distinct outfit recommendations for upcoming lifestyle events.
       
-      CRITICAL RULES - YOU MUST OBEY THESE:
+      CRITICAL RULES:
       1. MANDATORY SEEDS: 
-         - You MUST build Outfit #1 around this exact item: "${seedItem1}".
-         - You MUST build Outfit #2 around this exact item: "${seedItem2}".
-         - You MUST build Outfit #3 around this exact item: "${seedItem3}".
-         These items must be the focal point of your 'reasoning'.
-      2. STRICT INVENTORY: To complete the rest of the outfits, you MUST ONLY select from the "AVAILABLE CLOSET" list. 
-      3. VERBATIM NAMES: When listing the 'items' array, copy the item names EXACTLY word-for-word from the inventory list. Do not alter a single word, or the frontend image matcher will fail.
+         - Outfit #1 MUST prominently feature: "${seedItem1}".
+         - Outfit #2 MUST prominently feature: "${seedItem2}".
+         - Outfit #3 MUST prominently feature: "${seedItem3}".
+      2. STRICT INVENTORY: You MUST ONLY select items from the "AVAILABLE CLOSET" list. 
+      3. EXACT NAMES: When listing the 'items' array, use the exact name provided in the list.
       4. ZERO REPETITION: Do not use the same supporting item across multiple outfits.`,
       prompt: `AVAILABLE CLOSET INVENTORY:\n${availableItemsList}\n\nReview this inventory and construct 3 outfits utilizing the mandatory seed items.`,
     });
@@ -76,7 +85,6 @@ export async function getUpcomingEventsStyleAdviceAction(closetItems: any[] = []
   } catch (error) {
     console.error("Gemini API Error:", error);
     
-    // Fallback if the AI crashes
     return [
       {
         eventName: "API Timeout",
