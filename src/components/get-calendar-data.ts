@@ -21,49 +21,65 @@ const schema = z.object({
   ),
 });
 
-export async function getUpcomingEventsStyleAdviceAction(eventsInput: any[] = []) {
+// Helper: Shuffles the closet so Gemini sees a different mix every time
+function shuffleArray(array: any[]) {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+export async function getUpcomingEventsStyleAdviceAction(closetItems: any[] = []) {
   
-  // 1. If we have real events, use AI to generate.
-  if (eventsInput.length > 0) {
-    // ... (Standard AI logic for real events would go here)
-    // For now, we default to the simulation below if the input is empty
+  if (!closetItems || closetItems.length === 0) {
+    throw new Error("No wardrobe items found. Please add items to the closet.");
   }
 
-  // 2. FORCED SIMULATION: Paris, Oslo, London with YOUR EXACT TEXT
-  // We return this directly to ensure the text is 100% accurate.
-  return [
-    {
-      eventName: "Paris", // Card Title Overridden in Page
-      eventStartDateTime: "Tomorrow, 8:00 PM",
-      location: "Paris, France",
-      weatherCondition: "Mild Evening",
-      temperature: 65,
-      outfitIdea: "Parisian Chic",
-      reasoning: "The Oynx slip dress offers a versatile base for layering, achieving a chic yet comfortable aesthetic for Parisian exploration. Paired with polished loafers, it ensures both style and ease for walking the city's charming streets.",
-      items: ["Oynx Slip Dress", "Polished Loafers", "Minimalist Trench", "Gold Hoops"],
-      colorPalette: "Black, White, Gold"
-    },
-    {
-      eventName: "Oslo",
-      eventStartDateTime: "Friday, 9:00 AM",
-      location: "Oslo, Norway",
-      weatherCondition: "Frosty & Cold",
-      temperature: 28,
-      outfitIdea: "Nordic Warmth",
-      reasoning: "The Bordeaux Virgin Wool flare pants provide essential warmth and insulation for Oslo's cold climate. The Miu Miu leather boots offer robust protection and style, perfectly suited for frosty conditions while maintaining a chic appeal.",
-      items: ["Bordeaux Wool Pants", "Miu Miu Leather Boots", "Cream Turtleneck", "Shearling Coat"],
-      colorPalette: "Bordeaux, Cream, Brown"
-    },
-    {
-      eventName: "London",
-      eventStartDateTime: "Sunday, 7:00 PM",
-      location: "London, UK",
-      weatherCondition: "Rainy",
-      temperature: 52,
-      outfitIdea: "Gallery Hopping",
-      reasoning: "The charcoal grey dress offers a sophisticated and adaptable base, ideal for layering under a warm coat. Black leather Tabi boots are chosen for their rain-appropriate material and comfort, making them perfect for walking between galleries in unpredictable London weather.",
-      items: ["Charcoal Grey Dress", "Black Tabi Boots", "Rain Mac", "Silver Clutch"],
-      colorPalette: "Charcoal, Black, Silver"
-    }
-  ];
+  // 1. Shuffle and format the inventory to prevent LLM list-order bias
+  // We slice to 80 items to give the AI massive variety while keeping token counts optimal
+  const shuffledCloset = shuffleArray(closetItems).slice(0, 80); 
+  
+  const availableItemsList = shuffledCloset.map(item => 
+    `- ${item.itemName || 'Unknown Item'} (Color: ${item.color || 'Any'}, Style: ${item.style || 'Versatile'})`
+  ).join('\n');
+
+  try {
+    // 2. THE REAL AI CALL
+    const { object } = await generateObject({
+      model: google('gemini-1.5-pro'),
+      schema: schema,
+      temperature: 0.8, // High temperature forces creative exploration of the 108 items
+      system: `You are the elite AI fashion architect for the digital closet. 
+      Your task is to generate 3 highly distinct outfit recommendations for upcoming lifestyle events.
+      
+      CRITICAL RULES:
+      1. STRICT INVENTORY: You MUST ONLY select items from the "AVAILABLE CLOSET" list provided. Never invent or hallucinate clothing that is not on the list.
+      2. ZERO REPETITION: Do not repeat any single item across the 3 outfits. Every look must use completely unique pieces.
+      3. DEEP UTILIZATION: Dig deep into the inventory. Avoid defaulting to basic black items unless contextually perfect.
+      4. Create realistic but distinct events (e.g., "Gallery Opening in SoHo", "Morning Coffee Run", "Client Dinner").`,
+      prompt: `AVAILABLE CLOSET INVENTORY:\n${availableItemsList}\n\nReview this inventory and generate 3 unique, fully accessorized outfits for 3 different upcoming events.`,
+    });
+
+    return object.recommendations;
+
+  } catch (error) {
+    console.error("Gemini API Error:", error);
+    
+    // 3. THE GRACEFUL FALLBACK (Only triggers if the AI times out or crashes)
+    return [
+      {
+        eventName: "API Timeout",
+        eventStartDateTime: "System Notice",
+        location: "Local Device",
+        weatherCondition: "Offline",
+        temperature: 70,
+        outfitIdea: "Standard Uniform",
+        reasoning: "The styling engine is currently syncing. Displaying fallback styles.",
+        items: ["Classic White Tee", "Blue Denim", "Sneakers"],
+        colorPalette: "White, Blue"
+      }
+    ];
+  }
 }
