@@ -21,7 +21,7 @@ const schema = z.object({
   ),
 });
 
-// Helper: Shuffles the closet so Gemini sees a different mix every time
+// Helper: Shuffles the closet completely randomly
 function shuffleArray(array: any[]) {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -37,29 +37,38 @@ export async function getUpcomingEventsStyleAdviceAction(closetItems: any[] = []
     throw new Error("No wardrobe items found. Please add items to the closet.");
   }
 
-  // 1. Shuffle and format the inventory to prevent LLM list-order bias
-  // We slice to 80 items to give the AI massive variety while keeping token counts optimal
-  const shuffledCloset = shuffleArray(closetItems).slice(0, 80); 
-  
-  const availableItemsList = shuffledCloset.map(item => 
+  // 1. Shuffle the entire inventory
+  const shuffledCloset = shuffleArray(closetItems);
+
+  // 2. SEED INJECTION: Extract 3 completely random items that the AI MUST use.
+  // Because the array is shuffled, these will be wildly different every time you click refresh.
+  const seedItem1 = shuffledCloset[0]?.itemName || '';
+  const seedItem2 = shuffledCloset[1]?.itemName || '';
+  const seedItem3 = shuffledCloset[2]?.itemName || '';
+
+  // 3. Provide a large chunk of the closet for the AI to build the REST of the outfit
+  const availableItemsList = shuffledCloset.slice(0, 90).map(item => 
     `- ${item.itemName || 'Unknown Item'} (Color: ${item.color || 'Any'}, Style: ${item.style || 'Versatile'})`
   ).join('\n');
 
   try {
-    // 2. THE REAL AI CALL
     const { object } = await generateObject({
       model: google('gemini-1.5-pro'),
       schema: schema,
-      temperature: 0.8, // High temperature forces creative exploration of the 108 items
-      system: `You are the elite AI fashion architect for the digital closet. 
+      temperature: 0.9, // Cranked up to 0.9 for maximum styling chaos/creativity
+      system: `You are an elite, avant-garde AI fashion architect styling a digital closet. 
       Your task is to generate 3 highly distinct outfit recommendations for upcoming lifestyle events.
       
-      CRITICAL RULES:
-      1. STRICT INVENTORY: You MUST ONLY select items from the "AVAILABLE CLOSET" list provided. Never invent or hallucinate clothing that is not on the list.
-      2. ZERO REPETITION: Do not repeat any single item across the 3 outfits. Every look must use completely unique pieces.
-      3. DEEP UTILIZATION: Dig deep into the inventory. Avoid defaulting to basic black items unless contextually perfect.
-      4. Create realistic but distinct events (e.g., "Gallery Opening in SoHo", "Morning Coffee Run", "Client Dinner").`,
-      prompt: `AVAILABLE CLOSET INVENTORY:\n${availableItemsList}\n\nReview this inventory and generate 3 unique, fully accessorized outfits for 3 different upcoming events.`,
+      CRITICAL RULES - YOU MUST OBEY THESE:
+      1. MANDATORY SEEDS: 
+         - You MUST build Outfit #1 around this exact item: "${seedItem1}".
+         - You MUST build Outfit #2 around this exact item: "${seedItem2}".
+         - You MUST build Outfit #3 around this exact item: "${seedItem3}".
+         These items must be the focal point of your 'reasoning'.
+      2. STRICT INVENTORY: To complete the rest of the outfits, you MUST ONLY select from the "AVAILABLE CLOSET" list. 
+      3. VERBATIM NAMES: When listing the 'items' array, copy the item names EXACTLY word-for-word from the inventory list. Do not alter a single word, or the frontend image matcher will fail.
+      4. ZERO REPETITION: Do not use the same supporting item across multiple outfits.`,
+      prompt: `AVAILABLE CLOSET INVENTORY:\n${availableItemsList}\n\nReview this inventory and construct 3 outfits utilizing the mandatory seed items.`,
     });
 
     return object.recommendations;
@@ -67,7 +76,7 @@ export async function getUpcomingEventsStyleAdviceAction(closetItems: any[] = []
   } catch (error) {
     console.error("Gemini API Error:", error);
     
-    // 3. THE GRACEFUL FALLBACK (Only triggers if the AI times out or crashes)
+    // Fallback if the AI crashes
     return [
       {
         eventName: "API Timeout",
