@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 
 import {
-  Loader2, Upload, Trash2, AlertCircle, Tag, Palette, ImageOff, Wand2
+  Loader2, Upload, Trash2, AlertCircle, Tag, Palette, Sparkles, FileText, ImageOff, Wand2
 } from "lucide-react";
 
 import { useFirebase } from "@/firebase/provider";
@@ -57,6 +57,9 @@ export default function ClosetPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  /* -----------------------------------------------------------
+      FIRESTORE LISTENER
+  ----------------------------------------------------------- */
   useEffect(() => {
     if (!firebase || !firebase.firestore) return;
 
@@ -89,6 +92,9 @@ export default function ClosetPage() {
     return () => unsub();
   }, [firebase]);
 
+  /* -----------------------------------------------------------
+      IMAGE RESOLVER
+  ----------------------------------------------------------- */
   useEffect(() => {
     if (!firebase || !firebase.storage) return;
 
@@ -114,6 +120,9 @@ export default function ClosetPage() {
     });
   }, [items, firebase, imageUrls, brokenImages]);
 
+  /* -----------------------------------------------------------
+      ACTIONS
+  ----------------------------------------------------------- */
   const handleUpload = useCallback(async (file: File) => {
       if (!firebase || !firebase.storage || !firebase.firestore) {
         toast({ title: "Error", description: "Database not connected.", variant: "destructive" });
@@ -196,6 +205,9 @@ export default function ClosetPage() {
     );
   }
 
+  /* -----------------------------------------------------------
+      RENDER
+  ----------------------------------------------------------- */
   return (
     <div className="container mx-auto space-y-8 pb-12 h-[85vh] overflow-y-auto">
       <Card>
@@ -282,19 +294,48 @@ export default function ClosetPage() {
                   Remove
                 </Button>
 
-                <div className="space-y-2 text-sm pt-2">
-                  {item.itemType && (
-                    <div className="flex items-center space-x-3">
-                      <Tag className="h-5 w-5 text-accent flex-shrink-0" />
-                      <Badge variant="outline" className="capitalize">
-                        {item.itemType}
-                      </Badge>
+                <div className="space-y-3 pt-4">
+                  <div className="flex items-center space-x-3">
+                    <Tag className="h-5 w-5 text-accent flex-shrink-0" />
+                    <span className="font-semibold text-sm">Type:</span>
+                    <Badge variant="secondary" className="capitalize">
+                      {item.itemType || "Uncategorized"}
+                    </Badge>
+                  </div>
+                  
+                  <div className="flex items-center space-x-3">
+                    <Palette className="h-5 w-5 text-accent flex-shrink-0" />
+                    <span className="font-semibold text-sm">Colour:</span>
+                    <span className="text-sm text-muted-foreground">
+                      {item.color || "Not specified"}
+                    </span>
+                  </div>
+
+                  {item.narrativeDescription && (
+                    <div className="flex flex-col space-y-2 mt-2">
+                      <div className="flex items-center space-x-3">
+                        <FileText className="h-5 w-5 text-accent flex-shrink-0" />
+                        <span className="font-semibold text-sm">Description</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground pl-8 leading-relaxed">
+                        {item.narrativeDescription}
+                      </p>
                     </div>
                   )}
-                  {item.color && (
-                    <div className="flex items-center space-x-3">
-                      <Palette className="h-5 w-5 text-accent flex-shrink-0" />
-                      <span className="text-muted-foreground">{item.color}</span>
+
+                  {item.styleKeywords && item.styleKeywords.length > 0 && (
+                    <div className="flex flex-col space-y-2 mt-2">
+                      <div className="flex items-center space-x-3">
+                        <Sparkles className="h-5 w-5 text-accent flex-shrink-0" />
+                        <span className="font-semibold text-sm">Style Keywords</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2 pl-8">
+                        {item.styleKeywords.map((keyword, i) => (
+                          <Badge key={`${item.id}-kw-${i}`} variant="destructive" className="capitalize">
+                            {keyword}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
