@@ -101,8 +101,8 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
            </div>
         </div>
 
-        {/* 3. REASONING TEXT - Added mt-auto to absorb the leftover space at the bottom of the card */}
-        <div className="relative pl-3 border-l-2 border-[#DC143C]/30 h-[80px] mt-auto">
+      {/* 3. REASONING TEXT - Removed mt-auto so it snaps tight to the video strip */}
+      <div className="relative pl-3 border-l-2 border-[#DC143C]/30 h-auto min-h-[60px]">
           <p className="text-xs text-zinc-400 font-light leading-relaxed italic line-clamp-4">
             &ldquo;{outfit.reasoning}&rdquo;
           </p>
