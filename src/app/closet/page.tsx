@@ -5,7 +5,8 @@ export const fetchCache = "force-no-store";
 
 import { useEffect, useState, useCallback, useRef, useTransition } from "react";
 import Image from "next/image";
-import { collection, query, orderBy, onSnapshot, Timestamp } from "firebase/firestore";
+// ✅ ADDED: addDoc and serverTimestamp for client-side writing
+import { collection, query, orderBy, onSnapshot, Timestamp, addDoc, serverTimestamp } from "firebase/firestore";
 import { ref, getDownloadURL, uploadBytes } from "firebase/storage"; 
 import { Bonheur_Royale } from 'next/font/google';
 
@@ -26,9 +27,8 @@ import {
   ImageOff,
 } from "lucide-react";
 
-// ✅ THE FIX: Split imports to bypass the index.ts cache and resolve the TS(2353) error
+// ✅ REMOVED the crashing analyzeAndSaveClothingItem Server Action
 import { deleteClothingItem } from "@/app/actions";
-import { analyzeAndSaveClothingItem } from "@/app/actions/analyze-and-save-clothing-item";
 import { firestore, storage } from "@/lib/firebase";
 
 const bonheur = Bonheur_Royale({ 
@@ -159,34 +159,36 @@ export default function ClosetPage() {
   const handleUpload = useCallback(async (file: File) => {
       toast({ title: "Uploading to cloud...", description: "Please wait." });
       
-      startTransition(async () => {
-        try {
-          // 1. Prepare clean, collision-proof filenames
-          const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '-');
-          const uniqueFileName = `${Date.now()}-${cleanFileName}`;
-          const imagePath = `public_wardrobe_items/${uniqueFileName}`;
-          
-          // 2. UPLOAD ON THE CLIENT: Safely uses browser APIs to stream to Storage
-          const storageRef = ref(storage, imagePath);
-          await uploadBytes(storageRef, file);
-          const imageUrl = await getDownloadURL(storageRef);
+      try {
+        // 1. Prepare clean filenames
+        const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '-');
+        const uniqueFileName = `${Date.now()}-${cleanFileName}`;
+        const imagePath = `public_wardrobe_items/${uniqueFileName}`;
+        
+        // 2. Upload physical file to Storage
+        const storageRef = ref(storage, imagePath);
+        await uploadBytes(storageRef, file);
+        const imageUrl = await getDownloadURL(storageRef);
 
-          // 3. Sanitize the name for the Gemini AI
-          const aiFriendlyName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, ' ');
+        // 3. Sanitize the name for the AI
+        const aiFriendlyName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, ' ');
 
-          // 4. Hand off strictly verified data to the Server Action
-          await analyzeAndSaveClothingItem({ 
-            imageUrl, 
-            imagePath, 
-            aiFriendlyName 
-          });
+        // 4. ✅ THE FIX: Write directly to Firestore from the Client
+        const newItem = {
+          itemName: aiFriendlyName, 
+          itemType: "Uncategorized", 
+          imagePath: imagePath,
+          imageUrl: imageUrl, 
+          createdAt: serverTimestamp(),
+        };
 
-          toast({ title: "Success!", description: "Item safely added to digital closet." });
-        } catch (e: any) {
-          console.error(e);
-          toast({ title: "Upload failed", description: e?.message, variant: "destructive" });
-        }
-      });
+        await addDoc(collection(firestore, 'publicWardrobeItems'), newItem);
+
+        toast({ title: "Success!", description: "Item safely added to digital closet." });
+      } catch (e: any) {
+        console.error(e);
+        toast({ title: "Upload failed", description: e?.message, variant: "destructive" });
+      }
     }, [toast]);
 
   const handleDelete = async (item: ClosetItem) => {
