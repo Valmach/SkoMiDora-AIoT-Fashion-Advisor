@@ -1,13 +1,14 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
+// ✅ REMOVED: export const dynamic = "force-dynamic" and fetchCache. 
+// This page will now safely compile as a static asset.
 
 import { useEffect, useState, useCallback, useRef, useTransition } from "react";
 import Image from "next/image";
-// ✅ ADDED: addDoc and serverTimestamp for client-side writing
-import { collection, query, orderBy, onSnapshot, Timestamp, addDoc, serverTimestamp } from "firebase/firestore";
-import { ref, getDownloadURL, uploadBytes } from "firebase/storage"; 
+// ✅ ADDED: doc, deleteDoc for client-side deletion
+import { collection, query, orderBy, onSnapshot, Timestamp, addDoc, serverTimestamp, doc, deleteDoc } from "firebase/firestore";
+// ✅ ADDED: deleteObject for client-side deletion
+import { ref, getDownloadURL, uploadBytes, deleteObject } from "firebase/storage"; 
 import { Bonheur_Royale } from 'next/font/google';
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,8 +28,7 @@ import {
   ImageOff,
 } from "lucide-react";
 
-// ✅ REMOVED the crashing analyzeAndSaveClothingItem Server Action
-import { deleteClothingItem } from "@/app/actions";
+// ✅ REMOVED all imports from "@/app/actions". We do not touch the server anymore.
 import { firestore, storage } from "@/lib/firebase";
 
 const bonheur = Bonheur_Royale({ 
@@ -160,20 +160,16 @@ export default function ClosetPage() {
       toast({ title: "Uploading to cloud...", description: "Please wait." });
       
       try {
-        // 1. Prepare clean filenames
         const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '-');
         const uniqueFileName = `${Date.now()}-${cleanFileName}`;
         const imagePath = `public_wardrobe_items/${uniqueFileName}`;
         
-        // 2. Upload physical file to Storage
         const storageRef = ref(storage, imagePath);
         await uploadBytes(storageRef, file);
         const imageUrl = await getDownloadURL(storageRef);
 
-        // 3. Sanitize the name for the AI
         const aiFriendlyName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, ' ');
 
-        // 4. ✅ THE FIX: Write directly to Firestore from the Client
         const newItem = {
           itemName: aiFriendlyName, 
           itemType: "Uncategorized", 
@@ -191,14 +187,34 @@ export default function ClosetPage() {
       }
     }, [toast]);
 
+  // ✅ REWRITTEN: Completely client-side deletion to bypass Cloud Functions
   const handleDelete = async (item: ClosetItem) => {
     if (!item.id) return;
-    await deleteClothingItem(item.id, item.imagePath);
-    setImageUrls((prev) => {
-      const next = { ...prev };
-      delete next[item.id];
-      return next;
-    });
+    
+    try {
+      // 1. Delete from Firestore database
+      await deleteDoc(doc(firestore, "publicWardrobeItems", item.id));
+      
+      // 2. Delete the physical image from Storage (if it exists)
+      if (item.imagePath) {
+        const normalizedPath = normalizeImagePath(item.imagePath);
+        await deleteObject(ref(storage, normalizedPath)).catch((e) => {
+          console.warn("Image file already missing or couldn't be deleted", e);
+        });
+      }
+
+      // 3. Remove from local UI state
+      setImageUrls((prev) => {
+        const next = { ...prev };
+        delete next[item.id];
+        return next;
+      });
+      
+      toast({ title: "Item deleted successfully" });
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: "Failed to delete item", description: e?.message, variant: "destructive" });
+    }
   };
 
   if (!isMounted) return null; 
