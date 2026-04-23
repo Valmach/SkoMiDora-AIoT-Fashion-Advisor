@@ -6,8 +6,8 @@ export const fetchCache = "force-no-store";
 import { useEffect, useState, useCallback, useRef, useTransition } from "react";
 import Image from "next/image";
 import { collection, query, orderBy, onSnapshot, Timestamp } from "firebase/firestore";
-import { ref, getDownloadURL } from "firebase/storage";
-import { Bonheur_Royale } from 'next/font/google'; // ✅ ADDED FONT IMPORT
+import { ref, getDownloadURL, uploadBytes } from "firebase/storage"; 
+import { Bonheur_Royale } from 'next/font/google';
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,10 +26,11 @@ import {
   ImageOff,
 } from "lucide-react";
 
-import { analyzeAndSaveClothingItem, deleteClothingItem } from "@/app/actions";
+// ✅ THE FIX: Split imports to bypass the index.ts cache and resolve the TS(2353) error
+import { deleteClothingItem } from "@/app/actions";
+import { analyzeAndSaveClothingItem } from "@/app/actions/analyze-and-save-clothing-item";
 import { firestore, storage } from "@/lib/firebase";
 
-// ✅ CONFIGURE FONT
 const bonheur = Bonheur_Royale({ 
   subsets: ['latin'], 
   weight: ['400'],
@@ -52,22 +53,18 @@ type ClosetItem = {
 
 /* -----------------------------------------------------------
    HELPER: STANDARD FOLDER PATHS
-   This ensures the app looks inside 'public_wardrobe_items/'
 ----------------------------------------------------------- */
 function normalizeImagePath(path: string): string {
   let p = path;
   
-  // 1. If path is just "shoe.png" (no slash), add the folder prefix
   if (!p.includes("/") && !p.startsWith("http")) {
     p = `public_wardrobe_items/${p}`;
   }
 
-  // 2. If path starts with generic "public/", fix the folder name
   if (p.startsWith("public/")) {
     p = p.replace(/^public\//, "public_wardrobe_items/");
   }
 
-  // 3. Clean up special characters
   p = p.replace(/â€“/g, "–");
   
   return p;
@@ -76,9 +73,7 @@ function normalizeImagePath(path: string): string {
 export default function ClosetPage() {
   const { toast } = useToast();
 
-  // 1. HYDRATION FIX: Track if we are on the client
   const [isMounted, setIsMounted] = useState(false);
-
   const [items, setItems] = useState<ClosetItem[]>([]);
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
   const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
@@ -88,7 +83,6 @@ export default function ClosetPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [, startTransition] = useTransition();
 
-  // 2. MOUNT CHECK: Run once on load
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -146,17 +140,13 @@ export default function ClosetPage() {
       }
 
       try {
-        // ✅ Standard Logic: Trusts the path includes the folder
         const normalizedPath = normalizeImagePath(item.imagePath);
-        
         const url = await getDownloadURL(ref(storage, normalizedPath));
         setImageUrls((prev) => ({ ...prev, [item.id]: url }));
       } catch (err: any) {
-        // Zombie Data Protection
         if (item.imagePath.startsWith("http")) {
             setImageUrls((prev) => ({ ...prev, [item.id]: item.imagePath! }));
         } else {
-            // console.warn(`Missing file: ${item.imagePath}`);
             setBrokenImages((prev) => new Set(prev).add(item.id));
         }
       }
@@ -167,13 +157,33 @@ export default function ClosetPage() {
       ACTIONS
   ----------------------------------------------------------- */
   const handleUpload = useCallback(async (file: File) => {
-      const fd = new FormData();
-      fd.append("file", file);
+      toast({ title: "Uploading to cloud...", description: "Please wait." });
+      
       startTransition(async () => {
         try {
-          await analyzeAndSaveClothingItem(fd);
-          toast({ title: "Item added to closet" });
+          // 1. Prepare clean, collision-proof filenames
+          const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '-');
+          const uniqueFileName = `${Date.now()}-${cleanFileName}`;
+          const imagePath = `public_wardrobe_items/${uniqueFileName}`;
+          
+          // 2. UPLOAD ON THE CLIENT: Safely uses browser APIs to stream to Storage
+          const storageRef = ref(storage, imagePath);
+          await uploadBytes(storageRef, file);
+          const imageUrl = await getDownloadURL(storageRef);
+
+          // 3. Sanitize the name for the Gemini AI
+          const aiFriendlyName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, ' ');
+
+          // 4. Hand off strictly verified data to the Server Action
+          await analyzeAndSaveClothingItem({ 
+            imageUrl, 
+            imagePath, 
+            aiFriendlyName 
+          });
+
+          toast({ title: "Success!", description: "Item safely added to digital closet." });
         } catch (e: any) {
+          console.error(e);
           toast({ title: "Upload failed", description: e?.message, variant: "destructive" });
         }
       });
@@ -199,7 +209,6 @@ export default function ClosetPage() {
       <Card>
         <CardContent className="pt-6 flex justify-between items-center">
           <div>
-            {/* ✅ UPDATED: Applies Bonheur Royale Font Here */}
             <h1 className={`${bonheur.className} text-6xl font-bold tracking-wide`}>Digital Closet</h1>
             <p className="text-muted-foreground">
               {items.length} curated items
