@@ -41,7 +41,7 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
   return (
     <Card className="bg-zinc-900 border-zinc-800 overflow-hidden flex flex-col h-full min-h-[800px] hover:border-[#DC143C]/30 transition-all duration-300 group">
       
-      {/* HEADER - Locked to 120px height to ensure perfect horizontal alignment across all cards */}
+      {/* HEADER */}
       <CardHeader className="pb-3 bg-zinc-950/50 border-b border-zinc-800/50 px-4 pt-4 relative h-[120px] shrink-0">
         <div className="flex justify-between items-start gap-4 relative z-10 h-full">
           <div className="flex-1 flex flex-col h-full">
@@ -50,7 +50,6 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
               <span>•</span>
               <span>{outfit.location || "Curated Look"}</span>
             </div>
-            {/* Thinner font, muted color, and clamped to 3 lines max */}
             <CardTitle className="text-sm text-zinc-200 font-serif font-normal tracking-wide leading-relaxed line-clamp-3">
               {outfit.outfitIdea}
             </CardTitle>
@@ -63,11 +62,11 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
         </div>
       </CardHeader>
 
-      {/* CONTENT */}
-      <CardContent className="flex-1 flex flex-col gap-5 pt-4 px-4 pb-6 bg-zinc-900 overflow-hidden">
+      {/* CONTENT - Reduced gap-5 to gap-3 for tighter stacking */}
+      <CardContent className="flex-1 flex flex-col gap-3 pt-4 px-4 pb-6 bg-zinc-900 overflow-hidden">
         
-        {/* 1. WARDROBE GRID */}
-        <div className="flex-1">
+        {/* 1. WARDROBE GRID - Removed flex-1 so it no longer pushes the video away */}
+        <div className="w-full">
           <div className="grid grid-cols-2 gap-x-3 gap-y-4 h-full content-start">
             {items.slice(0, 4).map((item, i) => { 
               const imageUrl = findClosetImage(item);
@@ -84,7 +83,6 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
                       <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-2xl opacity-20">👕</div>
                     )}
                   </div>
-                  {/* Truncated to a single line so text wrapping never breaks the grid */}
                   <p className="text-[11px] text-zinc-400 font-light tracking-wider uppercase truncate" title={item}>
                     {item}
                   </p>
@@ -103,8 +101,8 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
            </div>
         </div>
 
-        {/* 3. REASONING TEXT - Clamped to prevent breaking the bottom of the card */}
-        <div className="relative pl-3 border-l-2 border-[#DC143C]/30 h-[80px]">
+        {/* 3. REASONING TEXT - Added mt-auto to absorb the leftover space at the bottom of the card */}
+        <div className="relative pl-3 border-l-2 border-[#DC143C]/30 h-[80px] mt-auto">
           <p className="text-xs text-zinc-400 font-light leading-relaxed italic line-clamp-4">
             &ldquo;{outfit.reasoning}&rdquo;
           </p>
