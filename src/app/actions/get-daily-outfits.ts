@@ -63,6 +63,18 @@ function resolveImage(item: any): string | null {
 }
 
 /* ======================================================
+   ARRAY SHUFFLER (Breaks the 1% Repetition Loop)
+====================================================== */
+function shuffleArray(array: any[]) {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+/* ======================================================
    NAME CORRECTION (AI hallucination -> real DB names)
 ====================================================== */
 
@@ -108,13 +120,13 @@ function pickOneOfEach(resolvedNames: string[], closetItems: any[]) {
 }
 
 /* ======================================================
-   WEATHER WEIGHTING PER CITY
+   WEATHER WEIGHTING PER CITY (Updated for Location Context)
 ====================================================== */
 
 const CITY_CONFIG = [
-  { city: 'Paris',  weatherHint: 'Mild chic. Light layers. Polished footwear.' },
-  { city: 'Oslo',   weatherHint: 'Cold. Insulated layers. Boots preferred.' },
-  { city: 'London', weatherHint: 'Cool + likely rain. Outerwear + rain-appropriate shoes.' },
+  { city: 'West Memphis, AR', weatherHint: 'Springtime. Warm, breezy, and comfortable.' },
+  { city: 'Paris',  weatherHint: 'Mild chic spring. Light layers. Polished footwear.' },
+  { city: 'London', weatherHint: 'Cool spring + likely rain. Outerwear + rain-appropriate shoes.' },
 ];
 
 /* ======================================================
@@ -142,15 +154,14 @@ export async function getDailyOutfitsAction(closetItems: any[]) {
     }];
   }
 
-  const today = new Date();
-  const dateString = today.toLocaleDateString('en-US', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-  });
+  // Inject exact contextual date
+  const dateString = "Thursday, April 23, 2026";
+  const uniqueRequestID = Date.now(); // Cache buster
 
-  // ✅ FIX: Removed the .slice(0, 50) limit. The AI now sees all 108+ items!
-  const recentItems = closetItems;
+  // SHUFFLE the items so the AI evaluates different pieces first every time
+  const shuffledCloset = shuffleArray(closetItems);
 
-  const closetText = recentItems
+  const closetText = shuffledCloset
     .map((item) => `- ${item.itemName} (type: ${item.itemType || 'unknown'}, color: ${item.color || 'unknown'})`)
     .join('\n');
 
@@ -161,14 +172,17 @@ export async function getDailyOutfitsAction(closetItems: any[]) {
   const prompt = `
 You are a luxury personal stylist.
 
-Today is ${dateString}.
+CURRENT CONTEXT:
+Today is ${dateString}. The season is Spring.
+Request ID: ${uniqueRequestID} (Ensure diverse and highly varied selections from previous outputs).
 
-You must create EXACTLY 3 outfit recommendations, one for each city below, and you must respect the weather hints.
+You must create EXACTLY 3 outfit recommendations, one for each city below, and you must respect the Spring weather hints.
 
 CITY + WEATHER HINTS:
 ${cityWeatherBlock}
 
 CRITICAL RULES:
+- PRIORITIZE VARIETY: Select unique, lesser-used items from the inventory. Do not pick the most obvious items.
 - Each recommendation MUST include exactly:
   - one footwear item
   - one clothing item
@@ -185,11 +199,12 @@ Return exactly 3 recommendations.
     model: google('gemini-2.5-flash'),
     schema,
     prompt,
+    temperature: 0.85, // INCREASED CREATIVITY: Forces the AI to take risks and use the other 99% of your closet
   });
 
   const fixedNames = result.object.recommendations.map(rec => ({
     ...rec,
-    items: correctItemNames(rec.items, recentItems),
+    items: correctItemNames(rec.items, closetItems),
   }));
 
   const enriched = fixedNames.map((rec, index) => {
@@ -209,7 +224,7 @@ Return exactly 3 recommendations.
       clothingName: clothing?.itemName || 'Wardrobe Item',
       clothingImageUrl: resolveImage(clothing),
 
-      cityBg: `https://source.unsplash.com/1200x800/?${cfg.city},city`,
+      cityBg: `https://source.unsplash.com/1200x800/?${cfg.city.split(',')[0]},spring`,
       temp: '--',
     };
   });
