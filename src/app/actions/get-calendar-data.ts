@@ -20,7 +20,7 @@ function findBestItems(items: any[], keywords: string[], limit: number = 3) {
 }
 
 export async function getUpcomingEventsStyleAdviceAction(closetItems: any[]) {
-  // 1. DYNAMIC DATE ENGINE: Automatically rolls dates forward so they are always in the future
+  // 1. DYNAMIC DATE ENGINE
   const now = new Date();
   
   const tomorrow = new Date(now);
@@ -33,35 +33,40 @@ export async function getUpcomingEventsStyleAdviceAction(closetItems: any[]) {
     return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} • ${time}`;
   };
 
-  // 2. Define specific city "Vibe" keywords with live, rolling dates
+  // 2. Define specific city "Vibe" keywords with EXPLICIT Landmark Backgrounds
   const cityConfigs = [
     {
-      name: "West Memphis Spring Evening",
-      city: "West Memphis, AR",
-      date: formatDate(now, "6:30 PM"), // Dynamic: Always Today
-      keywords: ["floral", "linen", "sandal", "breezy", "cotton", "lightweight", "spring"],
-      reasoning: "A warm, breezy spring evening in West Memphis calls for breathable fabrics. Flowing silhouettes paired with comfortable but elevated footwear are perfect for enjoying the local atmosphere."
+      name: "Paris Fashion Week",
+      city: "Paris, France",
+      date: formatDate(now, "9:00 AM"), 
+      keywords: ["leather", "wide-leg", "silk", "chic", "tweed", "square-toe", "beret", "foulard"],
+      reasoning: "Paris spring fashion is embracing 'Sporty Chic' with wide-leg silhouettes. Layering a light tweed blazer over silk is essential for transitioning from brisk mornings to clear afternoon skies.",
+      // Iconic Eiffel Tower 
+      cityBg: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?q=80&w=1200&auto=format&fit=crop"
     },
     {
-      name: "Paris Fashion Week Preview",
-      city: "Paris, France",
-      date: formatDate(tomorrow, "9:00 AM"), // Dynamic: Always Tomorrow
-      keywords: ["leather", "wide-leg", "silk", "chic", "tweed", "square-toe", "beret", "foulard"],
-      reasoning: "Paris spring fashion is embracing 'Sporty Chic' with wide-leg silhouettes. Layering a light tweed blazer over silk is essential for transitioning from brisk mornings to clear afternoon skies."
+      name: "Oslo Spring Summit",
+      city: "Oslo, Norway",
+      date: formatDate(tomorrow, "11:30 AM"), 
+      keywords: ["wool", "cashmere", "trench", "boots", "thermal", "burgundy", "alpaca", "knitwear"],
+      reasoning: "Oslo requires smart Scandi-style layering. The snow is melting, but you still need your burgundy knits and cashmere wraps. Pair a robust trench coat with sturdy leather boots.",
+      // Oslo Cityscape
+      cityBg: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?q=80&w=1200&auto=format&fit=crop"
     },
     {
       name: "Rome Cultural Tour",
       city: "Rome, Italy",
-      date: formatDate(weekend, "2:00 PM"), // Dynamic: Always 3 Days from now
+      date: formatDate(weekend, "6:00 PM"), 
       keywords: ["silk", "velvet", "leather boots", "emerald", "trench", "platform", "cardigan"],
-      reasoning: "Italian spring style right now is about 'Royal Luxury'—velvet textures and emerald tones. Pair with elevated platform booties to stay chic while walking the historic streets."
+      reasoning: "Italian spring style right now is about 'Royal Luxury'—velvet textures and emerald tones. Pair with elevated platform booties to stay chic while walking the historic streets.",
+      // The Colosseum
+      cityBg: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?q=80&w=1200&auto=format&fit=crop"
     }
   ];
 
   // 3. Fetch live OpenWeather data concurrently and map recommendations
   const eventsWithWeather = await Promise.all(cityConfigs.map(async (config) => {
     
-    // Hit the OpenWeather action using the real location
     const weatherData = await getWeatherForLocation(config.city);
     
     let liveWeatherString = "Weather data unavailable";
@@ -75,11 +80,12 @@ export async function getUpcomingEventsStyleAdviceAction(closetItems: any[]) {
     return {
       eventName: config.name,
       date: config.date,
-      weatherForecast: liveWeatherString, // Guaranteed to be fresh forecast data
+      weatherForecast: liveWeatherString, 
       reasoning: config.reasoning,
       styleKeywords: config.keywords.slice(0, 5),
       suggestedItemName: topItem?.itemName || "Curated Wardrobe Item",
-      suggestedItemImage: topItem?.imageUrl || null
+      suggestedItemImage: topItem?.imageUrl || null,
+      cityBg: config.cityBg // Passes the explicit landmark image to the frontend
     };
   }));
 
