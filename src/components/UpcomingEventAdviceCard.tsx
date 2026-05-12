@@ -21,6 +21,7 @@ interface AdviceProps {
     reasoning: string;
     styleKeywords: string[];
     location?: string;
+    cityBg?: string; // Tells TypeScript to expect the landmark image from the backend
   };
   analyzedItems: any[];
   cardIndex: number;
@@ -107,7 +108,8 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
         
         <div className="h-56 w-full bg-zinc-800 relative overflow-hidden group shrink-0">
           <img 
-            src={getCityImage(eventAdvice.eventName)} 
+            // PREFERS THE DYNAMIC BACKEND IMAGE OVER THE LOCAL DICTIONARY
+            src={eventAdvice.cityBg || getCityImage(eventAdvice.eventName)} 
             alt={eventAdvice.eventName}
             className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-700 group-hover:scale-110 transform transition-transform"
           />
@@ -161,7 +163,6 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
               </button>
             </div>
             
-            {/* UPDATED TYPOGRAPHY: Thinner, lighter color, looser tracking */}
             <p className={`font-normal text-sm text-zinc-200 tracking-wide leading-relaxed ${playfair.className}`}>
               "{eventAdvice.reasoning}"
             </p>

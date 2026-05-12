@@ -230,4 +230,4 @@ Return exactly 3 recommendations.
   });
 
   return enriched;
-}
+}  
