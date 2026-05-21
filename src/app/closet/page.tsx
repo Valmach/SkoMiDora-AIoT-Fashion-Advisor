@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import Image from "next/image";
+import { generateShoppingRecommendations } from '@/app/actions/generate-shopping-recommendations';
+import ShoppingRecommendations, { Recommendation } from '@/components/ShoppingRecommendations';
 import { 
   collection, query, orderBy, onSnapshot, Timestamp, 
   addDoc, serverTimestamp, doc, deleteDoc 
@@ -15,10 +17,13 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 
 import {
-  Loader2, Upload, Trash2, AlertCircle, Tag, Palette, Sparkles, FileText, ImageOff, Wand2
+  Loader2, Upload, Trash2, AlertCircle, Tag, Palette, Sparkles, FileText, ImageOff, Wand2, CalendarHeart
 } from "lucide-react";
 
 import { useFirebase } from "@/firebase/provider";
+
+// --- NEW IMPORT: Bringing in the Aggregator Test Component ---
+import AggregatorTest from '@/components/AggregatorTest';
 
 const bonheur = Bonheur_Royale({ 
   subsets: ['latin'], 
@@ -56,6 +61,28 @@ export default function ClosetPage() {
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading">("idle");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // --- NEW STYLING ENGINE STATE ---
+  const [isStyling, setIsStyling] = useState(false);
+  const [recs, setRecs] = useState<Recommendation[]>([]);
+  const eventName = "Summer Gala at the Met"; 
+
+  const handleGenerateLooks = async () => {
+    setIsStyling(true);
+    try {
+      const result = await generateShoppingRecommendations(eventName);
+      if (result.success && result.recommendations) {
+        setRecs(result.recommendations);
+      } else {
+        toast({ title: "Styling failed", description: result.error, variant: "destructive" });
+      }
+    } catch (error) {
+      console.error("Styling failed:", error);
+      toast({ title: "Error", description: "Something went wrong generating looks.", variant: "destructive" });
+    } finally {
+      setIsStyling(false);
+    }
+  };
 
   /* -----------------------------------------------------------
       FIRESTORE LISTENER
@@ -242,6 +269,35 @@ export default function ClosetPage() {
           />
         </CardContent>
       </Card>
+
+      {/* --- NEW ADDITION: The Styling/Recommendation Interface --- */}
+      <div className="w-full bg-card p-6 rounded-2xl border shadow-sm">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+          <div>
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <CalendarHeart className="h-5 w-5 text-amber-600" />
+              Upcoming Event: {eventName}
+            </h2>
+            <p className="text-muted-foreground text-sm mt-1">Nothing to wear in your current wardrobe?</p>
+          </div>
+          <Button 
+            onClick={handleGenerateLooks} 
+            disabled={isStyling}
+            className="bg-black text-white hover:bg-gray-800"
+          >
+            {isStyling ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Styling...</> : "Find Missing Pieces"}
+          </Button>
+        </div>
+
+        {recs.length > 0 && (
+          <ShoppingRecommendations eventContext={eventName} recommendations={recs} />
+        )}
+      </div>
+
+      {/* --- NEW ADDITION: The Aggregator Test Interface --- */}
+      <div className="w-full">
+        <AggregatorTest />
+      </div>
 
       {error && (
         <div className="flex items-center gap-2 text-destructive">
