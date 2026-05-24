@@ -27,10 +27,9 @@ rewrites:
     destination: "/__next/__request_handler"
 
 # -------------------------------------------------------
-# Environment Variables & Secrets (Everything goes under env!)
+# Environment Variables (Public Values Only)
 # -------------------------------------------------------
 env:
-   # --- Public Values ---
    - variable: NEXT_PUBLIC_FIREBASE_API_KEY
      value: AIzaSyB6TKlJLqnIzJltKM1jHmugZFhoSu-RpCI
      availability:
@@ -66,13 +65,11 @@ env:
      availability:
        - BUILD
        - RUNTIME
-   - variable: NEXT_PUBLIC_ACCUWEATHER_API_BASE_URL
-     value: https://dataservice.accuweather.com
-     availability:
-       - BUILD
-       - RUNTIME
 
-   # --- Secure Secrets ---
+# -------------------------------------------------------
+# Secure Secrets (Server-side Keys mapped from Secret Manager)
+# -------------------------------------------------------
+secrets:
    # Firebase Admin SDK Credentials
    - variable: FIREBASE_ADMIN_PRIVATE_KEY
      secret: FIREBASE_ADMIN_PRIVATE_KEY
@@ -98,11 +95,6 @@ env:
        - RUNTIME
    - variable: GOOGLE_API_KEY
      secret: GOOGLE_API_KEY
-     availability:
-       - BUILD
-       - RUNTIME
-   - variable: ACCUWEATHER_API_KEY
-     secret: ACCUWEATHER_API_KEY
      availability:
        - BUILD
        - RUNTIME
