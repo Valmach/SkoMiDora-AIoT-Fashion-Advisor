@@ -1,24 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Disable strict mode
   reactStrictMode: false,
 
-  // 🔥 MOVED SERVER ACTIONS INSIDE EXPERIMENTAL FOR NEXT.JS 15
+  // FORCE DYNAMIC DEV BEHAVIOR
   experimental: {
     staleTimes: {
       dynamic: 0,
       static: 0,
     },
-    serverActions: {
-      allowedOrigins: [
-        'styleai-footwear.web.app',
-        'styleai-footwear.firebaseapp.com',
-        '*.web.app',
-        '*.firebaseapp.com',
-        '*.run.app' 
-      ]
-    }
   },
 
+  // Image Domains
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'firebasestorage.googleapis.com' },
@@ -30,6 +23,7 @@ const nextConfig = {
     ],
   },
 
+  // REDIRECTS
   async redirects() {
     return [
       {
@@ -40,6 +34,7 @@ const nextConfig = {
     ];
   },
 
+  // CRITICAL BUILD FIX: IGNORE LINT/TYPE ERRORS
   eslint: {
     ignoreDuringBuilds: true,
   },
