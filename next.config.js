@@ -1,9 +1,20 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Disable strict mode
   reactStrictMode: false,
 
-  // FORCE DYNAMIC DEV BEHAVIOR
+  // ---------------------------------------------------------
+  // 🔥 SECURITY WHITELIST (Allows POST requests through Cloud Run Proxy)
+  // ---------------------------------------------------------
+  serverActions: {
+    allowedOrigins: [
+      'styleai-footwear.web.app',
+      'styleai-footwear.firebaseapp.com',
+      '*.web.app',
+      '*.firebaseapp.com',
+      '*.run.app' 
+    ]
+  },
+
   experimental: {
     staleTimes: {
       dynamic: 0,
@@ -11,7 +22,6 @@ const nextConfig = {
     },
   },
 
-  // Image Domains
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'firebasestorage.googleapis.com' },
@@ -23,7 +33,6 @@ const nextConfig = {
     ],
   },
 
-  // REDIRECTS
   async redirects() {
     return [
       {
@@ -34,7 +43,6 @@ const nextConfig = {
     ];
   },
 
-  // CRITICAL BUILD FIX: IGNORE LINT/TYPE ERRORS
   eslint: {
     ignoreDuringBuilds: true,
   },
