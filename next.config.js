@@ -1,10 +1,9 @@
 /** @type {import('next').NextConfig} */
-
 const nextConfig = {
-  // 1. Disable strict mode
+  // Disable strict mode
   reactStrictMode: false,
 
-  // 2. FORCE DYNAMIC DEV BEHAVIOR
+  // FORCE DYNAMIC DEV BEHAVIOR
   experimental: {
     staleTimes: {
       dynamic: 0,
@@ -12,22 +11,7 @@ const nextConfig = {
     },
   },
 
-  // 3. Webpack overrides
-  webpack: (config, { isServer, dev }) => {
-    if (!isServer) {
-      config.watchOptions = {
-        poll: 1000,
-        aggregateTimeout: 300,
-      };
-    }
-    if (dev && !isServer) {
-      config.output.filename = 'static/chunks/[name].js';
-      config.output.chunkFilename = 'static/chunks/[name].js';
-    }
-    return config;
-  },
-
-  // 4. Image Domains
+  // Image Domains
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'firebasestorage.googleapis.com' },
@@ -39,7 +23,7 @@ const nextConfig = {
     ],
   },
 
-  // 5. REDIRECTS
+  // REDIRECTS
   async redirects() {
     return [
       {
@@ -50,8 +34,7 @@ const nextConfig = {
     ];
   },
 
-  // 6. CRITICAL BUILD FIX: IGNORE LINT/TYPE ERRORS
-  // This stops the build from crashing on "unused variable" warnings
+  // CRITICAL BUILD FIX: IGNORE LINT/TYPE ERRORS
   eslint: {
     ignoreDuringBuilds: true,
   },

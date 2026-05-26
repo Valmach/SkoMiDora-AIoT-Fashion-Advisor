@@ -1,6 +1,3 @@
-# Firebase App Hosting configuration
-# This configures your backend service running on Cloud Run.
-
 runConfig:
   runtime: nodejs20
   minInstances: 0
@@ -9,13 +6,11 @@ runConfig:
   cpu: 1
   memoryMiB: 512
 
-# Next.js build and start commands
 build:
   command: npm run build
 start:
   command: npm start
 
-# Redirect all traffic to the Next.js server
 headers:
   - path: "/*"
     headers:
@@ -25,98 +20,3 @@ headers:
 rewrites:
   - source: "/*"
     destination: "/__next/__request_handler"
-
-# -------------------------------------------------------
-# Environment Variables (Public Values Only)
-# -------------------------------------------------------
-env:
-   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
-     value: AIzaSyB6TKlJLqnIzJltKM1jHmugZFhoSu-RpCI
-     availability:
-       - BUILD
-       - RUNTIME
-   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-     value: styleai-footwear.firebaseapp.com
-     availability:
-       - BUILD
-       - RUNTIME
-   - variable: NEXT_PUBLIC_FIREBASE_DATABASE_URL
-     value: https://styleai-footwear-default-rtdb.firebaseio.com
-     availability:
-       - BUILD
-       - RUNTIME
-   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-     value: styleai-footwear
-     availability:
-       - BUILD
-       - RUNTIME
-   - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-     value: styleai-footwear.appspot.com
-     availability:
-       - BUILD
-       - RUNTIME
-   - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-     value: '855662411333'
-     availability:
-       - BUILD
-       - RUNTIME
-   - variable: NEXT_PUBLIC_FIREBASE_APP_ID
-     value: 1:855662411333:web:568ed8c5925da1bc50ed2c
-     availability:
-       - BUILD
-       - RUNTIME
-
-# -------------------------------------------------------
-# Secure Secrets (Server-side Keys mapped from Secret Manager)
-# -------------------------------------------------------
-secrets:
-   # Firebase Admin SDK Credentials
-   - variable: FIREBASE_ADMIN_PRIVATE_KEY
-     secret: FIREBASE_ADMIN_PRIVATE_KEY
-     availability:
-       - BUILD
-       - RUNTIME
-   - variable: FIREBASE_ADMIN_CLIENT_EMAIL
-     secret: FIREBASE_ADMIN_CLIENT_EMAIL
-     availability:
-       - BUILD
-       - RUNTIME
-       
-   # AI & External APIs
-   - variable: GEMINI_API_KEY
-     secret: GEMINI_API_KEY
-     availability:
-       - BUILD
-       - RUNTIME
-   - variable: GOOGLE_GENERATIVE_AI_API_KEY
-     secret: GOOGLE_GENERATIVE_AI_API_KEY
-     availability:
-       - BUILD
-       - RUNTIME
-   - variable: GOOGLE_API_KEY
-     secret: GOOGLE_API_KEY
-     availability:
-       - BUILD
-       - RUNTIME
-
-   # Gmail API Ingestion Pipeline
-   - variable: GOOGLE_CLIENT_ID
-     secret: GOOGLE_CLIENT_ID
-     availability:
-       - BUILD
-       - RUNTIME
-   - variable: GOOGLE_CLIENT_SECRET
-     secret: GOOGLE_CLIENT_SECRET
-     availability:
-       - BUILD
-       - RUNTIME
-   - variable: GOOGLE_REFRESH_TOKEN
-     secret: GOOGLE_REFRESH_TOKEN
-     availability:
-       - BUILD
-       - RUNTIME
-       - variable: FIREBASE_ADMIN_PROJECT_ID
-     value: styleai-footwear
-     availability:
-       - BUILD
-       - RUNTIME
