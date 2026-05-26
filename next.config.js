@@ -2,24 +2,21 @@
 const nextConfig = {
   reactStrictMode: false,
 
-  // ---------------------------------------------------------
-  // 🔥 SECURITY WHITELIST (Allows POST requests through Cloud Run Proxy)
-  // ---------------------------------------------------------
-  serverActions: {
-    allowedOrigins: [
-      'styleai-footwear.web.app',
-      'styleai-footwear.firebaseapp.com',
-      '*.web.app',
-      '*.firebaseapp.com',
-      '*.run.app' 
-    ]
-  },
-
+  // 🔥 MOVED SERVER ACTIONS INSIDE EXPERIMENTAL FOR NEXT.JS 15
   experimental: {
     staleTimes: {
       dynamic: 0,
       static: 0,
     },
+    serverActions: {
+      allowedOrigins: [
+        'styleai-footwear.web.app',
+        'styleai-footwear.firebaseapp.com',
+        '*.web.app',
+        '*.firebaseapp.com',
+        '*.run.app' 
+      ]
+    }
   },
 
   images: {
