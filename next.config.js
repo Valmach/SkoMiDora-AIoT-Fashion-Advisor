@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+
 const nextConfig = {
   // 1. Disable strict mode
   reactStrictMode: false,
@@ -38,15 +39,7 @@ const nextConfig = {
     ],
   },
 
-  // 5. SERVER ACTIONS WHITELIST
-  serverActions: {
-    allowedOrigins: [
-      'styleai-footwear.web.app',
-      'styleai-footwear.firebaseapp.com'
-    ]
-  },
-
-  // 6. REDIRECTS
+  // 5. REDIRECTS
   async redirects() {
     return [
       {
@@ -57,7 +50,8 @@ const nextConfig = {
     ];
   },
 
-  // 7. CRITICAL BUILD FIX
+  // 6. CRITICAL BUILD FIX: IGNORE LINT/TYPE ERRORS
+  // This stops the build from crashing on "unused variable" warnings
   eslint: {
     ignoreDuringBuilds: true,
   },
