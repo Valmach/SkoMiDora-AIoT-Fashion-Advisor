@@ -1,9 +1,21 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Disable strict mode
   reactStrictMode: false,
 
-  // FORCE DYNAMIC DEV BEHAVIOR
+  // 🔥 MOVED BACK TO ROOT (Where Next.js 15 requires it)
+  // Added deep wildcards specifically matching your Cloud Run logs
+  serverActions: {
+    allowedOrigins: [
+      'styleai-footwear.web.app',
+      'styleai-footwear.firebaseapp.com',
+      '*.web.app',
+      '*.firebaseapp.com',
+      '*.a.run.app',      // Matches the uc.a.run.app proxy
+      '*.hosted.app',     // Matches the us-central1.hosted.app proxy
+      '*.cloudworkstations.dev' // Matches your local IDE proxy
+    ]
+  },
+
   experimental: {
     staleTimes: {
       dynamic: 0,
@@ -11,7 +23,6 @@ const nextConfig = {
     },
   },
 
-  // Image Domains
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'firebasestorage.googleapis.com' },
@@ -23,7 +34,6 @@ const nextConfig = {
     ],
   },
 
-  // REDIRECTS
   async redirects() {
     return [
       {
@@ -34,7 +44,6 @@ const nextConfig = {
     ];
   },
 
-  // CRITICAL BUILD FIX: IGNORE LINT/TYPE ERRORS
   eslint: {
     ignoreDuringBuilds: true,
   },
