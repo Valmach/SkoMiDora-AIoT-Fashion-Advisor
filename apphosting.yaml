@@ -115,3 +115,8 @@ secrets:
      availability:
        - BUILD
        - RUNTIME
+       - variable: FIREBASE_ADMIN_PROJECT_ID
+     value: styleai-footwear
+     availability:
+       - BUILD
+       - RUNTIME
