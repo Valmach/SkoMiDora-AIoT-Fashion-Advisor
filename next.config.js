@@ -38,7 +38,15 @@ const nextConfig = {
     ],
   },
 
-  // 5. REDIRECTS
+  // 5. SERVER ACTIONS WHITELIST
+  serverActions: {
+    allowedOrigins: [
+      'styleai-footwear.web.app',
+      'styleai-footwear.firebaseapp.com'
+    ]
+  },
+
+  // 6. REDIRECTS
   async redirects() {
     return [
       {
@@ -49,8 +57,7 @@ const nextConfig = {
     ];
   },
 
-  // 6. CRITICAL BUILD FIX: IGNORE LINT/TYPE ERRORS
-  // This stops the build from crashing on "unused variable" warnings
+  // 7. CRITICAL BUILD FIX
   eslint: {
     ignoreDuringBuilds: true,
   },
