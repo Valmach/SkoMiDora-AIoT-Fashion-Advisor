@@ -22,7 +22,7 @@ rewrites:
     destination: "/__next/__request_handler"
 
 # -------------------------------------------------------
-# Environment Variables (Injected during Cloud Build)
+# Public Variables (Safe for the browser)
 # -------------------------------------------------------
 env:
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
@@ -45,4 +45,30 @@ env:
     availability: [BUILD, RUNTIME]
   - variable: NEXT_PUBLIC_FIREBASE_APP_ID
     value: "1:855662411333:web:568ed8c5925da1bc50ed2c"
+    availability: [BUILD, RUNTIME]
+
+# -------------------------------------------------------
+# Secure Secrets (Pulled securely from Google Cloud)
+# -------------------------------------------------------
+secrets:
+  - variable: FIREBASE_ADMIN_PROJECT_ID
+    secret: FIREBASE_ADMIN_PROJECT_ID
+    availability: [BUILD, RUNTIME]
+  - variable: FIREBASE_ADMIN_CLIENT_EMAIL
+    secret: FIREBASE_ADMIN_CLIENT_EMAIL
+    availability: [BUILD, RUNTIME]
+  - variable: FIREBASE_ADMIN_PRIVATE_KEY
+    secret: FIREBASE_ADMIN_PRIVATE_KEY
+    availability: [BUILD, RUNTIME]
+  - variable: GEMINI_API_KEY
+    secret: GEMINI_API_KEY
+    availability: [BUILD, RUNTIME]
+  - variable: GOOGLE_GENERATIVE_AI_API_KEY
+    secret: GOOGLE_GENERATIVE_AI_API_KEY
+    availability: [BUILD, RUNTIME]
+  - variable: GOOGLE_API_KEY
+    secret: GOOGLE_API_KEY
+    availability: [BUILD, RUNTIME]
+  - variable: WEATHER_API_KEY
+    secret: WEATHER_API_KEY
     availability: [BUILD, RUNTIME]
