@@ -53,27 +53,24 @@ export default function OutfitRecommendationsPage() {
       setCloset(items);
 
       // ---------------------------------------------------------
-      // 🛡️ THE PAYLOAD SHIELD 
-      // Added (item: any) to bypass strict TypeScript checking
-      // ---------------------------------------------------------
-     // ---------------------------------------------------------
-      // 🛡️ THE PAYLOAD SHIELD 
+      // 🛡️ THE BULLETPROOF PAYLOAD SHIELD 
+      // Strips all broken image paths so the server doesn't crash
       // ---------------------------------------------------------
       const safeItemsForServer = items.map((item: any) => {
         const safeItem = { ...item };
         
         if (safeItem.imageStatus === "missing" || safeItem.imageError) {
-          // Delete EVERY reference to the broken image
           delete safeItem.imageUrl;
           delete safeItem.storagePath;
-          delete safeItem.imagePath; // <-- Added this!
+          delete safeItem.imagePath; 
         }
         
         return safeItem;
       });
-      
+
       startTransition(async () => {
         try {
+          // Send the shielded data to the server
           const recs = await getDailyOutfitsAction(safeItemsForServer);
           setRecommendations(recs);
         } catch (error) {
