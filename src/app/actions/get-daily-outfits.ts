@@ -134,6 +134,9 @@ const CITY_CONFIG = [
 ====================================================== */
 
 export async function getDailyOutfitsAction(closetItems: any[]) {
+  // 🔥 DIAGNOSTIC TRACKER: Proves if the payload is surviving the trip from the frontend
+  console.log("🔥 SERVER ACTION SUCCESSFULLY STARTED. RECEIVED ITEMS:", closetItems?.length);
+
   if (!closetItems || closetItems.length === 0) {
     return [{
       eventName: "Closet Empty",
@@ -150,11 +153,10 @@ export async function getDailyOutfitsAction(closetItems: any[]) {
       footwearImageUrl: null,
       city: "Home",
       temp: '--',
-      cityBg: "https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=1200&auto=format&fit=crop", // Safe fallback
+      cityBg: "https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=1200&auto=format&fit=crop", 
     }];
   }
 
-  // Inject exact contextual date
   const dateString = "Wednesday, May 27, 2026";
   const uniqueRequestID = Date.now(); 
 
@@ -195,10 +197,9 @@ Return exactly 3 recommendations.
 `;
 
   try {
-    // 🛑 FIXED: Changed model to gemini-1.5-flash. 
-    // 🛑 FIXED: Wrapped in try/catch to log the exact error if the API ever rejects the payload again.
+    // 🔥 UPGRADED to 2.5
     const result = await generateObject({
-      model: google('gemini-1.5-flash'),
+      model: google('gemini-2.5-flash'),
       schema,
       prompt,
       temperature: 0.85, 
@@ -222,7 +223,7 @@ Return exactly 3 recommendations.
         footwearImageUrl: resolveImage(footwear),
         clothingName: clothing?.itemName || 'Wardrobe Item',
         clothingImageUrl: resolveImage(clothing),
-        cityBg: `https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=1200&auto=format&fit=crop`, // Replaced deprecated source.unsplash.com
+        cityBg: `https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=1200&auto=format&fit=crop`, 
         temp: '--',
       };
     });
@@ -231,7 +232,6 @@ Return exactly 3 recommendations.
 
   } catch (error) {
     console.error("CRITICAL AI SDK ERROR IN SERVER ACTION:", error);
-    // Returning a safe fallback array instead of violently crashing Next.js
     return [{
       eventName: "Stylist Unavailable",
       eventTime: "Now",
