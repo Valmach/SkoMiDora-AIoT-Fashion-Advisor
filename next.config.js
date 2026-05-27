@@ -2,18 +2,23 @@
 const nextConfig = {
   reactStrictMode: false,
 
-  // 🔥 MOVED BACK TO ROOT (Where Next.js 15 requires it)
-  // Added deep wildcards specifically matching your Cloud Run logs
+  // ---------------------------------------------------------
+  // 🔥 MAXIMALLY PERMISSIVE SERVER ACTIONS WHITELIST
+  // Catches all possible Firebase App Hosting and Cloud Run proxy routing
+  // ---------------------------------------------------------
   serverActions: {
     allowedOrigins: [
       'styleai-footwear.web.app',
       'styleai-footwear.firebaseapp.com',
       '*.web.app',
       '*.firebaseapp.com',
-      '*.a.run.app',      
-      '*.hosted.app'    
+      '*.run.app',      
+      '*.a.run.app',
+      '*.hosted.app',
+      '*.cloudworkstations.dev',
+      'localhost:3000'
     ]
-  }
+  },
 
   experimental: {
     staleTimes: {
