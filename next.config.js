@@ -2,25 +2,21 @@
 const nextConfig = {
   reactStrictMode: false,
 
-  // ---------------------------------------------------------
-  // 🔥 MAXIMALLY PERMISSIVE SERVER ACTIONS WHITELIST
-  // Catches all possible Firebase App Hosting and Cloud Run proxy routing
-  // ---------------------------------------------------------
-  serverActions: {
-    allowedOrigins: [
-      'styleai-footwear.web.app',
-      'styleai-footwear.firebaseapp.com',
-      '*.web.app',
-      '*.firebaseapp.com',
-      '*.run.app',      
-      '*.a.run.app',
-      '*.hosted.app',
-      '*.cloudworkstations.dev',
-      'localhost:3000'
-    ]
-  },
-
   experimental: {
+    // 🔥 Server Actions config MUST live inside experimental in Next 15
+    serverActions: {
+      allowedOrigins: [
+        'styleai-footwear.web.app',
+        'styleai-footwear.firebaseapp.com',
+        '*.web.app',
+        '*.firebaseapp.com',
+        '*.run.app',      
+        '*.a.run.app',
+        '*.hosted.app',
+        '*.cloudworkstations.dev',
+        'localhost:3000'
+      ]
+    },
     staleTimes: {
       dynamic: 0,
       static: 0,
