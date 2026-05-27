@@ -54,7 +54,7 @@ export default function OutfitRecommendationsPage() {
 
       // ---------------------------------------------------------
       // 🛡️ THE BULLETPROOF PAYLOAD SHIELD 
-      // Strips all broken image paths so the server doesn't crash
+      // Added (item: any) to bypass strict TypeScript checking
       // ---------------------------------------------------------
       const safeItemsForServer = items.map((item: any) => {
         const safeItem = { ...item };
@@ -70,7 +70,6 @@ export default function OutfitRecommendationsPage() {
 
       startTransition(async () => {
         try {
-          // Send the shielded data to the server
           const recs = await getDailyOutfitsAction(safeItemsForServer);
           setRecommendations(recs);
         } catch (error) {
