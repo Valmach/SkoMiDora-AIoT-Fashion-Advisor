@@ -120,7 +120,7 @@ function pickOneOfEach(resolvedNames: string[], closetItems: any[]) {
 }
 
 /* ======================================================
-   WEATHER WEIGHTING PER CITY (Updated for Location Context)
+   WEATHER WEIGHTING PER CITY
 ====================================================== */
 
 const CITY_CONFIG = [
@@ -150,15 +150,14 @@ export async function getDailyOutfitsAction(closetItems: any[]) {
       footwearImageUrl: null,
       city: "Home",
       temp: '--',
-      cityBg: "https://source.unsplash.com/1200x800/?closet,fashion",
+      cityBg: "https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=1200&auto=format&fit=crop", // Safe fallback
     }];
   }
 
   // Inject exact contextual date
-  const dateString = "Thursday, April 23, 2026";
-  const uniqueRequestID = Date.now(); // Cache buster
+  const dateString = "Wednesday, May 27, 2026";
+  const uniqueRequestID = Date.now(); 
 
-  // SHUFFLE the items so the AI evaluates different pieces first every time
   const shuffledCloset = shuffleArray(closetItems);
 
   const closetText = shuffledCloset
@@ -195,39 +194,60 @@ ${closetText}
 Return exactly 3 recommendations.
 `;
 
-  const result = await generateObject({
-    model: google('gemini-2.5-flash'),
-    schema,
-    prompt,
-    temperature: 0.85, // INCREASED CREATIVITY: Forces the AI to take risks and use the other 99% of your closet
-  });
+  try {
+    // 🛑 FIXED: Changed model to gemini-1.5-flash. 
+    // 🛑 FIXED: Wrapped in try/catch to log the exact error if the API ever rejects the payload again.
+    const result = await generateObject({
+      model: google('gemini-1.5-flash'),
+      schema,
+      prompt,
+      temperature: 0.85, 
+    });
 
-  const fixedNames = result.object.recommendations.map(rec => ({
-    ...rec,
-    items: correctItemNames(rec.items, closetItems),
-  }));
-
-  const enriched = fixedNames.map((rec, index) => {
-    const cfg = CITY_CONFIG[index] || CITY_CONFIG[0];
-
-    const { footwear, clothing } = pickOneOfEach(rec.items, closetItems);
-
-    return {
+    const fixedNames = result.object.recommendations.map(rec => ({
       ...rec,
-      city: cfg.city,
-      location: cfg.city,
-      weather: rec.weather || cfg.weatherHint,
+      items: correctItemNames(rec.items, closetItems),
+    }));
 
-      footwearName: footwear?.itemName || 'Footwear',
-      footwearImageUrl: resolveImage(footwear),
+    const enriched = fixedNames.map((rec, index) => {
+      const cfg = CITY_CONFIG[index] || CITY_CONFIG[0];
+      const { footwear, clothing } = pickOneOfEach(rec.items, closetItems);
 
-      clothingName: clothing?.itemName || 'Wardrobe Item',
-      clothingImageUrl: resolveImage(clothing),
+      return {
+        ...rec,
+        city: cfg.city,
+        location: cfg.city,
+        weather: rec.weather || cfg.weatherHint,
+        footwearName: footwear?.itemName || 'Footwear',
+        footwearImageUrl: resolveImage(footwear),
+        clothingName: clothing?.itemName || 'Wardrobe Item',
+        clothingImageUrl: resolveImage(clothing),
+        cityBg: `https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=1200&auto=format&fit=crop`, // Replaced deprecated source.unsplash.com
+        temp: '--',
+      };
+    });
 
-      cityBg: `https://source.unsplash.com/1200x800/?${cfg.city.split(',')[0]},spring`,
+    return enriched;
+
+  } catch (error) {
+    console.error("CRITICAL AI SDK ERROR IN SERVER ACTION:", error);
+    // Returning a safe fallback array instead of violently crashing Next.js
+    return [{
+      eventName: "Stylist Unavailable",
+      eventTime: "Now",
+      location: "System Error",
+      weather: "N/A",
+      outfitIdea: "AI Generation Failed",
+      reasoning: "The AI Stylist encountered an error processing the wardrobe. Please refresh to try again.",
+      items: [],
+      colorPalette: "Gray",
+      clothingName: "None",
+      clothingImageUrl: null,
+      footwearName: "None",
+      footwearImageUrl: null,
+      city: "Error",
       temp: '--',
-    };
-  });
-
-  return enriched;
-}  
+      cityBg: "https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=1200&auto=format&fit=crop",
+    }];
+  }
+}
