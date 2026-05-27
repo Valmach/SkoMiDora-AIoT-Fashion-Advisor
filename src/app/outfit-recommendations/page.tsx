@@ -10,19 +10,17 @@ import {
   orderBy,
   Timestamp,
 } from 'firebase/firestore';
-import { Dancing_Script } from 'next/font/google'; // 1. Import the Font
+import { Dancing_Script } from 'next/font/google'; 
 
 import { firestore as db } from '@/lib/firebase';
 import { getDailyOutfitsAction } from '@/app/actions/get-daily-outfits';
 
-
 import { Loader2, Sparkles, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-// 2. Configure the Font
 const dancingScript = Dancing_Script({ 
   subsets: ['latin'],
-  weight: ['400', '700'], // Load normal and bold weights
+  weight: ['400', '700'], 
 });
 
 export default function OutfitRecommendationsPage() {
@@ -31,7 +29,6 @@ export default function OutfitRecommendationsPage() {
   const [isPending, startTransition] = useTransition();
   const [dataLoaded, setDataLoaded] = useState(false);
 
-  // 1. LIVE LISTENER: Get Closet Data
   useEffect(() => {
     if (!db) return;
 
@@ -55,10 +52,26 @@ export default function OutfitRecommendationsPage() {
 
       setCloset(items);
 
-      // 2. SERVER ACTION: Get AI Outfits
+      // ---------------------------------------------------------
+      // 🛡️ THE PAYLOAD SHIELD 
+      // Strip broken image URLs before hitting the Server Action
+      // ---------------------------------------------------------
+      const safeItemsForServer = items.map(item => {
+        const safeItem = { ...item };
+        
+        if (safeItem.imageStatus === "missing" || safeItem.imageError) {
+          // Delete the URL so the server doesn't try to download a 404
+          delete safeItem.imageUrl;
+          delete safeItem.storagePath;
+        }
+        
+        return safeItem;
+      });
+
       startTransition(async () => {
         try {
-          const recs = await getDailyOutfitsAction(items);
+          // Pass the SANITIZED payload instead of the raw items
+          const recs = await getDailyOutfitsAction(safeItemsForServer);
           setRecommendations(recs);
         } catch (error) {
           console.error("Failed to fetch outfits:", error);
@@ -85,7 +98,6 @@ export default function OutfitRecommendationsPage() {
               </span>
             </div>
 
-            {/* 3. NEW TITLE: Dancing Script + White & Crimson Red */}
             <h1 className={`${dancingScript.className} text-5xl md:text-6xl text-white tracking-wide`}>
               <span style={{ color: '#DC143C' }}>3 Outfits</span> From Your Closet
             </h1>
