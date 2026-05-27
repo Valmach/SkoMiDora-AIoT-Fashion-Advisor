@@ -1,14 +1,20 @@
 // src/app/layout.tsx
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import ClientProviders from '@/components/ClientProviders';
 import AutoRefreshOnCrash from '@/components/AutoRefreshOnCrash';
 import { SidebarProvider } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/layout/AppSidebar"; 
 
-export const metadata = {
+// 1. SEO Metadata
+export const metadata: Metadata = {
   title: 'SkoMiDora',
   description: 'AI Fashion & Wardrobe Intelligence',
-  colorScheme: 'dark', // <-- This locks the browser into dark mode rendering
+};
+
+// 2. UI Viewport Settings (Fixes the Next.js warning)
+export const viewport: Viewport = {
+  colorScheme: 'dark',
 };
 
 export default function RootLayout({
