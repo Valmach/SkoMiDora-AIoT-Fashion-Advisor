@@ -10,11 +10,10 @@ const nextConfig = {
       'styleai-footwear.firebaseapp.com',
       '*.web.app',
       '*.firebaseapp.com',
-      '*.a.run.app',      // Matches the uc.a.run.app proxy
-      '*.hosted.app',     // Matches the us-central1.hosted.app proxy
-      '*.cloudworkstations.dev' // Matches your local IDE proxy
+      '*.a.run.app',      
+      '*.hosted.app'    
     ]
-  },
+  }
 
   experimental: {
     staleTimes: {
