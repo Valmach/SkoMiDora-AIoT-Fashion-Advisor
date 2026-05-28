@@ -8,7 +8,7 @@
  * - NO re-exports allowed
  */
 
-// Ensure these paths match your actual file structure exactly (check for .ts vs .tsx)
+// Ensure these paths match your actual file structure exactly
 import { analyzeStyleDNA as analyzeStyleDNAImpl } from './actions/analyze-style-dna';
 import {
   generateOutfitForEventAction as generateOutfitForEventImpl,
@@ -28,7 +28,8 @@ export async function analyzeStyleDNAAction(input: any) {
 
 /**
  * generateOutfitForEventAction
+ * UPDATED: Now correctly accepts and passes both the event details and the closet array
  */
-export async function generateOutfitForEventAction(input: any) {
-  return generateOutfitForEventImpl(input);
+export async function generateOutfitForEventAction(event: any, closetItems: any[]) {
+  return generateOutfitForEventImpl(event, closetItems);
 }
