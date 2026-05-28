@@ -3,7 +3,6 @@ const nextConfig = {
   reactStrictMode: false,
 
   experimental: {
-    // 🔥 Server Actions config MUST live inside experimental in Next 15
     serverActions: {
       allowedOrigins: [
         'styleai-footwear.web.app',
