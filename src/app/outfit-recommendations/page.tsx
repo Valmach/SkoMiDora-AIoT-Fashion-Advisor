@@ -10,7 +10,7 @@ import {
   orderBy,
   Timestamp,
 } from 'firebase/firestore';
-import { Dancing_Script } from 'next/font/google'; // 1. Import the Font
+import { Dancing_Script } from 'next/font/google';
 
 import { firestore as db } from '@/lib/firebase';
 import { getDailyOutfitsAction } from '@/app/actions/get-daily-outfits';
@@ -18,10 +18,10 @@ import { getDailyOutfitsAction } from '@/app/actions/get-daily-outfits';
 import { Loader2, Sparkles, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-// 2. Configure the Font
+// Configure the Font
 const dancingScript = Dancing_Script({ 
   subsets: ['latin'],
-  weight: ['400', '700'], // Load normal and bold weights
+  weight: ['400', '700'], 
 });
 
 export default function OutfitRecommendationsPage() {
@@ -41,7 +41,9 @@ export default function OutfitRecommendationsPage() {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const items = snapshot.docs.map((doc) => {
-        const data = doc.data();
+        // 🔥 TS FIX: explicitly tell TypeScript that data can contain any properties
+        const data = doc.data() as any; 
+        
         return {
           id: doc.id,
           ...data,
@@ -57,8 +59,21 @@ export default function OutfitRecommendationsPage() {
       // 2. SERVER ACTION: Get AI Outfits
       startTransition(async () => {
         try {
-          // 🔥 THE FIX: Stringify the payload to bypass React Flight 500 error digest crashes!
-          const recs = await getDailyOutfitsAction(JSON.stringify(items));
+          // 🔥 THE PAYLOAD SHREDDER & TS FIX: 
+          // We define (item: any) to stop the 2339 error.
+          // We strip out massive Firestore Timestamps and prototype chains.
+          const lightweightCloset = items.map((item: any) => ({
+            id: item.id,
+            itemName: item.itemName,
+            itemType: item.itemType,
+            color: item.color || 'unknown',
+            // Keep the image so the backend can attach it to the result
+            imageUrl: item.imageUrl || item.image || item.url || null 
+          }));
+
+          // Stringify the safe, tiny payload to easily slip past Next.js limits
+          const recs = await getDailyOutfitsAction(JSON.stringify(lightweightCloset));
+          
           setRecommendations(recs);
         } catch (error) {
           console.error("Failed to fetch outfits:", error);
@@ -85,7 +100,6 @@ export default function OutfitRecommendationsPage() {
               </span>
             </div>
 
-            {/* 3. NEW TITLE: Dancing Script + White & Crimson Red */}
             <h1 className={`${dancingScript.className} text-5xl md:text-6xl text-white tracking-wide`}>
               <span style={{ color: '#DC143C' }}>3 Outfits</span> From Your Closet
             </h1>

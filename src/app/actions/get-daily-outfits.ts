@@ -63,7 +63,7 @@ function resolveImage(item: any): string | null {
 }
 
 /* ======================================================
-   ARRAY SHUFFLER (Breaks the 1% Repetition Loop)
+   ARRAY SHUFFLER
 ====================================================== */
 function shuffleArray(array: any[]) {
   const shuffled = [...array];
@@ -75,9 +75,8 @@ function shuffleArray(array: any[]) {
 }
 
 /* ======================================================
-   NAME CORRECTION (AI hallucination -> real DB names)
+   NAME CORRECTION
 ====================================================== */
-
 function correctItemNames(generatedItems: string[], realCloset: any[]) {
   return generatedItems.map((genName) => {
     const g = String(genName || '').trim();
@@ -97,9 +96,8 @@ function correctItemNames(generatedItems: string[], realCloset: any[]) {
 }
 
 /* ======================================================
-   PICK EXACTLY ONE FOOTWEAR + ONE CLOTHING (guaranteed)
+   PICK EXACTLY ONE FOOTWEAR + ONE CLOTHING
 ====================================================== */
-
 function pickOneOfEach(resolvedNames: string[], closetItems: any[]) {
   const byName = resolvedNames
     .map(name => closetItems.find(c => String(c.itemName || '').toLowerCase() === String(name || '').toLowerCase()))
@@ -120,9 +118,8 @@ function pickOneOfEach(resolvedNames: string[], closetItems: any[]) {
 }
 
 /* ======================================================
-   WEATHER WEIGHTING PER CITY (Updated for Location Context)
+   WEATHER WEIGHTING PER CITY
 ====================================================== */
-
 const CITY_CONFIG = [
   { city: 'West Memphis, AR', weatherHint: 'Springtime. Warm, breezy, and comfortable.' },
   { city: 'Paris',  weatherHint: 'Mild chic spring. Light layers. Polished footwear.' },
@@ -130,12 +127,11 @@ const CITY_CONFIG = [
 ];
 
 /* ======================================================
-   SERVER ACTION (Now accepts a string payload to bypass React Flight crashes)
+   SERVER ACTION 
 ====================================================== */
-
 export async function getDailyOutfitsAction(closetItemsPayload: string) {
   try {
-    // 1. Parse the string payload safely on the server
+    // 1. Parse the safe string payload back into an array
     const closetItems = JSON.parse(closetItemsPayload);
 
     if (!closetItems || closetItems.length === 0) {
@@ -158,11 +154,9 @@ export async function getDailyOutfitsAction(closetItemsPayload: string) {
       }];
     }
 
-    // Inject exact contextual date
     const dateString = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    const uniqueRequestID = Date.now(); // Cache buster
+    const uniqueRequestID = Date.now(); 
 
-    // SHUFFLE the items so the AI evaluates different pieces first every time
     const shuffledCloset = shuffleArray(closetItems);
 
     const closetText = shuffledCloset
@@ -203,7 +197,7 @@ Return exactly 3 recommendations.
       model: google('gemini-2.5-flash'),
       schema,
       prompt,
-      temperature: 0.85, // INCREASED CREATIVITY
+      temperature: 0.85, 
     });
 
     const fixedNames = result.object.recommendations.map(rec => ({
@@ -236,7 +230,6 @@ Return exactly 3 recommendations.
     return enriched;
 
   } catch (error) {
-    // 🛡️ Safe fallback to prevent hard Next.js 500 crashes
     console.error("🔥 CRITICAL ERROR IN SERVER ACTION:", error);
     
     return [{
