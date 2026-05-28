@@ -130,46 +130,50 @@ const CITY_CONFIG = [
 ];
 
 /* ======================================================
-   SERVER ACTION
+   SERVER ACTION (Now accepts a string payload to bypass React Flight crashes)
 ====================================================== */
 
-export async function getDailyOutfitsAction(closetItems: any[]) {
-  if (!closetItems || closetItems.length === 0) {
-    return [{
-      eventName: "Closet Empty",
-      eventTime: "Now",
-      location: "Home",
-      weather: "N/A",
-      outfitIdea: "Add Items First",
-      reasoning: "Please add items to your closet to get real AI suggestions.",
-      items: ["No items found"],
-      colorPalette: "Gray",
-      clothingName: "None",
-      clothingImageUrl: null,
-      footwearName: "None",
-      footwearImageUrl: null,
-      city: "Home",
-      temp: '--',
-      cityBg: "https://source.unsplash.com/1200x800/?closet,fashion",
-    }];
-  }
+export async function getDailyOutfitsAction(closetItemsPayload: string) {
+  try {
+    // 1. Parse the string payload safely on the server
+    const closetItems = JSON.parse(closetItemsPayload);
 
-  // Inject exact contextual date
-  const dateString = "Thursday, April 23, 2026";
-  const uniqueRequestID = Date.now(); // Cache buster
+    if (!closetItems || closetItems.length === 0) {
+      return [{
+        eventName: "Closet Empty",
+        eventTime: "Now",
+        location: "Home",
+        weather: "N/A",
+        outfitIdea: "Add Items First",
+        reasoning: "Please add items to your closet to get real AI suggestions.",
+        items: ["No items found"],
+        colorPalette: "Gray",
+        clothingName: "None",
+        clothingImageUrl: null,
+        footwearName: "None",
+        footwearImageUrl: null,
+        city: "Home",
+        temp: '--',
+        cityBg: "https://source.unsplash.com/1200x800/?closet,fashion",
+      }];
+    }
 
-  // SHUFFLE the items so the AI evaluates different pieces first every time
-  const shuffledCloset = shuffleArray(closetItems);
+    // Inject exact contextual date
+    const dateString = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const uniqueRequestID = Date.now(); // Cache buster
 
-  const closetText = shuffledCloset
-    .map((item) => `- ${item.itemName} (type: ${item.itemType || 'unknown'}, color: ${item.color || 'unknown'})`)
-    .join('\n');
+    // SHUFFLE the items so the AI evaluates different pieces first every time
+    const shuffledCloset = shuffleArray(closetItems);
 
-  const cityWeatherBlock = CITY_CONFIG
-    .map((c, idx) => `${idx + 1}. ${c.city}: ${c.weatherHint}`)
-    .join('\n');
+    const closetText = shuffledCloset
+      .map((item) => `- ${item.itemName} (type: ${item.itemType || 'unknown'}, color: ${item.color || 'unknown'})`)
+      .join('\n');
 
-  const prompt = `
+    const cityWeatherBlock = CITY_CONFIG
+      .map((c, idx) => `${idx + 1}. ${c.city}: ${c.weatherHint}`)
+      .join('\n');
+
+    const prompt = `
 You are a luxury personal stylist.
 
 CURRENT CONTEXT:
@@ -195,39 +199,62 @@ ${closetText}
 Return exactly 3 recommendations.
 `;
 
-  const result = await generateObject({
-    model: google('gemini-2.5-flash'),
-    schema,
-    prompt,
-    temperature: 0.85, // INCREASED CREATIVITY: Forces the AI to take risks and use the other 99% of your closet
-  });
+    const result = await generateObject({
+      model: google('gemini-2.5-flash'),
+      schema,
+      prompt,
+      temperature: 0.85, // INCREASED CREATIVITY
+    });
 
-  const fixedNames = result.object.recommendations.map(rec => ({
-    ...rec,
-    items: correctItemNames(rec.items, closetItems),
-  }));
-
-  const enriched = fixedNames.map((rec, index) => {
-    const cfg = CITY_CONFIG[index] || CITY_CONFIG[0];
-
-    const { footwear, clothing } = pickOneOfEach(rec.items, closetItems);
-
-    return {
+    const fixedNames = result.object.recommendations.map(rec => ({
       ...rec,
-      city: cfg.city,
-      location: cfg.city,
-      weather: rec.weather || cfg.weatherHint,
+      items: correctItemNames(rec.items, closetItems),
+    }));
 
-      footwearName: footwear?.itemName || 'Footwear',
-      footwearImageUrl: resolveImage(footwear),
+    const enriched = fixedNames.map((rec, index) => {
+      const cfg = CITY_CONFIG[index] || CITY_CONFIG[0];
 
-      clothingName: clothing?.itemName || 'Wardrobe Item',
-      clothingImageUrl: resolveImage(clothing),
+      const { footwear, clothing } = pickOneOfEach(rec.items, closetItems);
 
-      cityBg: `https://source.unsplash.com/1200x800/?${cfg.city.split(',')[0]},spring`,
+      return {
+        ...rec,
+        city: cfg.city,
+        location: cfg.city,
+        weather: rec.weather || cfg.weatherHint,
+
+        footwearName: footwear?.itemName || 'Footwear',
+        footwearImageUrl: resolveImage(footwear),
+
+        clothingName: clothing?.itemName || 'Wardrobe Item',
+        clothingImageUrl: resolveImage(clothing),
+
+        cityBg: `https://source.unsplash.com/1200x800/?${cfg.city.split(',')[0]},spring`,
+        temp: '--',
+      };
+    });
+
+    return enriched;
+
+  } catch (error) {
+    // 🛡️ Safe fallback to prevent hard Next.js 500 crashes
+    console.error("🔥 CRITICAL ERROR IN SERVER ACTION:", error);
+    
+    return [{
+      eventName: "Stylist Unavailable",
+      eventTime: "Now",
+      location: "System Error",
+      weather: "N/A",
+      outfitIdea: "AI Generation Failed",
+      reasoning: "The AI Stylist encountered an unexpected error processing your request. Please click 'Refresh Looks'.",
+      items: [],
+      colorPalette: "Gray",
+      clothingName: "None",
+      clothingImageUrl: null,
+      footwearName: "None",
+      footwearImageUrl: null,
+      city: "Error",
       temp: '--',
-    };
-  });
-
-  return enriched;
-}  
+      cityBg: "https://source.unsplash.com/1200x800/?error,system",
+    }];
+  }
+}

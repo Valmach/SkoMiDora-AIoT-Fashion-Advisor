@@ -15,7 +15,6 @@ import { Dancing_Script } from 'next/font/google'; // 1. Import the Font
 import { firestore as db } from '@/lib/firebase';
 import { getDailyOutfitsAction } from '@/app/actions/get-daily-outfits';
 
-
 import { Loader2, Sparkles, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -58,7 +57,8 @@ export default function OutfitRecommendationsPage() {
       // 2. SERVER ACTION: Get AI Outfits
       startTransition(async () => {
         try {
-          const recs = await getDailyOutfitsAction(items);
+          // 🔥 THE FIX: Stringify the payload to bypass React Flight 500 error digest crashes!
+          const recs = await getDailyOutfitsAction(JSON.stringify(items));
           setRecommendations(recs);
         } catch (error) {
           console.error("Failed to fetch outfits:", error);
