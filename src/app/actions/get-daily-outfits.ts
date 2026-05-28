@@ -11,7 +11,7 @@ const google = createGoogleGenerativeAI({
 });
 
 /* ======================================================
-   SCHEMA & HELPERS (Kept exactly the same)
+   SCHEMA & HELPERS
 ====================================================== */
 
 const schema = z.object({
@@ -33,17 +33,21 @@ const FOOTWEAR_TYPES = new Set(['shoe', 'shoes', 'boot', 'boots', 'heel', 'heels
 const CLOTHING_TYPES = new Set(['dress', 'coat', 'jacket', 'blazer', 'top', 'shirt', 'blouse', 'pant', 'pants', 'trouser', 'trousers', 'skirt', 'suit', 'jumpsuit', 'sweater', 'cardigan']);
 
 function normalizeType(t: any): string { return String(t || '').trim().toLowerCase(); }
+
 function isFootwear(item: any): boolean {
   const t = normalizeType(item?.itemType);
   if (FOOTWEAR_TYPES.has(t)) return true;
   return /(boot|heel|sandal|shoe|loafer|pump|sneaker|mule)/.test(String(item?.itemName || '').toLowerCase());
 }
+
 function isClothing(item: any): boolean {
   const t = normalizeType(item?.itemType);
   if (CLOTHING_TYPES.has(t)) return true;
   return /(dress|coat|jacket|blazer|top|shirt|blouse|pant|trouser|skirt|suit|jumpsuit|sweater|cardigan)/.test(String(item?.itemName || '').toLowerCase());
 }
+
 function resolveImage(item: any): string | null { return item?.imageUrl || item?.image || item?.url || null; }
+
 function shuffleArray(array: any[]) {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -52,6 +56,7 @@ function shuffleArray(array: any[]) {
   }
   return shuffled;
 }
+
 function correctItemNames(generatedItems: string[], realCloset: any[]) {
   return generatedItems.map((genName) => {
     const g = String(genName || '').trim();
@@ -66,6 +71,7 @@ function correctItemNames(generatedItems: string[], realCloset: any[]) {
     return fuzzy ? fuzzy.itemName : genName;
   });
 }
+
 function pickOneOfEach(resolvedNames: string[], closetItems: any[]) {
   const byName = resolvedNames.map(name => closetItems.find(c => String(c.itemName || '').toLowerCase() === String(name || '').toLowerCase())).filter(Boolean);
   let footwear = byName.find(isFootwear) || closetItems.find(isFootwear) || null;
@@ -86,12 +92,15 @@ const CITY_CONFIG = [
 ];
 
 /* ======================================================
-   SERVER ACTION (Fully Wrapped in Try/Catch)
+   SERVER ACTION (React Flight Bypass Mode)
 ====================================================== */
 
-export async function getDailyOutfitsAction(closetItems: any[]) {
-  // 🔥 The ENTIRE execution logic is now inside the try block
+// 🔥 THE FIX: Accept a raw string instead of an array to bypass React Flight 500 errors
+export async function getDailyOutfitsAction(closetItemsPayload: string) {
   try {
+    // Parse the payload safely inside the server
+    const closetItems = JSON.parse(closetItemsPayload);
+
     console.log("🔥 SERVER ACTION SUCCESSFULLY STARTED. RECEIVED ITEMS:", closetItems?.length);
 
     if (!closetItems || closetItems.length === 0) {
@@ -162,17 +171,16 @@ Return exactly 3 recommendations.`;
     return enriched;
 
   } catch (error) {
-    // 🛡️ The Ultimate Catch-All: Prevents Next.js 500 digest crashes
+    // 🛡️ Safe fallback to prevent hard Next.js crashes
     console.error("CRITICAL ERROR IN SERVER ACTION:", error);
     
-    // Return the safe UI fallback
     return [{
       eventName: "Stylist Unavailable",
       eventTime: "Now",
       location: "System Error",
       weather: "N/A",
       outfitIdea: "AI Generation Failed",
-      reasoning: "The AI Stylist encountered an unexpected error. This is usually due to a missing configuration or timeout. Please refresh.",
+      reasoning: "The AI Stylist encountered an unexpected error processing your request. Please refresh and try again.",
       items: [],
       colorPalette: "Gray",
       clothingName: "None",

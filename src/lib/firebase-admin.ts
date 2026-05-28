@@ -3,23 +3,24 @@ import * as admin from 'firebase-admin';
 // 1. Extract variables
 const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
 const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
+const rawPrivateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
 
 // ------------------------------------------------------------------
 // 🔥 BULLETPROOF PRIVATE KEY SANITIZER
 // ------------------------------------------------------------------
-let formattedPrivateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
+let formattedPrivateKey = rawPrivateKey;
 
 if (formattedPrivateKey) {
-  // 1. Strip accidental surrounding quotes
+  // A. Strip accidental surrounding quotes from Secret Manager
   formattedPrivateKey = formattedPrivateKey.replace(/^["']|["']$/g, '');
   
-  // 2. Convert literal '\n' strings into actual line breaks
+  // B. Convert literal '\n' strings into actual line breaks
   formattedPrivateKey = formattedPrivateKey.replace(/\\n/g, '\n');
 
-  // 3. Strip Windows carriage returns (\r) which violently crash the crypto decoder
+  // C. Strip Windows carriage returns (\r) which crash the crypto decoder
   formattedPrivateKey = formattedPrivateKey.replace(/\r/g, '');
 
-  // 4. Auto-inject headers if they are somehow still missing
+  // D. Auto-inject headers if they are somehow missing
   if (!formattedPrivateKey.includes('-----BEGIN PRIVATE KEY-----')) {
     formattedPrivateKey = `-----BEGIN PRIVATE KEY-----\n${formattedPrivateKey}\n-----END PRIVATE KEY-----\n`;
   }
