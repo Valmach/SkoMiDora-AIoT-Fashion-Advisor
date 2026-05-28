@@ -7,13 +7,9 @@ const nextConfig = {
       allowedOrigins: [
         'styleai-footwear.web.app',
         'styleai-footwear.firebaseapp.com',
-        '*.web.app',
-        '*.firebaseapp.com',
-        '*.run.app',      
-        '*.a.run.app',
-        '*.hosted.app',
-        '*.cloudworkstations.dev',
-        'localhost:3000'
+        'localhost:3000',
+        // This explicitly allows your Firebase Studio IDE to run Server Actions
+        '9000-firebase-skomidora-aiot-1763488482243.cluster-lr6dwlc2lzbcctqhqorax5zmro.cloudworkstations.dev'
       ]
     },
     staleTimes: {
@@ -31,16 +27,6 @@ const nextConfig = {
       { protocol: 'https', hostname: 'placehold.co' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
     ],
-  },
-
-  async redirects() {
-    return [
-      {
-        source: '/recommendations',
-        destination: '/outfit-recommendations',
-        permanent: false,
-      },
-    ];
   },
 
   eslint: {
