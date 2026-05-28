@@ -1,8 +1,14 @@
 'use server';
 
 import { generateObject } from 'ai';
-import { google } from '@ai-sdk/google';
+// 1. Changed the import to use the explicit creator function
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { z } from 'zod';
+
+// 2. Explicitly initialize the provider with the runtime secrets
+const google = createGoogleGenerativeAI({
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
+});
 
 /* ======================================================
    SCHEMA
@@ -134,7 +140,6 @@ const CITY_CONFIG = [
 ====================================================== */
 
 export async function getDailyOutfitsAction(closetItems: any[]) {
-  // 🔥 DIAGNOSTIC TRACKER: Proves if the payload is surviving the trip from the frontend
   console.log("🔥 SERVER ACTION SUCCESSFULLY STARTED. RECEIVED ITEMS:", closetItems?.length);
 
   if (!closetItems || closetItems.length === 0) {
@@ -197,7 +202,6 @@ Return exactly 3 recommendations.
 `;
 
   try {
-    // 🔥 UPGRADED to 2.5
     const result = await generateObject({
       model: google('gemini-2.5-flash'),
       schema,
