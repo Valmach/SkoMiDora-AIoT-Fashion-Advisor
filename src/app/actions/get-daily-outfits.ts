@@ -1,17 +1,17 @@
 'use server';
 
 import { generateObject } from 'ai';
-// 1. Changed the import to use the explicit creator function
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { z } from 'zod';
 
-// 2. Explicitly initialize the provider with the runtime secrets
+// 1. Explicitly initialize the provider
+const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 const google = createGoogleGenerativeAI({
-  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
+  apiKey: apiKey || "MISSING_KEY",
 });
 
 /* ======================================================
-   SCHEMA
+   SCHEMA & HELPERS (Kept exactly the same)
 ====================================================== */
 
 const schema = z.object({
@@ -29,48 +29,21 @@ const schema = z.object({
   ),
 });
 
-/* ======================================================
-   TYPE CLASSIFICATION (Firestore metadata is truth)
-====================================================== */
+const FOOTWEAR_TYPES = new Set(['shoe', 'shoes', 'boot', 'boots', 'heel', 'heels', 'sandal', 'sandals', 'loafer', 'loafers', 'pump', 'pumps', 'sneaker', 'sneakers', 'mule', 'mules']);
+const CLOTHING_TYPES = new Set(['dress', 'coat', 'jacket', 'blazer', 'top', 'shirt', 'blouse', 'pant', 'pants', 'trouser', 'trousers', 'skirt', 'suit', 'jumpsuit', 'sweater', 'cardigan']);
 
-const FOOTWEAR_TYPES = new Set([
-  'shoe', 'shoes', 'boot', 'boots', 'heel', 'heels', 'sandal', 'sandals',
-  'loafer', 'loafers', 'pump', 'pumps', 'sneaker', 'sneakers', 'mule', 'mules'
-]);
-
-const CLOTHING_TYPES = new Set([
-  'dress', 'coat', 'jacket', 'blazer', 'top', 'shirt', 'blouse',
-  'pant', 'pants', 'trouser', 'trousers', 'skirt', 'suit', 'jumpsuit',
-  'sweater', 'cardigan'
-]);
-
-function normalizeType(t: any): string {
-  return String(t || '').trim().toLowerCase();
-}
-
+function normalizeType(t: any): string { return String(t || '').trim().toLowerCase(); }
 function isFootwear(item: any): boolean {
   const t = normalizeType(item?.itemType);
   if (FOOTWEAR_TYPES.has(t)) return true;
-
-  const n = String(item?.itemName || '').toLowerCase();
-  return /(boot|heel|sandal|shoe|loafer|pump|sneaker|mule)/.test(n);
+  return /(boot|heel|sandal|shoe|loafer|pump|sneaker|mule)/.test(String(item?.itemName || '').toLowerCase());
 }
-
 function isClothing(item: any): boolean {
   const t = normalizeType(item?.itemType);
   if (CLOTHING_TYPES.has(t)) return true;
-
-  const n = String(item?.itemName || '').toLowerCase();
-  return /(dress|coat|jacket|blazer|top|shirt|blouse|pant|trouser|skirt|suit|jumpsuit|sweater|cardigan)/.test(n);
+  return /(dress|coat|jacket|blazer|top|shirt|blouse|pant|trouser|skirt|suit|jumpsuit|sweater|cardigan)/.test(String(item?.itemName || '').toLowerCase());
 }
-
-function resolveImage(item: any): string | null {
-  return item?.imageUrl || item?.image || item?.url || null;
-}
-
-/* ======================================================
-   ARRAY SHUFFLER (Breaks the 1% Repetition Loop)
-====================================================== */
+function resolveImage(item: any): string | null { return item?.imageUrl || item?.image || item?.url || null; }
 function shuffleArray(array: any[]) {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -79,55 +52,32 @@ function shuffleArray(array: any[]) {
   }
   return shuffled;
 }
-
-/* ======================================================
-   NAME CORRECTION (AI hallucination -> real DB names)
-====================================================== */
-
 function correctItemNames(generatedItems: string[], realCloset: any[]) {
   return generatedItems.map((genName) => {
     const g = String(genName || '').trim();
     if (!g) return genName;
-
     const exact = realCloset.find(i => String(i.itemName || '').trim() === g);
     if (exact) return exact.itemName;
-
     const gl = g.toLowerCase();
     const fuzzy = realCloset.find(i => {
       const rn = String(i.itemName || '').toLowerCase();
       return rn && (gl.includes(rn) || rn.includes(gl));
     });
-
     return fuzzy ? fuzzy.itemName : genName;
   });
 }
-
-/* ======================================================
-   PICK EXACTLY ONE FOOTWEAR + ONE CLOTHING (guaranteed)
-====================================================== */
-
 function pickOneOfEach(resolvedNames: string[], closetItems: any[]) {
-  const byName = resolvedNames
-    .map(name => closetItems.find(c => String(c.itemName || '').toLowerCase() === String(name || '').toLowerCase()))
-    .filter(Boolean);
-
+  const byName = resolvedNames.map(name => closetItems.find(c => String(c.itemName || '').toLowerCase() === String(name || '').toLowerCase())).filter(Boolean);
   let footwear = byName.find(isFootwear) || closetItems.find(isFootwear) || null;
   let clothing = byName.find(isClothing) || closetItems.find(isClothing) || null;
-
   if (footwear && clothing && footwear === clothing) {
     const altClothing = closetItems.find(i => i !== footwear && isClothing(i));
     if (altClothing) clothing = altClothing;
-
     const altFootwear = closetItems.find(i => i !== clothing && isFootwear(i));
     if (altFootwear) footwear = altFootwear;
   }
-
   return { footwear, clothing };
 }
-
-/* ======================================================
-   WEATHER WEIGHTING PER CITY
-====================================================== */
 
 const CITY_CONFIG = [
   { city: 'West Memphis, AR', weatherHint: 'Springtime. Warm, breezy, and comfortable.' },
@@ -136,72 +86,49 @@ const CITY_CONFIG = [
 ];
 
 /* ======================================================
-   SERVER ACTION
+   SERVER ACTION (Fully Wrapped in Try/Catch)
 ====================================================== */
 
 export async function getDailyOutfitsAction(closetItems: any[]) {
-  console.log("🔥 SERVER ACTION SUCCESSFULLY STARTED. RECEIVED ITEMS:", closetItems?.length);
+  // 🔥 The ENTIRE execution logic is now inside the try block
+  try {
+    console.log("🔥 SERVER ACTION SUCCESSFULLY STARTED. RECEIVED ITEMS:", closetItems?.length);
 
-  if (!closetItems || closetItems.length === 0) {
-    return [{
-      eventName: "Closet Empty",
-      eventTime: "Now",
-      location: "Home",
-      weather: "N/A",
-      outfitIdea: "Add Items First",
-      reasoning: "Please add items to your closet to get real AI suggestions.",
-      items: ["No items found"],
-      colorPalette: "Gray",
-      clothingName: "None",
-      clothingImageUrl: null,
-      footwearName: "None",
-      footwearImageUrl: null,
-      city: "Home",
-      temp: '--',
-      cityBg: "https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=1200&auto=format&fit=crop", 
-    }];
-  }
+    if (!closetItems || closetItems.length === 0) {
+      return [{
+        eventName: "Closet Empty", eventTime: "Now", location: "Home", weather: "N/A", outfitIdea: "Add Items First", reasoning: "Please add items to your closet to get real AI suggestions.", items: ["No items found"], colorPalette: "Gray", clothingName: "None", clothingImageUrl: null, footwearName: "None", footwearImageUrl: null, city: "Home", temp: '--', cityBg: "https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=1200&auto=format&fit=crop", 
+      }];
+    }
 
-  const dateString = "Wednesday, May 27, 2026";
-  const uniqueRequestID = Date.now(); 
+    const dateString = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const uniqueRequestID = Date.now(); 
+    const shuffledCloset = shuffleArray(closetItems);
 
-  const shuffledCloset = shuffleArray(closetItems);
+    const closetText = shuffledCloset
+      .map((item) => `- ${item.itemName} (type: ${item.itemType || 'unknown'}, color: ${item.color || 'unknown'})`)
+      .join('\n');
 
-  const closetText = shuffledCloset
-    .map((item) => `- ${item.itemName} (type: ${item.itemType || 'unknown'}, color: ${item.color || 'unknown'})`)
-    .join('\n');
+    const cityWeatherBlock = CITY_CONFIG
+      .map((c, idx) => `${idx + 1}. ${c.city}: ${c.weatherHint}`)
+      .join('\n');
 
-  const cityWeatherBlock = CITY_CONFIG
-    .map((c, idx) => `${idx + 1}. ${c.city}: ${c.weatherHint}`)
-    .join('\n');
-
-  const prompt = `
+    const prompt = `
 You are a luxury personal stylist.
-
 CURRENT CONTEXT:
 Today is ${dateString}. The season is Spring.
-Request ID: ${uniqueRequestID} (Ensure diverse and highly varied selections from previous outputs).
-
+Request ID: ${uniqueRequestID} (Ensure diverse and highly varied selections).
 You must create EXACTLY 3 outfit recommendations, one for each city below, and you must respect the Spring weather hints.
-
 CITY + WEATHER HINTS:
 ${cityWeatherBlock}
-
 CRITICAL RULES:
-- PRIORITIZE VARIETY: Select unique, lesser-used items from the inventory. Do not pick the most obvious items.
-- Each recommendation MUST include exactly:
-  - one footwear item
-  - one clothing item
-- You must use the EXACT item names from the wardrobe inventory. Do not paraphrase.
+- PRIORITIZE VARIETY: Select unique, lesser-used items from the inventory.
+- Each recommendation MUST include exactly: one footwear item, one clothing item.
+- You must use the EXACT item names from the wardrobe inventory.
 - Do not invent items.
-
 WARDROBE INVENTORY:
 ${closetText}
+Return exactly 3 recommendations.`;
 
-Return exactly 3 recommendations.
-`;
-
-  try {
     const result = await generateObject({
       model: google('gemini-2.5-flash'),
       schema,
@@ -235,14 +162,17 @@ Return exactly 3 recommendations.
     return enriched;
 
   } catch (error) {
-    console.error("CRITICAL AI SDK ERROR IN SERVER ACTION:", error);
+    // 🛡️ The Ultimate Catch-All: Prevents Next.js 500 digest crashes
+    console.error("CRITICAL ERROR IN SERVER ACTION:", error);
+    
+    // Return the safe UI fallback
     return [{
       eventName: "Stylist Unavailable",
       eventTime: "Now",
       location: "System Error",
       weather: "N/A",
       outfitIdea: "AI Generation Failed",
-      reasoning: "The AI Stylist encountered an error processing the wardrobe. Please refresh to try again.",
+      reasoning: "The AI Stylist encountered an unexpected error. This is usually due to a missing configuration or timeout. Please refresh.",
       items: [],
       colorPalette: "Gray",
       clothingName: "None",
