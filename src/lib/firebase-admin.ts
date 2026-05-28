@@ -3,18 +3,26 @@ import * as admin from 'firebase-admin';
 // 1. Extract variables
 const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
 const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
-const rawPrivateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
 
 // ------------------------------------------------------------------
 // 🔥 BULLETPROOF PRIVATE KEY SANITIZER
 // ------------------------------------------------------------------
-let formattedPrivateKey = rawPrivateKey;
+let formattedPrivateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
+
 if (formattedPrivateKey) {
-  // Step A: Strip surrounding double or single quotes if accidentally pasted into GCP Secret Manager
+  // 1. Strip accidental surrounding quotes
   formattedPrivateKey = formattedPrivateKey.replace(/^["']|["']$/g, '');
   
-  // Step B: Convert literal '\n' strings into actual line breaks
+  // 2. Convert literal '\n' strings into actual line breaks
   formattedPrivateKey = formattedPrivateKey.replace(/\\n/g, '\n');
+
+  // 3. Strip Windows carriage returns (\r) which violently crash the crypto decoder
+  formattedPrivateKey = formattedPrivateKey.replace(/\r/g, '');
+
+  // 4. Auto-inject headers if they are somehow still missing
+  if (!formattedPrivateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+    formattedPrivateKey = `-----BEGIN PRIVATE KEY-----\n${formattedPrivateKey}\n-----END PRIVATE KEY-----\n`;
+  }
 }
 
 // 2. Initialize
