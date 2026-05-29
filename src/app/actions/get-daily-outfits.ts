@@ -88,13 +88,17 @@ const CITY_CONFIG = [
    SERVER ACTION 
 ====================================================== */
 export async function getDailyOutfitsAction(closetItemsPayload: string) {
+  // FIX 4: Add REAL Runtime Logging
+  console.log('🔥 ACTION STARTED');
+  console.log('🔥 PAYLOAD LENGTH:', closetItemsPayload?.length);
+
   try {
-    // FIX 3: Safe JSON Parsing
     if (!closetItemsPayload) throw new Error('Missing closet payload');
     
     let closetItems = [];
     try {
       closetItems = JSON.parse(closetItemsPayload);
+      console.log('🔥 PARSED ITEMS:', closetItems?.length);
     } catch (err) {
       throw new Error('Invalid closet payload JSON');
     }
@@ -108,7 +112,6 @@ export async function getDailyOutfitsAction(closetItemsPayload: string) {
     const dateString = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     const uniqueRequestID = Date.now(); 
 
-    // FIX 7: Token Limit Protection (Slice to max 60 items)
     const shuffledCloset = shuffleArray(closetItems);
     const limitedCloset = shuffledCloset.slice(0, 60);
 
@@ -136,27 +139,36 @@ ${closetText}
 Return exactly 3 recommendations.`;
 
     let result;
-    // FIX 6: Isolate AI Execution errors
     try {
       result = await generateObject({
-        model: google('gemini-1.5-flash'), // FIX 2: Stable model fallback
+        // FIX 2: Downgrade to 1.5-flash for SDK stability
+        model: google('gemini-1.5-flash'), 
         schema,
+        // FIX 6: Enforce Object output
+        output: 'object',
         prompt,
-        temperature: 0.85, 
+        temperature: 0.4, 
       });
+      console.log('✅ Gemini Success:', JSON.stringify(result.object, null, 2));
     } catch (aiError) {
-      console.error('Gemini generation failed:', aiError);
-      throw new Error('AI Provider Failed');
+      // FIX 1: Isolate AI Execution errors
+      console.error('❌ GEMINI FAILURE:', aiError);
+      return [{
+        eventName: "Gemini Failed", eventTime: "Now", location: "AI Engine", weather: "N/A", outfitIdea: "Generation Failure", reasoning: String(aiError), items: [], colorPalette: "Gray", clothingName: "None", clothingImageUrl: null, footwearName: "None", footwearImageUrl: null, city: "Error", temp: '--', cityBg: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1200&q=80",
+      }];
     }
+
+    console.log('🔥 GEMINI RESPONSE RECEIVED');
 
     const fixedNames = result.object.recommendations.map(rec => ({
       ...rec,
-      items: correctItemNames(rec.items, closetItems),
+      // FIX 5: Protect rec.items array mapping
+      items: correctItemNames(rec.items || [], closetItems),
     }));
 
     const enriched = fixedNames.map((rec, index) => {
       const cfg = CITY_CONFIG[index] || CITY_CONFIG[0];
-      const { footwear, clothing } = pickOneOfEach(rec.items, closetItems);
+      const { footwear, clothing } = pickOneOfEach(rec.items || [], closetItems);
 
       return {
         ...rec,
@@ -167,16 +179,17 @@ Return exactly 3 recommendations.`;
         footwearImageUrl: resolveImage(footwear),
         clothingName: clothing?.itemName || 'Wardrobe Item',
         clothingImageUrl: resolveImage(clothing),
-        // FIX 5: Stable Unsplash URL
         cityBg: `https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1200&q=80`,
         temp: '--',
       };
     });
 
-    return enriched;
+    console.log('🔥 RETURNING ENRICHED RESULTS');
+    
+    // FIX 3: Force Plain JSON Serialization to bypass React Flight crashes
+    return JSON.parse(JSON.stringify(enriched));
 
   } catch (error) {
-    // FIX: Enhanced Error Logging
     console.error('🔥 SERVER ACTION ERROR:', error instanceof Error ? error.message : error);
     if (error instanceof Error) console.error(error.stack);
     
