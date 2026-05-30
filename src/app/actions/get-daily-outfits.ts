@@ -85,25 +85,28 @@ const CITY_CONFIG = [
 
 // ORIGINAL BEHAVIOR: Accepts the array directly
 export async function getDailyOutfitsAction(closetItems: any[]) {
-  if (!closetItems || closetItems.length === 0) {
+  // 🚨 DIAGNOSTIC BYPASS: Short-circuit the AI and return a dummy card immediately
+  if (process.env.NODE_ENV === 'production') {
     return [{
-      eventName: "Closet Empty",
+      eventName: "Production Test",
       eventTime: "Now",
-      location: "Home",
-      weather: "N/A",
-      outfitIdea: "Add Items First",
-      reasoning: "Please add items to your closet to get real AI suggestions.",
-      items: ["No items found"],
-      colorPalette: "Gray",
-      clothingName: "None",
+      location: "System Check",
+      weather: "Clear",
+      outfitIdea: "The Server Action bridge is working perfectly.",
+      reasoning: "If you are reading this in production, Next.js is fine. The Gemini SDK or the API Key injection is crashing the server.",
+      items: ["Diagnostic Item"],
+      colorPalette: "Green",
+      clothingName: "Test Shirt",
       clothingImageUrl: null,
-      footwearName: "None",
+      footwearName: "Test Shoes",
       footwearImageUrl: null,
-      city: "Home",
-      temp: '--',
-      cityBg: "https://source.unsplash.com/1200x800/?closet,fashion",
+      city: "Testville",
+      temp: '72',
+      cityBg: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1200&q=80",
     }];
   }
+
+  // ... rest of your existing code below
 
   const dateString = "Thursday, April 23, 2026";
   const uniqueRequestID = Date.now(); 
