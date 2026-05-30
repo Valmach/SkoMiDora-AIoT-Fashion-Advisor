@@ -1,4 +1,7 @@
 {
+  "projects": {
+    "default": "styleai-footwear"
+  },
   "hosting": {
   "source": ".",
   "ignore": [
