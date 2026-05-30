@@ -65,7 +65,7 @@ export default function OutfitRecommendationsPage() {
           }));
 
           // Pass the lightweight array directly to match your original Server Action
-          const recs = await getDailyOutfitsAction(lightweightCloset);
+          const recs = await getDailyOutfitsAction([]);
           setRecommendations(recs);
         } catch (error) {
           console.error("Failed to fetch outfits:", error);
