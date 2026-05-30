@@ -10,12 +10,11 @@ const nextConfig = {
       allowedOrigins: [
         'styleai-footwear.web.app',
         'styleai-footwear.firebaseapp.com',
-        // 🔥 CRITICAL FIX: Whitelist the dynamic Firebase App Hosting / Cloud Run proxies
         '*.web.app',
         '*.firebaseapp.com',
         'localhost:3000',
-        // This explicitly allows your Firebase Studio IDE to run Server Actions
-        '9000-firebase-skomidora-aiot-1763488482243.cluster-lr6dwlc2lzbcctqhqorax5zmro.cloudworkstations.dev'
+        // 🔥 Add the wildcard for your cloud workstation
+        '*.cloudworkstations.dev' 
       ]
     },
     staleTimes: {

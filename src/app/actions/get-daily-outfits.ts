@@ -4,9 +4,6 @@ import { generateObject } from 'ai';
 import { google } from '@ai-sdk/google';
 import { z } from 'zod';
 
-/* ======================================================
-   SCHEMA
-====================================================== */
 const schema = z.object({
   recommendations: z.array(
     z.object({
@@ -30,13 +27,15 @@ function normalizeType(t: any): string { return String(t || '').trim().toLowerCa
 function isFootwear(item: any): boolean {
   const t = normalizeType(item?.itemType);
   if (FOOTWEAR_TYPES.has(t)) return true;
-  return /(boot|heel|sandal|shoe|loafer|pump|sneaker|mule)/.test(String(item?.itemName || '').toLowerCase());
+  const n = String(item?.itemName || '').toLowerCase();
+  return /(boot|heel|sandal|shoe|loafer|pump|sneaker|mule)/.test(n);
 }
 
 function isClothing(item: any): boolean {
   const t = normalizeType(item?.itemType);
   if (CLOTHING_TYPES.has(t)) return true;
-  return /(dress|coat|jacket|blazer|top|shirt|blouse|pant|trouser|skirt|suit|jumpsuit|sweater|cardigan)/.test(String(item?.itemName || '').toLowerCase());
+  const n = String(item?.itemName || '').toLowerCase();
+  return /(dress|coat|jacket|blazer|top|shirt|blouse|pant|trouser|skirt|suit|jumpsuit|sweater|cardigan)/.test(n);
 }
 
 function resolveImage(item: any): string | null { return item?.imageUrl || item?.image || item?.url || null; }
@@ -84,117 +83,88 @@ const CITY_CONFIG = [
   { city: 'London', weatherHint: 'Cool spring + likely rain. Outerwear + rain-appropriate shoes.' },
 ];
 
-/* ======================================================
-   SERVER ACTION 
-====================================================== */
-export async function getDailyOutfitsAction(closetItemsPayload: string) {
-  // FIX 4: Add REAL Runtime Logging
-  console.log('🔥 ACTION STARTED');
-  console.log('🔥 PAYLOAD LENGTH:', closetItemsPayload?.length);
+// ORIGINAL BEHAVIOR: Accepts the array directly
+export async function getDailyOutfitsAction(closetItems: any[]) {
+  if (!closetItems || closetItems.length === 0) {
+    return [{
+      eventName: "Closet Empty",
+      eventTime: "Now",
+      location: "Home",
+      weather: "N/A",
+      outfitIdea: "Add Items First",
+      reasoning: "Please add items to your closet to get real AI suggestions.",
+      items: ["No items found"],
+      colorPalette: "Gray",
+      clothingName: "None",
+      clothingImageUrl: null,
+      footwearName: "None",
+      footwearImageUrl: null,
+      city: "Home",
+      temp: '--',
+      cityBg: "https://source.unsplash.com/1200x800/?closet,fashion",
+    }];
+  }
 
-  try {
-    if (!closetItemsPayload) throw new Error('Missing closet payload');
-    
-    let closetItems = [];
-    try {
-      closetItems = JSON.parse(closetItemsPayload);
-      console.log('🔥 PARSED ITEMS:', closetItems?.length);
-    } catch (err) {
-      throw new Error('Invalid closet payload JSON');
-    }
+  const dateString = "Thursday, April 23, 2026";
+  const uniqueRequestID = Date.now(); 
 
-    if (!closetItems || closetItems.length === 0) {
-      return [{
-        eventName: "Closet Empty", eventTime: "Now", location: "Home", weather: "N/A", outfitIdea: "Add Items First", reasoning: "Please add items to your closet.", items: ["No items found"], colorPalette: "Gray", clothingName: "None", clothingImageUrl: null, footwearName: "None", footwearImageUrl: null, city: "Home", temp: '--', cityBg: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1200&q=80",
-      }];
-    }
+  const shuffledCloset = shuffleArray(closetItems);
 
-    const dateString = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    const uniqueRequestID = Date.now(); 
+  const closetText = shuffledCloset
+    .map((item) => `- ${item.itemName} (type: ${item.itemType || 'unknown'}, color: ${item.color || 'unknown'})`)
+    .join('\n');
 
-    const shuffledCloset = shuffleArray(closetItems);
-    const limitedCloset = shuffledCloset.slice(0, 60);
+  const cityWeatherBlock = CITY_CONFIG
+    .map((c, idx) => `${idx + 1}. ${c.city}: ${c.weatherHint}`)
+    .join('\n');
 
-    const closetText = limitedCloset
-      .map((item) => `- ${item.itemName} (type: ${item.itemType || 'unknown'}, color: ${item.color || 'unknown'})`)
-      .join('\n');
-
-    const cityWeatherBlock = CITY_CONFIG
-      .map((c, idx) => `${idx + 1}. ${c.city}: ${c.weatherHint}`)
-      .join('\n');
-
-    const prompt = `
+  const prompt = `
 You are a luxury personal stylist.
-CURRENT CONTEXT: Today is ${dateString}. The season is Spring.
-Request ID: ${uniqueRequestID}
-You must create EXACTLY 3 outfit recommendations, one for each city below.
+CURRENT CONTEXT:
+Today is ${dateString}. The season is Spring.
+Request ID: ${uniqueRequestID} (Ensure diverse and highly varied selections from previous outputs).
+You must create EXACTLY 3 outfit recommendations, one for each city below, and you must respect the Spring weather hints.
 CITY + WEATHER HINTS:
 ${cityWeatherBlock}
 CRITICAL RULES:
-- PRIORITIZE VARIETY: Select unique, lesser-used items.
+- PRIORITIZE VARIETY: Select unique, lesser-used items from the inventory. Do not pick the most obvious items.
 - Each recommendation MUST include exactly: one footwear item, one clothing item.
-- You must use the EXACT item names from the wardrobe inventory.
+- You must use the EXACT item names from the wardrobe inventory. Do not paraphrase.
+- Do not invent items.
 WARDROBE INVENTORY:
 ${closetText}
-Return exactly 3 recommendations.`;
+Return exactly 3 recommendations.
+`;
 
-    let result;
-    try {
-      result = await generateObject({
-        // FIX 2: Downgrade to 1.5-flash for SDK stability
-        model: google('gemini-1.5-flash'), 
-        schema,
-        // FIX 6: Enforce Object output
-        output: 'object',
-        prompt,
-        temperature: 0.4, 
-      });
-      console.log('✅ Gemini Success:', JSON.stringify(result.object, null, 2));
-    } catch (aiError) {
-      // FIX 1: Isolate AI Execution errors
-      console.error('❌ GEMINI FAILURE:', aiError);
-      return [{
-        eventName: "Gemini Failed", eventTime: "Now", location: "AI Engine", weather: "N/A", outfitIdea: "Generation Failure", reasoning: String(aiError), items: [], colorPalette: "Gray", clothingName: "None", clothingImageUrl: null, footwearName: "None", footwearImageUrl: null, city: "Error", temp: '--', cityBg: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1200&q=80",
-      }];
-    }
+  const result = await generateObject({
+    model: google('gemini-2.5-flash'),
+    schema,
+    prompt,
+    temperature: 0.85, 
+  });
 
-    console.log('🔥 GEMINI RESPONSE RECEIVED');
+  const fixedNames = result.object.recommendations.map(rec => ({
+    ...rec,
+    items: correctItemNames(rec.items, closetItems),
+  }));
 
-    const fixedNames = result.object.recommendations.map(rec => ({
+  const enriched = fixedNames.map((rec, index) => {
+    const cfg = CITY_CONFIG[index] || CITY_CONFIG[0];
+    const { footwear, clothing } = pickOneOfEach(rec.items, closetItems);
+
+    return {
       ...rec,
-      // FIX 5: Protect rec.items array mapping
-      items: correctItemNames(rec.items || [], closetItems),
-    }));
+      city: cfg.city,
+      location: cfg.city,
+      weather: rec.weather || cfg.weatherHint,
+      footwearName: footwear?.itemName || 'Footwear',
+      footwearImageUrl: resolveImage(footwear),
+      clothingName: clothing?.itemName || 'Wardrobe Item',
+      clothingImageUrl: resolveImage(clothing),
+      cityBg: `https://source.unsplash.com/1200x800/?${cfg.city.split(',')[0]},spring`,
+      temp: '--',
+    };
+  });
 
-    const enriched = fixedNames.map((rec, index) => {
-      const cfg = CITY_CONFIG[index] || CITY_CONFIG[0];
-      const { footwear, clothing } = pickOneOfEach(rec.items || [], closetItems);
-
-      return {
-        ...rec,
-        city: cfg.city,
-        location: cfg.city,
-        weather: rec.weather || cfg.weatherHint,
-        footwearName: footwear?.itemName || 'Footwear',
-        footwearImageUrl: resolveImage(footwear),
-        clothingName: clothing?.itemName || 'Wardrobe Item',
-        clothingImageUrl: resolveImage(clothing),
-        cityBg: `https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1200&q=80`,
-        temp: '--',
-      };
-    });
-
-    console.log('🔥 RETURNING ENRICHED RESULTS');
-    
-    // FIX 3: Force Plain JSON Serialization to bypass React Flight crashes
-    return JSON.parse(JSON.stringify(enriched));
-
-  } catch (error) {
-    console.error('🔥 SERVER ACTION ERROR:', error instanceof Error ? error.message : error);
-    if (error instanceof Error) console.error(error.stack);
-    
-    return [{
-      eventName: "Stylist Unavailable", eventTime: "Now", location: "System Error", weather: "N/A", outfitIdea: "AI Generation Failed", reasoning: "The AI Stylist encountered an unexpected error processing your request. Please click 'Refresh Looks'.", items: [], colorPalette: "Gray", clothingName: "None", clothingImageUrl: null, footwearName: "None", footwearImageUrl: null, city: "Error", temp: '--', cityBg: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1200&q=80",
-    }];
-  }
+  return enriched;
 }
