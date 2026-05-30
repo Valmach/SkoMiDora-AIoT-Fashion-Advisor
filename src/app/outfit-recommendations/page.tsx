@@ -10,7 +10,7 @@ import {
   orderBy,
   Timestamp,
 } from 'firebase/firestore';
-import { Dancing_Script } from 'next/font/google';
+import { Dancing_Script } from 'next/font/google'; 
 
 import { firestore as db } from '@/lib/firebase';
 import { getDailyOutfitsAction } from '@/app/actions/get-daily-outfits';
@@ -54,8 +54,18 @@ export default function OutfitRecommendationsPage() {
 
       startTransition(async () => {
         try {
-          // ORIGINAL BEHAVIOR: Passing the raw array directly
-          const recs = await getDailyOutfitsAction(items);
+          // 🔥 THE FIX: The Payload Shredder
+          // Slices the array to 60 items and strips heavy metadata to bypass production 1MB limits
+          const lightweightCloset = items.slice(0, 60).map((item: any) => ({
+            id: item.id,
+            itemName: item.itemName,
+            itemType: item.itemType || 'unknown',
+            color: item.color || 'unknown',
+            imageUrl: item.imageUrl || item.image || item.url || null 
+          }));
+
+          // Pass the lightweight array directly to match your original Server Action
+          const recs = await getDailyOutfitsAction(lightweightCloset);
           setRecommendations(recs);
         } catch (error) {
           console.error("Failed to fetch outfits:", error);
@@ -71,6 +81,8 @@ export default function OutfitRecommendationsPage() {
   return (
     <div className="min-h-screen bg-black text-white p-8 lg:p-16">
       <div className="max-w-7xl mx-auto">
+        
+        {/* HEADER */}
         <header className="flex flex-col md:flex-row justify-between items-end mb-12 border-b border-zinc-800 pb-8 gap-6">
           <div className="space-y-3">
             <div className="flex items-center gap-3 text-zinc-300">
@@ -79,10 +91,12 @@ export default function OutfitRecommendationsPage() {
                 Daily Curation
               </span>
             </div>
+
             <h1 className={`${dancingScript.className} text-5xl md:text-6xl text-white tracking-wide`}>
               <span style={{ color: '#DC143C' }}>3 Outfits</span> From Your Closet
             </h1>
           </div>
+
           <Button
             onClick={() => window.location.reload()}
             variant="outline"
@@ -95,6 +109,7 @@ export default function OutfitRecommendationsPage() {
           </Button>
         </header>
 
+        {/* CONTENT GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
           {!dataLoaded ? (
             [1, 2, 3].map((i) => (
