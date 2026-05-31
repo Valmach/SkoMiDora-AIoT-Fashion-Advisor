@@ -24,7 +24,7 @@ const schema = z.object({
 });
 
 /* ======================================================
-   TYPE CLASSIFICATION
+   TYPE CLASSIFICATION (Firestore metadata is truth)
 ====================================================== */
 
 const FOOTWEAR_TYPES = new Set([
@@ -63,7 +63,7 @@ function resolveImage(item: any): string | null {
 }
 
 /* ======================================================
-   ARRAY SHUFFLER
+   ARRAY SHUFFLER (Breaks the 1% Repetition Loop)
 ====================================================== */
 function shuffleArray(array: any[]) {
   const shuffled = [...array];
@@ -75,7 +75,7 @@ function shuffleArray(array: any[]) {
 }
 
 /* ======================================================
-   NAME CORRECTION
+   NAME CORRECTION (AI hallucination -> real DB names)
 ====================================================== */
 
 function correctItemNames(generatedItems: string[], realCloset: any[]) {
@@ -97,7 +97,7 @@ function correctItemNames(generatedItems: string[], realCloset: any[]) {
 }
 
 /* ======================================================
-   PICK EXACTLY ONE FOOTWEAR + ONE CLOTHING
+   PICK EXACTLY ONE FOOTWEAR + ONE CLOTHING (guaranteed)
 ====================================================== */
 
 function pickOneOfEach(resolvedNames: string[], closetItems: any[]) {
@@ -120,7 +120,7 @@ function pickOneOfEach(resolvedNames: string[], closetItems: any[]) {
 }
 
 /* ======================================================
-   WEATHER WEIGHTING PER CITY
+   WEATHER WEIGHTING PER CITY (Updated for Location Context)
 ====================================================== */
 
 const CITY_CONFIG = [
@@ -130,117 +130,104 @@ const CITY_CONFIG = [
 ];
 
 /* ======================================================
-   SERVER ACTION (WITH ERROR TRAP)
+   SERVER ACTION
 ====================================================== */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getDailyOutfitsAction(closetItems: any[]) {
-  try {
-    if (!closetItems || closetItems.length === 0) {
-      return [{
-        eventName: "Closet Empty",
-        eventTime: "Now",
-        location: "Home",
-        weather: "N/A",
-        outfitIdea: "Add Items First",
-        reasoning: "Please add items to your closet to get real AI suggestions.",
-        items: ["No items found"],
-        colorPalette: "Gray",
-        clothingName: "None",
-        clothingImageUrl: null,
-        footwearName: "None",
-        footwearImageUrl: null,
-        city: "Home",
-        temp: '--',
-        cityBg: "https://source.unsplash.com/1200x800/?closet,fashion",
-      }];
-    }
+  if (!closetItems || closetItems.length === 0) {
+    return [{
+      eventName: "Closet Empty",
+      eventTime: "Now",
+      location: "Home",
+      weather: "N/A",
+      outfitIdea: "Add Items First",
+      reasoning: "Please add items to your closet to get real AI suggestions.",
+      items: ["No items found"],
+      colorPalette: "Gray",
+      clothingName: "None",
+      clothingImageUrl: null,
+      footwearName: "None",
+      footwearImageUrl: null,
+      city: "Home",
+      temp: '--',
+      cityBg: "https://source.unsplash.com/1200x800/?closet,fashion",
+    }];
+  }
 
-    const dateString = "Thursday, April 23, 2026";
-    const uniqueRequestID = Date.now(); 
+  // Inject exact contextual date
+  const dateString = "Thursday, April 23, 2026";
+  const uniqueRequestID = Date.now(); // Cache buster
 
-    const shuffledCloset = shuffleArray(closetItems);
+  // SHUFFLE the items so the AI evaluates different pieces first every time
+  const shuffledCloset = shuffleArray(closetItems);
 
-    const closetText = shuffledCloset
-      .map((item) => `- ${item.itemName} (type: ${item.itemType || 'unknown'}, color: ${item.color || 'unknown'})`)
-      .join('\n');
+  const closetText = shuffledCloset
+    .map((item) => `- ${item.itemName} (type: ${item.itemType || 'unknown'}, color: ${item.color || 'unknown'})`)
+    .join('\n');
 
-    const cityWeatherBlock = CITY_CONFIG
-      .map((c, idx) => `${idx + 1}. ${c.city}: ${c.weatherHint}`)
-      .join('\n');
+  const cityWeatherBlock = CITY_CONFIG
+    .map((c, idx) => `${idx + 1}. ${c.city}: ${c.weatherHint}`)
+    .join('\n');
 
-    const prompt = `
+  const prompt = `
 You are a luxury personal stylist.
+
 CURRENT CONTEXT:
 Today is ${dateString}. The season is Spring.
-Request ID: ${uniqueRequestID}
+Request ID: ${uniqueRequestID} (Ensure diverse and highly varied selections from previous outputs).
+
 You must create EXACTLY 3 outfit recommendations, one for each city below, and you must respect the Spring weather hints.
+
 CITY + WEATHER HINTS:
 ${cityWeatherBlock}
+
 CRITICAL RULES:
-- PRIORITIZE VARIETY: Select unique, lesser-used items from the inventory.
-- Each recommendation MUST include exactly: one footwear item, one clothing item.
-- You must use the EXACT item names from the wardrobe inventory.
+- PRIORITIZE VARIETY: Select unique, lesser-used items from the inventory. Do not pick the most obvious items.
+- Each recommendation MUST include exactly:
+  - one footwear item
+  - one clothing item
+- You must use the EXACT item names from the wardrobe inventory. Do not paraphrase.
+- Do not invent items.
+
 WARDROBE INVENTORY:
 ${closetText}
+
 Return exactly 3 recommendations.
 `;
 
-    // 🚨 Changed to gemini-1.5-flash. If your SDK version doesn't support 2.5, 
-    // it will throw a fatal error. 1.5-flash is stable across all versions.
-    const result = await generateObject({
-      model: google('gemini-1.5-flash'),
-      schema,
-      prompt,
-      temperature: 0.85, 
-    });
+  const result = await generateObject({
+    model: google('gemini-2.5-flash'),
+    schema,
+    prompt,
+    temperature: 0.85, // INCREASED CREATIVITY: Forces the AI to take risks and use the other 99% of your closet
+  });
 
-    const fixedNames = result.object.recommendations.map(rec => ({
+  const fixedNames = result.object.recommendations.map(rec => ({
+    ...rec,
+    items: correctItemNames(rec.items, closetItems),
+  }));
+
+  const enriched = fixedNames.map((rec, index) => {
+    const cfg = CITY_CONFIG[index] || CITY_CONFIG[0];
+
+    const { footwear, clothing } = pickOneOfEach(rec.items, closetItems);
+
+    return {
       ...rec,
-      items: correctItemNames(rec.items, closetItems),
-    }));
+      city: cfg.city,
+      location: cfg.city,
+      weather: rec.weather || cfg.weatherHint,
 
-    const enriched = fixedNames.map((rec, index) => {
-      const cfg = CITY_CONFIG[index] || CITY_CONFIG[0];
-      const { footwear, clothing } = pickOneOfEach(rec.items, closetItems);
+      footwearName: footwear?.itemName || 'Footwear',
+      footwearImageUrl: resolveImage(footwear),
 
-      return {
-        ...rec,
-        city: cfg.city,
-        location: cfg.city,
-        weather: rec.weather || cfg.weatherHint,
-        footwearName: footwear?.itemName || 'Footwear',
-        footwearImageUrl: resolveImage(footwear),
-        clothingName: clothing?.itemName || 'Wardrobe Item',
-        clothingImageUrl: resolveImage(clothing),
-        cityBg: `https://source.unsplash.com/1200x800/?${cfg.city.split(',')[0]},spring`,
-        temp: '--',
-      };
-    });
+      clothingName: clothing?.itemName || 'Wardrobe Item',
+      clothingImageUrl: resolveImage(clothing),
 
-    return enriched;
+      cityBg: `https://source.unsplash.com/1200x800/?${cfg.city.split(',')[0]},spring`,
+      temp: '--',
+    };
+  });
 
-  } catch (err) {
-    const error = err as Error;
-    console.error("SERVER ACTION CRASH:", error);
-    
-    // THIS CATCHES THE 500 AND PRINTS IT TO YOUR UI INSTEAD
-    return [{
-      eventName: "System Crash Report",
-      eventTime: "Now",
-      location: "Server Runtime",
-      weather: "Error 500 Caught",
-      outfitIdea: error.message || "Unknown Server Error",
-      reasoning: "The server crashed while contacting Gemini. Check the error message above.",
-      items: ["Diagnostic Error"],
-      colorPalette: "Red",
-      clothingName: "Crash",
-      clothingImageUrl: null,
-      footwearName: "Crash",
-      footwearImageUrl: null,
-      city: "Error Log",
-      temp: '500',
-      cityBg: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1200&q=80",
-    }];
-  }
-}
+  return enriched;
+}  
