@@ -10,17 +10,19 @@ import {
   orderBy,
   Timestamp,
 } from 'firebase/firestore';
-import { Dancing_Script } from 'next/font/google'; 
+import { Dancing_Script } from 'next/font/google'; // 1. Import the Font
 
 import { firestore as db } from '@/lib/firebase';
 import { getDailyOutfitsAction } from '@/app/actions/get-daily-outfits';
 
+
 import { Loader2, Sparkles, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+// 2. Configure the Font
 const dancingScript = Dancing_Script({ 
   subsets: ['latin'],
-  weight: ['400', '700'], 
+  weight: ['400', '700'], // Load normal and bold weights
 });
 
 export default function OutfitRecommendationsPage() {
@@ -29,6 +31,7 @@ export default function OutfitRecommendationsPage() {
   const [isPending, startTransition] = useTransition();
   const [dataLoaded, setDataLoaded] = useState(false);
 
+  // 1. LIVE LISTENER: Get Closet Data
   useEffect(() => {
     if (!db) return;
 
@@ -52,18 +55,10 @@ export default function OutfitRecommendationsPage() {
 
       setCloset(items);
 
+      // 2. SERVER ACTION: Get AI Outfits
       startTransition(async () => {
         try {
-          // 🔥 The Payload Shredder: Capped at 60 items to bypass the 1MB limit
-          const lightweightCloset = items.slice(0, 60).map((item: any) => ({
-            id: item.id,
-            itemName: item.itemName,
-            itemType: item.itemType || 'unknown',
-            color: item.color || 'unknown',
-            imageUrl: item.imageUrl || item.image || item.url || null 
-          }));
-
-          const recs = await getDailyOutfitsAction(lightweightCloset);
+          const recs = await getDailyOutfitsAction(items);
           setRecommendations(recs);
         } catch (error) {
           console.error("Failed to fetch outfits:", error);
@@ -79,6 +74,8 @@ export default function OutfitRecommendationsPage() {
   return (
     <div className="min-h-screen bg-black text-white p-8 lg:p-16">
       <div className="max-w-7xl mx-auto">
+        
+        {/* HEADER */}
         <header className="flex flex-col md:flex-row justify-between items-end mb-12 border-b border-zinc-800 pb-8 gap-6">
           <div className="space-y-3">
             <div className="flex items-center gap-3 text-zinc-300">
@@ -87,10 +84,13 @@ export default function OutfitRecommendationsPage() {
                 Daily Curation
               </span>
             </div>
+
+            {/* 3. NEW TITLE: Dancing Script + White & Crimson Red */}
             <h1 className={`${dancingScript.className} text-5xl md:text-6xl text-white tracking-wide`}>
               <span style={{ color: '#DC143C' }}>3 Outfits</span> From Your Closet
             </h1>
           </div>
+
           <Button
             onClick={() => window.location.reload()}
             variant="outline"
@@ -103,8 +103,10 @@ export default function OutfitRecommendationsPage() {
           </Button>
         </header>
 
+        {/* CONTENT GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
           {!dataLoaded ? (
+            // Loading Skeletons
             [1, 2, 3].map((i) => (
               <div
                 key={i}
@@ -114,11 +116,13 @@ export default function OutfitRecommendationsPage() {
               </div>
             ))
           ) : recommendations.length === 0 ? (
+            // Empty State
             <div className="col-span-full flex flex-col items-center justify-center py-20 text-zinc-500">
               <Sparkles className="h-16 w-16 mb-4 opacity-20" />
               <p className="text-xl">Add items to your closet to see outfits.</p>
             </div>
           ) : (
+            // Cards
             recommendations.map((rec, idx) => (
               <OutfitCard
                 key={idx}
