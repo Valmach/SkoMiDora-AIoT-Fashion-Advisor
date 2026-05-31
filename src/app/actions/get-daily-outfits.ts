@@ -4,6 +4,10 @@ import { generateObject } from 'ai';
 import { google } from '@ai-sdk/google';
 import { z } from 'zod';
 
+/* ======================================================
+   SCHEMA
+====================================================== */
+
 const schema = z.object({
   recommendations: z.array(
     z.object({
@@ -19,14 +23,29 @@ const schema = z.object({
   ),
 });
 
-const FOOTWEAR_TYPES = new Set(['shoe', 'shoes', 'boot', 'boots', 'heel', 'heels', 'sandal', 'sandals', 'loafer', 'loafers', 'pump', 'pumps', 'sneaker', 'sneakers', 'mule', 'mules']);
-const CLOTHING_TYPES = new Set(['dress', 'coat', 'jacket', 'blazer', 'top', 'shirt', 'blouse', 'pant', 'pants', 'trouser', 'trousers', 'skirt', 'suit', 'jumpsuit', 'sweater', 'cardigan']);
+/* ======================================================
+   TYPE CLASSIFICATION
+====================================================== */
 
-function normalizeType(t: any): string { return String(t || '').trim().toLowerCase(); }
+const FOOTWEAR_TYPES = new Set([
+  'shoe', 'shoes', 'boot', 'boots', 'heel', 'heels', 'sandal', 'sandals',
+  'loafer', 'loafers', 'pump', 'pumps', 'sneaker', 'sneakers', 'mule', 'mules'
+]);
+
+const CLOTHING_TYPES = new Set([
+  'dress', 'coat', 'jacket', 'blazer', 'top', 'shirt', 'blouse',
+  'pant', 'pants', 'trouser', 'trousers', 'skirt', 'suit', 'jumpsuit',
+  'sweater', 'cardigan'
+]);
+
+function normalizeType(t: any): string {
+  return String(t || '').trim().toLowerCase();
+}
 
 function isFootwear(item: any): boolean {
   const t = normalizeType(item?.itemType);
   if (FOOTWEAR_TYPES.has(t)) return true;
+
   const n = String(item?.itemName || '').toLowerCase();
   return /(boot|heel|sandal|shoe|loafer|pump|sneaker|mule)/.test(n);
 }
@@ -34,12 +53,18 @@ function isFootwear(item: any): boolean {
 function isClothing(item: any): boolean {
   const t = normalizeType(item?.itemType);
   if (CLOTHING_TYPES.has(t)) return true;
+
   const n = String(item?.itemName || '').toLowerCase();
   return /(dress|coat|jacket|blazer|top|shirt|blouse|pant|trouser|skirt|suit|jumpsuit|sweater|cardigan)/.test(n);
 }
 
-function resolveImage(item: any): string | null { return item?.imageUrl || item?.image || item?.url || null; }
+function resolveImage(item: any): string | null {
+  return item?.imageUrl || item?.image || item?.url || null;
+}
 
+/* ======================================================
+   ARRAY SHUFFLER
+====================================================== */
 function shuffleArray(array: any[]) {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -49,33 +74,54 @@ function shuffleArray(array: any[]) {
   return shuffled;
 }
 
+/* ======================================================
+   NAME CORRECTION
+====================================================== */
+
 function correctItemNames(generatedItems: string[], realCloset: any[]) {
   return generatedItems.map((genName) => {
     const g = String(genName || '').trim();
     if (!g) return genName;
+
     const exact = realCloset.find(i => String(i.itemName || '').trim() === g);
     if (exact) return exact.itemName;
+
     const gl = g.toLowerCase();
     const fuzzy = realCloset.find(i => {
       const rn = String(i.itemName || '').toLowerCase();
       return rn && (gl.includes(rn) || rn.includes(gl));
     });
+
     return fuzzy ? fuzzy.itemName : genName;
   });
 }
 
+/* ======================================================
+   PICK EXACTLY ONE FOOTWEAR + ONE CLOTHING
+====================================================== */
+
 function pickOneOfEach(resolvedNames: string[], closetItems: any[]) {
-  const byName = resolvedNames.map(name => closetItems.find(c => String(c.itemName || '').toLowerCase() === String(name || '').toLowerCase())).filter(Boolean);
+  const byName = resolvedNames
+    .map(name => closetItems.find(c => String(c.itemName || '').toLowerCase() === String(name || '').toLowerCase()))
+    .filter(Boolean);
+
   let footwear = byName.find(isFootwear) || closetItems.find(isFootwear) || null;
   let clothing = byName.find(isClothing) || closetItems.find(isClothing) || null;
+
   if (footwear && clothing && footwear === clothing) {
     const altClothing = closetItems.find(i => i !== footwear && isClothing(i));
     if (altClothing) clothing = altClothing;
+
     const altFootwear = closetItems.find(i => i !== clothing && isFootwear(i));
     if (altFootwear) footwear = altFootwear;
   }
+
   return { footwear, clothing };
 }
+
+/* ======================================================
+   WEATHER WEIGHTING PER CITY
+====================================================== */
 
 const CITY_CONFIG = [
   { city: 'West Memphis, AR', weatherHint: 'Springtime. Warm, breezy, and comfortable.' },
@@ -83,91 +129,118 @@ const CITY_CONFIG = [
   { city: 'London', weatherHint: 'Cool spring + likely rain. Outerwear + rain-appropriate shoes.' },
 ];
 
-// ORIGINAL BEHAVIOR: Accepts the array directly
+/* ======================================================
+   SERVER ACTION (WITH ERROR TRAP)
+====================================================== */
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getDailyOutfitsAction(closetItems: any[]) {
-  // 🚨 DIAGNOSTIC BYPASS: Short-circuit the AI and return a dummy card immediately
-  if (process.env.NODE_ENV === 'production') {
-    return [{
-      eventName: "Production Test",
-      eventTime: "Now",
-      location: "System Check",
-      weather: "Clear",
-      outfitIdea: "The Server Action bridge is working perfectly.",
-      reasoning: "If you are reading this in production, Next.js is fine. The Gemini SDK or the API Key injection is crashing the server.",
-      items: ["Diagnostic Item"],
-      colorPalette: "Green",
-      clothingName: "Test Shirt",
-      clothingImageUrl: null,
-      footwearName: "Test Shoes",
-      footwearImageUrl: null,
-      city: "Testville",
-      temp: '72',
-      cityBg: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1200&q=80",
-    }];
-  }
+  try {
+    if (!closetItems || closetItems.length === 0) {
+      return [{
+        eventName: "Closet Empty",
+        eventTime: "Now",
+        location: "Home",
+        weather: "N/A",
+        outfitIdea: "Add Items First",
+        reasoning: "Please add items to your closet to get real AI suggestions.",
+        items: ["No items found"],
+        colorPalette: "Gray",
+        clothingName: "None",
+        clothingImageUrl: null,
+        footwearName: "None",
+        footwearImageUrl: null,
+        city: "Home",
+        temp: '--',
+        cityBg: "https://source.unsplash.com/1200x800/?closet,fashion",
+      }];
+    }
 
-  // ... rest of your existing code below
+    const dateString = "Thursday, April 23, 2026";
+    const uniqueRequestID = Date.now(); 
 
-  const dateString = "Thursday, April 23, 2026";
-  const uniqueRequestID = Date.now(); 
+    const shuffledCloset = shuffleArray(closetItems);
 
-  const shuffledCloset = shuffleArray(closetItems);
+    const closetText = shuffledCloset
+      .map((item) => `- ${item.itemName} (type: ${item.itemType || 'unknown'}, color: ${item.color || 'unknown'})`)
+      .join('\n');
 
-  const closetText = shuffledCloset
-    .map((item) => `- ${item.itemName} (type: ${item.itemType || 'unknown'}, color: ${item.color || 'unknown'})`)
-    .join('\n');
+    const cityWeatherBlock = CITY_CONFIG
+      .map((c, idx) => `${idx + 1}. ${c.city}: ${c.weatherHint}`)
+      .join('\n');
 
-  const cityWeatherBlock = CITY_CONFIG
-    .map((c, idx) => `${idx + 1}. ${c.city}: ${c.weatherHint}`)
-    .join('\n');
-
-  const prompt = `
+    const prompt = `
 You are a luxury personal stylist.
 CURRENT CONTEXT:
 Today is ${dateString}. The season is Spring.
-Request ID: ${uniqueRequestID} (Ensure diverse and highly varied selections from previous outputs).
+Request ID: ${uniqueRequestID}
 You must create EXACTLY 3 outfit recommendations, one for each city below, and you must respect the Spring weather hints.
 CITY + WEATHER HINTS:
 ${cityWeatherBlock}
 CRITICAL RULES:
-- PRIORITIZE VARIETY: Select unique, lesser-used items from the inventory. Do not pick the most obvious items.
+- PRIORITIZE VARIETY: Select unique, lesser-used items from the inventory.
 - Each recommendation MUST include exactly: one footwear item, one clothing item.
-- You must use the EXACT item names from the wardrobe inventory. Do not paraphrase.
-- Do not invent items.
+- You must use the EXACT item names from the wardrobe inventory.
 WARDROBE INVENTORY:
 ${closetText}
 Return exactly 3 recommendations.
 `;
 
-  const result = await generateObject({
-    model: google('gemini-2.5-flash'),
-    schema,
-    prompt,
-    temperature: 0.85, 
-  });
+    // 🚨 Changed to gemini-1.5-flash. If your SDK version doesn't support 2.5, 
+    // it will throw a fatal error. 1.5-flash is stable across all versions.
+    const result = await generateObject({
+      model: google('gemini-1.5-flash'),
+      schema,
+      prompt,
+      temperature: 0.85, 
+    });
 
-  const fixedNames = result.object.recommendations.map(rec => ({
-    ...rec,
-    items: correctItemNames(rec.items, closetItems),
-  }));
-
-  const enriched = fixedNames.map((rec, index) => {
-    const cfg = CITY_CONFIG[index] || CITY_CONFIG[0];
-    const { footwear, clothing } = pickOneOfEach(rec.items, closetItems);
-
-    return {
+    const fixedNames = result.object.recommendations.map(rec => ({
       ...rec,
-      city: cfg.city,
-      location: cfg.city,
-      weather: rec.weather || cfg.weatherHint,
-      footwearName: footwear?.itemName || 'Footwear',
-      footwearImageUrl: resolveImage(footwear),
-      clothingName: clothing?.itemName || 'Wardrobe Item',
-      clothingImageUrl: resolveImage(clothing),
-      cityBg: `https://source.unsplash.com/1200x800/?${cfg.city.split(',')[0]},spring`,
-      temp: '--',
-    };
-  });
+      items: correctItemNames(rec.items, closetItems),
+    }));
 
-  return enriched;
+    const enriched = fixedNames.map((rec, index) => {
+      const cfg = CITY_CONFIG[index] || CITY_CONFIG[0];
+      const { footwear, clothing } = pickOneOfEach(rec.items, closetItems);
+
+      return {
+        ...rec,
+        city: cfg.city,
+        location: cfg.city,
+        weather: rec.weather || cfg.weatherHint,
+        footwearName: footwear?.itemName || 'Footwear',
+        footwearImageUrl: resolveImage(footwear),
+        clothingName: clothing?.itemName || 'Wardrobe Item',
+        clothingImageUrl: resolveImage(clothing),
+        cityBg: `https://source.unsplash.com/1200x800/?${cfg.city.split(',')[0]},spring`,
+        temp: '--',
+      };
+    });
+
+    return enriched;
+
+  } catch (err) {
+    const error = err as Error;
+    console.error("SERVER ACTION CRASH:", error);
+    
+    // THIS CATCHES THE 500 AND PRINTS IT TO YOUR UI INSTEAD
+    return [{
+      eventName: "System Crash Report",
+      eventTime: "Now",
+      location: "Server Runtime",
+      weather: "Error 500 Caught",
+      outfitIdea: error.message || "Unknown Server Error",
+      reasoning: "The server crashed while contacting Gemini. Check the error message above.",
+      items: ["Diagnostic Error"],
+      colorPalette: "Red",
+      clothingName: "Crash",
+      clothingImageUrl: null,
+      footwearName: "Crash",
+      footwearImageUrl: null,
+      city: "Error Log",
+      temp: '500',
+      cityBg: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1200&q=80",
+    }];
+  }
 }
