@@ -1,32 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Disable strict mode
   reactStrictMode: false,
 
-  // 🔥 CRITICAL FIX: Prevents Next.js from mangling Firebase Admin cryptography files
-  serverExternalPackages: ['firebase-admin'],
-
+  // FORCE DYNAMIC DEV BEHAVIOR
   experimental: {
-    serverActions: {
-      // 🔥 FIX 1: Permanently disable the 1MB Payload limit for your ingestion arrays
-      bodySizeLimit: '5mb', 
-      
-      allowedOrigins: [
-        'styleai-footwear.web.app',
-        'styleai-footwear.firebaseapp.com',
-        '*.web.app',
-        '*.firebaseapp.com',
-        'localhost:3000',
-        '*.cloudworkstations.dev',
-        // 🔥 FIX 2: Firebase App Hosting internal Cloud Run URLs
-        '*.a.run.app' 
-      ]
-    },
     staleTimes: {
       dynamic: 0,
       static: 0,
     },
   },
 
+  // Image Domains
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'firebasestorage.googleapis.com' },
@@ -35,10 +20,21 @@ const nextConfig = {
       { protocol: 'https', hostname: 'via.placeholder.com' },
       { protocol: 'https', hostname: 'placehold.co' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
-      { protocol: 'https', hostname: 'source.unsplash.com' }, 
     ],
   },
 
+  // REDIRECTS
+  async redirects() {
+    return [
+      {
+        source: '/recommendations',
+        destination: '/outfit-recommendations',
+        permanent: false,
+      },
+    ];
+  },
+
+  // CRITICAL BUILD FIX: IGNORE LINT/TYPE ERRORS
   eslint: {
     ignoreDuringBuilds: true,
   },
