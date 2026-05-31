@@ -7,14 +7,18 @@ const nextConfig = {
 
   experimental: {
     serverActions: {
+      // 🔥 FIX 1: Permanently disable the 1MB Payload limit for your ingestion arrays
+      bodySizeLimit: '5mb', 
+      
       allowedOrigins: [
         'styleai-footwear.web.app',
         'styleai-footwear.firebaseapp.com',
         '*.web.app',
         '*.firebaseapp.com',
         'localhost:3000',
-        // 🔥 Add the wildcard for your cloud workstation
-        '*.cloudworkstations.dev' 
+        '*.cloudworkstations.dev',
+        // 🔥 FIX 2: Firebase App Hosting internal Cloud Run URLs
+        '*.a.run.app' 
       ]
     },
     staleTimes: {
