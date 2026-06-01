@@ -1,8 +1,13 @@
 'use server';
 
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { generateObject } from 'ai';
-import { google } from '@ai-sdk/google';
 import { z } from 'zod';
+
+// 🔥 Bulletproof API Key Fallback Initialization
+const google = createGoogleGenerativeAI({
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY,
+});
 
 /* ======================================================
    SCHEMA
@@ -169,6 +174,7 @@ export async function getDailyOutfitsAction(closetItems: any[]) {
     .map((c, idx) => `${idx + 1}. ${c.city}: ${c.weatherHint}`)
     .join('\n');
 
+  // 🔥 Fully terminated template literal string
   const prompt = `
 You are a luxury personal stylist.
 
@@ -230,4 +236,4 @@ Return exactly 3 recommendations.
   });
 
   return enriched;
-}  
+}
