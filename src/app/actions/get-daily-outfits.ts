@@ -63,8 +63,16 @@ function isClothing(item: any): boolean {
   return /(dress|coat|jacket|blazer|top|shirt|blouse|pant|trouser|skirt|suit|jumpsuit|sweater|cardigan)/.test(n);
 }
 
+// 🔥 Defensive Fallback for Missing Images
 function resolveImage(item: any): string | null {
-  return item?.imageUrl || item?.image || item?.url || null;
+  const primaryUrl = item?.imageUrl || item?.image || item?.url;
+  
+  // If no URL exists, or if the item is explicitly flagged as missing an image, return a placeholder
+  if (!primaryUrl || item?.imageStatus === "missing" || item?.imageError) {
+    return "https://placehold.co/600x800/eeeeee/999999?text=Image+Unavailable"; 
+  }
+  
+  return primaryUrl;
 }
 
 /* ======================================================
@@ -128,12 +136,15 @@ function pickOneOfEach(resolvedNames: string[], closetItems: any[]) {
    WEATHER WEIGHTING PER CITY (Updated for Location Context)
 ====================================================== */
 
-const CITY_CONFIG = [
-  { city: 'West Memphis, AR', weatherHint: 'Springtime. Warm, breezy, and comfortable.' },
-  { city: 'Paris',  weatherHint: 'Mild chic spring. Light layers. Polished footwear.' },
-  { city: 'London', weatherHint: 'Cool spring + likely rain. Outerwear + rain-appropriate shoes.' },
-];
+/* ======================================================
+   WEATHER WEIGHTING PER CITY (Updated for Location Context)
+====================================================== */
 
+const CITY_CONFIG = [
+  { city: 'Paris',  weatherHint: 'Mild chic spring. Light layers. Polished footwear.' },
+  { city: 'Rome',   weatherHint: 'Warm Mediterranean spring. Breathable fabrics.' },
+  { city: 'Oslo',   weatherHint: 'Crisp, cool spring. Layered outerwear. Sturdy shoes.' },
+];
 /* ======================================================
    SERVER ACTION
 ====================================================== */
