@@ -16,6 +16,12 @@ start:
 # -------------------------------------------------------
 # Environment Variables & Secrets (All must be under 'env')
 # -------------------------------------------------------
+# apphosting.yaml
+env:
+  - variable: GEMINI_API_KEY
+    secret: GOOGLE_GENERATIVE_AI_API_KEY
+  - variable: GOOGLE_GENERATIVE_AI_API_KEY
+    secret: GOOGLE_GENERATIVE_AI_API_KEY
 env:
   # --- Public Variables (Browser Safe) ---
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
