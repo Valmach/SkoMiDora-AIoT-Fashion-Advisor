@@ -133,13 +133,25 @@ function pickOneOfEach(resolvedNames: string[], closetItems: any[]) {
 }
 
 /* ======================================================
-   WEATHER WEIGHTING PER CITY (Updated for Location Context)
+   WEATHER WEIGHTING PER CITY (Updated for Summer Context & Stable Images)
 ====================================================== */
 
 const CITY_CONFIG = [
-  { city: 'Paris',  weatherHint: 'Mild chic spring. Light layers. Polished footwear.' },
-  { city: 'Rome',   weatherHint: 'Warm Mediterranean spring. Breathable fabrics.' },
-  { city: 'Oslo',   weatherHint: 'Crisp, cool spring. Layered outerwear. Sturdy shoes.' },
+  { 
+    city: 'Paris',  
+    weatherHint: 'Warm, sunny summer. Breathable chic layers. Polished yet comfortable footwear.',
+    bgUrl: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1200&h=800&q=80'
+  },
+  { 
+    city: 'Rome',   
+    weatherHint: 'Hot Mediterranean summer. Lightweight linen, breathable fabrics, and refined sandals.',
+    bgUrl: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=1200&h=800&q=80'
+  },
+  { 
+    city: 'Oslo',   
+    weatherHint: 'Pleasant, bright Nordic summer. Crisp tailoring with a very light evening layer.',
+    bgUrl: 'https://images.unsplash.com/photo-1513735492246-483525079686?auto=format&fit=crop&w=1200&h=800&q=80'
+  },
 ];
 
 /* ======================================================
@@ -163,12 +175,13 @@ export async function getDailyOutfitsAction(closetItems: any[]) {
       footwearImageUrl: null,
       city: "Home",
       temp: '--',
-      cityBg: "https://source.unsplash.com/1200x800/?closet,fashion",
+      cityBg: "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?auto=format&fit=crop&w=1200&h=800&q=80",
     }];
   }
 
-  // Inject exact contextual date
-  const dateString = "Thursday, April 23, 2026";
+  // Inject dynamic contextual date
+  const options: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+  const dateString = new Date().toLocaleDateString('en-US', options);
   const uniqueRequestID = Date.now(); // Cache buster
 
   // SHUFFLE the items so the AI evaluates different pieces first every time
@@ -186,10 +199,10 @@ export async function getDailyOutfitsAction(closetItems: any[]) {
 You are a luxury personal stylist.
 
 CURRENT CONTEXT:
-Today is ${dateString}. The season is Spring.
+Today is ${dateString}. The season is Summer.
 Request ID: ${uniqueRequestID} (Ensure diverse and highly varied selections from previous outputs).
 
-You must create EXACTLY 3 outfit recommendations, one for each city below, and you must respect the Spring weather hints.
+You must create EXACTLY 3 outfit recommendations, one for each city below, and you must respect the Summer weather hints.
 
 CITY + WEATHER HINTS:
 ${cityWeatherBlock}
@@ -244,7 +257,7 @@ Return exactly 3 recommendations.
       clothingName: clothing?.itemName || 'Wardrobe Item',
       clothingImageUrl: resolveImage(clothing),
 
-      cityBg: `https://source.unsplash.com/1200x800/?${cfg.city.split(',')[0]},spring`,
+      cityBg: cfg.bgUrl,
       temp: '--',
     };
   });
