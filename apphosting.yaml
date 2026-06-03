@@ -1,3 +1,4 @@
+# apphosting.yaml
 runConfig:
   runtime: nodejs20
   minInstances: 0
@@ -6,26 +7,9 @@ runConfig:
   cpu: 2           # 🔥 Doubled CPU to prevent network stream timeouts
   memoryMiB: 1024  # 🔥 Doubled RAM to stop the Out-Of-Memory container crashes
 
-build:
-  command: npm run build
-start:
-  command: npm start
-
-# ... (keep all your existing env variables below this exactly the same)
-
 # -------------------------------------------------------
-# Environment Variables & Secrets (All must be under 'env')
+# Environment Variables & Secrets 
 # -------------------------------------------------------
-# apphosting.yaml
-e# apphosting.yaml
-yamlVersion: v1beta
-
-# Secrets must be explicitly declared in their own block
-secrets:
-  - variable: GEMINI_API_KEY
-    secret: GOOGLE_GENERATIVE_AI_API_KEY
-  - variable: GOOGLE_GENERATIVE_AI_API_KEY
-    secret: GOOGLE_GENERATIVE_AI_API_KEY
 env:
   # --- Public Variables (Browser Safe) ---
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
@@ -60,8 +44,10 @@ env:
   - variable: FIREBASE_ADMIN_PRIVATE_KEY
     secret: FIREBASE_ADMIN_PRIVATE_KEY
     availability: [BUILD, RUNTIME]
+    
+  # 🔥 AI Studio Keys mapped to your Version 6 Secret
   - variable: GEMINI_API_KEY
-    secret: GEMINI_API_KEY
+    secret: GOOGLE_GENERATIVE_AI_API_KEY
     availability: [BUILD, RUNTIME]
   - variable: GOOGLE_GENERATIVE_AI_API_KEY
     secret: GOOGLE_GENERATIVE_AI_API_KEY
@@ -69,6 +55,8 @@ env:
   - variable: GOOGLE_API_KEY
     secret: GOOGLE_API_KEY
     availability: [BUILD, RUNTIME]
+    
+  # --- Other Secrets ---
   - variable: WEATHER_API_KEY
     secret: WEATHER_API_KEY
     availability: [BUILD, RUNTIME]
