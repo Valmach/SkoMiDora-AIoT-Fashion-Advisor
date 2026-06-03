@@ -2,6 +2,9 @@
   "name": "styleai-footwear",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "22"
+  },
   "scripts": {
     "dev": "next dev",
     "prebuild": "rm -rf .next ~/zi* ~/.npm ~/.cache || true",
@@ -65,7 +68,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@types/node": "20.14.2",
+    "@types/node": "^22.0.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@types/wav": "^1.0.3",
