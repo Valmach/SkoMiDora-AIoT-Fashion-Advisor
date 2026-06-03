@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 // 🔥 Bulletproof API Key Fallback Initialization
 const google = createGoogleGenerativeAI({
-  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY,
+  apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY,
 });
 
 /* ======================================================
@@ -136,15 +136,12 @@ function pickOneOfEach(resolvedNames: string[], closetItems: any[]) {
    WEATHER WEIGHTING PER CITY (Updated for Location Context)
 ====================================================== */
 
-/* ======================================================
-   WEATHER WEIGHTING PER CITY (Updated for Location Context)
-====================================================== */
-
 const CITY_CONFIG = [
   { city: 'Paris',  weatherHint: 'Mild chic spring. Light layers. Polished footwear.' },
   { city: 'Rome',   weatherHint: 'Warm Mediterranean spring. Breathable fabrics.' },
   { city: 'Oslo',   weatherHint: 'Crisp, cool spring. Layered outerwear. Sturdy shoes.' },
 ];
+
 /* ======================================================
    SERVER ACTION
 ====================================================== */
@@ -185,7 +182,6 @@ export async function getDailyOutfitsAction(closetItems: any[]) {
     .map((c, idx) => `${idx + 1}. ${c.city}: ${c.weatherHint}`)
     .join('\n');
 
-  // 🔥 Fully terminated template literal string
   const prompt = `
 You are a luxury personal stylist.
 
@@ -212,11 +208,18 @@ ${closetText}
 Return exactly 3 recommendations.
 `;
 
+  // 🔥 DIAGNOSTIC TRAP: Print the keys visible to the server right before the call
+  console.log("\n==================================================");
+  console.log("🔍 API KEY DIAGNOSTIC CHECK");
+  console.log("GEMINI_API_KEY seen:", process.env.GEMINI_API_KEY ? `${process.env.GEMINI_API_KEY.substring(0, 15)}...` : "UNDEFINED");
+  console.log("GOOGLE_GEN_AI_KEY seen:", process.env.GOOGLE_GENERATIVE_AI_API_KEY ? `${process.env.GOOGLE_GENERATIVE_AI_API_KEY.substring(0, 15)}...` : "UNDEFINED");
+  console.log("==================================================\n");
+
   const result = await generateObject({
     model: google('gemini-2.5-flash'),
     schema,
     prompt,
-    temperature: 0.85, // INCREASED CREATIVITY: Forces the AI to take risks and use the other 99% of your closet
+    temperature: 0.85, 
   });
 
   const fixedNames = result.object.recommendations.map(rec => ({
