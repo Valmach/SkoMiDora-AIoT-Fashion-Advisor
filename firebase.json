@@ -3,43 +3,44 @@
     "default": "styleai-footwear"
   },
   "hosting": {
-  "source": ".",
-  "ignore": [
-  "firebase.json",
-  "/.*",
-  "/node_modules/**"
-  ],
-  "frameworksBackend": {
-  "region": "us-central1"
-  }
+    "source": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "frameworksBackend": {
+      "region": "us-central1",
+      "memory": "1024MiB"
+    }
   },
   "functions": [
-  {
-  "codebase": "default",
-  "source": "functions",
-  "ignore": [
-  "node_modules",
-  ".git",
-  "firebase-debug.log",
-  "firebase-debug..log",
-  ".local",
-  ".runtimeconfig.json"
-  ]
-  }
+    {
+      "codebase": "default",
+      "source": "functions",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        ".local",
+        ".runtimeconfig.json"
+      ]
+    }
   ],
   "apphosting": {
-  "backendId": "sk-styleai-footwear-us-cen1",
-  "rootDir": ".",
-  "ignore": [
-  "node_modules",
-  ".git",
-  "firebase-debug.log",
-  "firebase-debug.*.log",
-  "functions"
-  ],
-  "alwaysDeployFromSource": false,
-  "environment": {
-  "BUILD_COMMAND": "npm run build"
+    "backendId": "sk-styleai-footwear-us-cen1",
+    "rootDir": ".",
+    "ignore": [
+      "node_modules",
+      ".git",
+      "firebase-debug.log",
+      "firebase-debug.*.log",
+      "functions"
+    ],
+    "alwaysDeployFromSource": false,
+    "environment": {
+      "BUILD_COMMAND": "npm run build"
+    }
   }
-  }
-  }
+}
