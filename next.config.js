@@ -3,12 +3,20 @@ const nextConfig = {
   // Disable strict mode
   reactStrictMode: false,
 
-  // FORCE DYNAMIC DEV BEHAVIOR
+  // FORCE DYNAMIC DEV BEHAVIOR & WHITELIST PRODUCTION DOMAINS
   experimental: {
     staleTimes: {
       dynamic: 0,
       static: 0,
     },
+    serverActions: {
+      allowedOrigins: [
+        'styleai-footwear.web.app', 
+        'styleai-footwear.firebaseapp.com',
+        '*.hosted.app',
+        '*.run.app'
+      ]
+    }
   },
 
   // Image Domains
