@@ -17,7 +17,11 @@ start:
 # Environment Variables & Secrets (All must be under 'env')
 # -------------------------------------------------------
 # apphosting.yaml
-env:
+e# apphosting.yaml
+yamlVersion: v1beta
+
+# Secrets must be explicitly declared in their own block
+secrets:
   - variable: GEMINI_API_KEY
     secret: GOOGLE_GENERATIVE_AI_API_KEY
   - variable: GOOGLE_GENERATIVE_AI_API_KEY
