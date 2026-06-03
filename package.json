@@ -5,14 +5,15 @@
   "engines": {
     "node": "22"
   },
-  "scripts": {
+ "scripts": {
     "dev": "next dev",
     "prebuild": "rm -rf .next ~/zi* ~/.npm ~/.cache || true",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "clean": "rm -rf .next ~/.emu ~/zi* ~/.npm ~/.cache",
+    "clean": "rm -rf .next ~/zi* ~/.npm ~/.cache || true",
     "deploy:fast": "firebase deploy --only hosting,functions --force --non-interactive || echo '⚠️ Fast deploy completed with warnings, ignoring lint/build failures.'"
+
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.7",
