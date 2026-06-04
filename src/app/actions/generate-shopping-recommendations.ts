@@ -1,10 +1,10 @@
 'use server';
 
-import { db as adminDb } from '@/lib/firebase-admin';
+import { db } from '@/lib/firebase-admin'; // Using the safe singleton
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
-// 1. Define the schema for the shopping opportunities
+// Define the schema for the shopping opportunities
 const ShoppingRecommendationSchema = z.object({
   recommendations: z.array(z.object({
     suggestedBrand: z.string().describe("The specific designer brand recommended (e.g., Burberry, Fendi, Gabriela Hearst, Chanel, Manolo Blahnik)"),
@@ -17,29 +17,27 @@ const ShoppingRecommendationSchema = z.object({
 export async function generateShoppingRecommendations(eventContext: string, userPreference: string = "high-end luxury") {
   console.log(`[Server Action] Starting recommendation generation for: ${eventContext}`);
   
-  if (!adminDb) {
-    console.error("[Server Action] ❌ adminDb is null. The singleton failed to initialize.");
+  if (!db) {
+    console.error("[Server Action] ❌ db is null. The singleton failed to initialize.");
     throw new Error("Firebase Admin DB is not initialized. Check server logs.");
   }
 
   try {
-    // 2. Retrieve the user's current digital closet
-    // FIXED: Changed from 'wardrobeItems' to match the frontend 'publicWardrobeItems' collection
+    // Retrieve the user's current digital closet using the singleton db instance
     console.log("[Server Action] Fetching wardrobe inventory from Firestore...");
-    const snapshot = await adminDb.collection('publicWardrobeItems').limit(30).get();
+    const snapshot = await db.collection('publicWardrobeItems').limit(30).get();
     
     let currentWardrobe = "";
     if (!snapshot.empty) {
       const items = snapshot.docs.map(doc => doc.data());
-      // Map the DB items into a readable string for the AI
-      currentWardrobe = items.map(item => `- ${item.color || 'Unspecified color'} ${item.brand || 'Unknown brand'} ${item.itemName || item.itemType || 'Clothing item'}`).join('\n');
+      currentWardrobe = items.map(item => `- ${item.color || 'Unspecified color'} ${item.itemType || 'Clothing item'} ${item.itemName || ''}`).join('\n');
       console.log(`[Server Action] Successfully loaded ${items.length} items from wardrobe.`);
     } else {
       currentWardrobe = "The user's closet is currently empty.";
       console.log("[Server Action] Wardrobe is empty.");
     }
 
-    // 3. Construct the prompt for the Gap Analysis
+    // Construct the prompt for the Gap Analysis
     const prompt = `
       You are an elite personal stylist for high-net-worth clients. 
       The user has an upcoming event: "${eventContext}".
@@ -53,7 +51,7 @@ export async function generateShoppingRecommendations(eventContext: string, user
       Ensure the recommendations complement what they already own (e.g., if they own a great Chanel dress, recommend a complementary Manolo Blahnik heel).
     `;
 
-    // 4. Generate the structured shopping list
+    // Generate the structured shopping list
     console.log("[Server Action] Sending prompt to Gemini via Genkit...");
     const { output } = await ai.generate({
       model: 'googleai/gemini-2.5-flash',
@@ -70,7 +68,7 @@ export async function generateShoppingRecommendations(eventContext: string, user
 
     console.log("[Server Action] ✅ AI successfully generated recommendations.");
 
-    // 5. Enhance the output with actionable shopping links (Google Shopping fallback)
+    // Enhance the output with actionable shopping links (Google Shopping fallback)
     const materializedLinks = output.recommendations.map(rec => ({
       ...rec,
       shopUrl: `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(rec.searchQuery)}`
