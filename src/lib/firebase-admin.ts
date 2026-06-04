@@ -1,14 +1,18 @@
-import { initializeApp, getApps, getApp, App } from 'firebase-admin/app';
+import { initializeApp, getApps, getApp, applicationDefault } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 
-let app: App;
+let app;
 
 // Safely initialize the Firebase Admin app exactly once
 if (getApps().length === 0) {
-  // Automatically uses Google Cloud Application Default Credentials in production
-  app = initializeApp(); 
+  console.log("[Firebase Admin] Bootstrapping new instance...");
+  app = initializeApp({
+    credential: applicationDefault(),
+    projectId: 'styleai-footwear', // Explicitly bound to your GCP environment
+  });
 } else {
+  console.log("[Firebase Admin] Utilizing existing instance...");
   app = getApp();
 }
 
