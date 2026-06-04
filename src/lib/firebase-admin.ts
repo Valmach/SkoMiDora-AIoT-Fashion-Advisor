@@ -2,20 +2,23 @@ import { initializeApp, getApps, getApp, applicationDefault } from 'firebase-adm
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 
-let app;
-
-// Safely initialize the Firebase Admin app exactly once
-if (getApps().length === 0) {
-  console.log("[Firebase Admin] Bootstrapping new instance...");
-  app = initializeApp({
-    credential: applicationDefault(),
-    projectId: 'styleai-footwear', // Explicitly bound to your GCP environment
-  });
-} else {
-  console.log("[Firebase Admin] Utilizing existing instance...");
-  app = getApp();
+export function getFirebaseAdmin() {
+  if (getApps().length === 0) {
+    console.log("[Firebase Admin] Bootstrapping new instance...");
+    const app = initializeApp({
+      credential: applicationDefault(),
+      projectId: 'styleai-footwear', 
+    });
+    return {
+      db: getFirestore(app),
+      auth: getAuth(app)
+    };
+  } else {
+    console.log("[Firebase Admin] Utilizing existing instance...");
+    const app = getApp();
+    return {
+      db: getFirestore(app),
+      auth: getAuth(app)
+    };
+  }
 }
-
-// Export pre-bound, safe instances of your required services
-export const db = getFirestore(app);
-export const auth = getAuth(app);
