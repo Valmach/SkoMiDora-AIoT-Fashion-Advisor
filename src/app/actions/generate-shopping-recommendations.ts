@@ -15,22 +15,28 @@ const ShoppingRecommendationSchema = z.object({
 });
 
 export async function generateShoppingRecommendations(eventContext: string, userPreference: string = "high-end luxury") {
+  console.log(`[Server Action] Starting recommendation generation for: ${eventContext}`);
+  
   if (!adminDb) {
+    console.error("[Server Action] ❌ adminDb is null. The singleton failed to initialize.");
     throw new Error("Firebase Admin DB is not initialized. Check server logs.");
   }
 
   try {
     // 2. Retrieve the user's current digital closet
-    // In a full production app, you would filter by the specific user's ID
-    const snapshot = await adminDb.collection('wardrobeItems').limit(30).get();
+    // FIXED: Changed from 'wardrobeItems' to match the frontend 'publicWardrobeItems' collection
+    console.log("[Server Action] Fetching wardrobe inventory from Firestore...");
+    const snapshot = await adminDb.collection('publicWardrobeItems').limit(30).get();
     
     let currentWardrobe = "";
     if (!snapshot.empty) {
       const items = snapshot.docs.map(doc => doc.data());
       // Map the DB items into a readable string for the AI
-      currentWardrobe = items.map(item => `- ${item.color || 'Unspecified color'} ${item.brand || 'Unknown brand'} ${item.itemName || item.clothingType}`).join('\n');
+      currentWardrobe = items.map(item => `- ${item.color || 'Unspecified color'} ${item.brand || 'Unknown brand'} ${item.itemName || item.itemType || 'Clothing item'}`).join('\n');
+      console.log(`[Server Action] Successfully loaded ${items.length} items from wardrobe.`);
     } else {
       currentWardrobe = "The user's closet is currently empty.";
+      console.log("[Server Action] Wardrobe is empty.");
     }
 
     // 3. Construct the prompt for the Gap Analysis
@@ -48,6 +54,7 @@ export async function generateShoppingRecommendations(eventContext: string, user
     `;
 
     // 4. Generate the structured shopping list
+    console.log("[Server Action] Sending prompt to Gemini via Genkit...");
     const { output } = await ai.generate({
       model: 'googleai/gemini-2.5-flash',
       prompt: prompt,
@@ -57,13 +64,15 @@ export async function generateShoppingRecommendations(eventContext: string, user
     });
 
     if (!output || !output.recommendations) {
+      console.error("[Server Action] ❌ AI returned empty output.");
       return { success: false, error: "AI failed to generate recommendations." };
     }
+
+    console.log("[Server Action] ✅ AI successfully generated recommendations.");
 
     // 5. Enhance the output with actionable shopping links (Google Shopping fallback)
     const materializedLinks = output.recommendations.map(rec => ({
       ...rec,
-      // Create a direct outbound search link so the user can immediately shop the recommendation
       shopUrl: `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(rec.searchQuery)}`
     }));
 
