@@ -13,15 +13,29 @@ const ShoppingRecommendationSchema = z.object({
   }))
 });
 
+// Helper function to dynamically grab the current season
+function getCurrentSeason() {
+  const month = new Date().getMonth(); // 0 = Jan, 11 = Dec
+  if (month >= 2 && month <= 4) return "Spring";
+  if (month >= 5 && month <= 7) return "Summer"; // June (5), July (6), Aug (7)
+  if (month >= 8 && month <= 10) return "Fall";
+  return "Winter";
+}
+
 export async function generateShoppingRecommendations(eventContext: string, userPreference: string = "high-end luxury") {
   console.log(`[Server Action] Starting recommendation generation for: ${eventContext}`);
 
   try {
-    // LAZY LOAD: Initialize DB exactly when the action is called, bypassing Next.js bundle execution order
     const { db } = getFirebaseAdmin();
+    const currentSeason = getCurrentSeason();
+    console.log(`[Server Action] Detected Season: ${currentSeason}. Fetching expanded wardrobe...`);
 
-    console.log("[Server Action] Fetching wardrobe inventory from Firestore...");
-    const snapshot = await db.collection('publicWardrobeItems').limit(30).get();
+    // THE FIX: Increased limit to 500 to catch the entire closet.
+    // NOTE: If you have added a 'season' field to your Firestore documents, uncomment the line below!
+    // const snapshot = await db.collection('publicWardrobeItems').where('season', 'in', [currentSeason, 'All Season']).limit(500).get();
+    
+    // Defaulting to grabbing everything, letting the AI do the filtering if the DB tags aren't ready
+    const snapshot = await db.collection('publicWardrobeItems').limit(500).get();
     
     let currentWardrobe = "";
     if (!snapshot.empty) {
@@ -36,14 +50,16 @@ export async function generateShoppingRecommendations(eventContext: string, user
     const prompt = `
       You are an elite personal stylist for high-net-worth clients. 
       The user has an upcoming event: "${eventContext}".
-      They have stated they do not want to wear what they currently own, or they feel their current wardrobe is missing a key piece for this event.
+      We are currently in the ${currentSeason} season.
 
-      Here is their current wardrobe inventory:
+      Here is their entire current wardrobe inventory (${snapshot.size} items):
       ${currentWardrobe}
 
-      Based on their event, their current inventory, and their preference for ${userPreference}, identify 3 specific shopping opportunities. 
-      Focus heavily on integrating items from premier designers such as Gabriela Hearst, Manolo Blahnik, Burberry, Fendi, and Chanel.
-      Ensure the recommendations complement what they already own (e.g., if they own a great Chanel dress, recommend a complementary Manolo Blahnik heel).
+      CRITICAL STYLING RULES:
+      1. Strictly ignore any items in their inventory that do not make sense for ${currentSeason} weather.
+      2. Based on their event, their seasonally-appropriate inventory, and their preference for ${userPreference}, identify 3 specific shopping opportunities. 
+      3. Focus heavily on integrating items from premier designers such as Gabriela Hearst, Manolo Blahnik, Burberry, Fendi, and Chanel.
+      4. Ensure the recommendations complement what they already own (e.g., if they own a great Chanel dress, recommend a complementary Manolo Blahnik heel).
     `;
 
     console.log("[Server Action] Sending prompt to Gemini via Genkit...");
