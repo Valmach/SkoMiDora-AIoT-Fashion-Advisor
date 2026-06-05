@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
 import {
-  Loader2, Upload, Trash2, AlertCircle, ImageOff, Wand2, CalendarHeart, CloudSun, FileText, Sparkles
+  Loader2, Upload, Trash2, AlertCircle, ImageOff, Wand2, CalendarHeart, CloudSun, FileText, Sparkles, Mail
 } from "lucide-react";
 
 import { useFirebase } from "@/firebase/provider";
@@ -262,10 +262,12 @@ function ClosetContent() {
         </CardContent>
       </Card>
 
-      {/* STYLING/RECOMMENDATION INTERFACE */}
-      <div className="w-full bg-zinc-950 p-6 sm:p-8 rounded-3xl border border-zinc-800 shadow-sm">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-          <div>
+      {/* DASHBOARD CONTROLS: Styling Event & Integrations (Gmail) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        
+        {/* STYLING/RECOMMENDATION INTERFACE */}
+        <div className="bg-zinc-950 p-6 sm:p-8 rounded-3xl border border-zinc-800 shadow-sm flex flex-col justify-between">
+          <div className="mb-6">
             <h2 className="text-xl font-bold flex items-center gap-2 text-white">
               <CalendarHeart className="h-5 w-5 text-[#DC143C]" />
               Upcoming Event: {eventName}
@@ -278,17 +280,34 @@ function ClosetContent() {
           <Button 
             onClick={handleGenerateLooks} 
             disabled={isStyling}
-            className="bg-[#DC143C] text-white hover:bg-red-700 rounded-xl px-6 py-6 font-bold uppercase tracking-widest text-xs transition-all border border-[#DC143C]"
+            className="bg-[#DC143C] text-white hover:bg-red-700 rounded-xl px-6 py-6 font-bold uppercase tracking-widest text-xs transition-all border border-[#DC143C] w-full lg:w-max"
           >
             {isStyling ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Consulting Stylist...</> : "Find Missing Pieces"}
           </Button>
+
+          {recs.length > 0 && (
+            <div className="pt-6 border-t border-zinc-800 mt-6">
+              <ShoppingRecommendations eventContext={eventName} recommendations={recs} />
+            </div>
+          )}
         </div>
 
-        {recs.length > 0 && (
-          <div className="pt-6 border-t border-zinc-800 mt-6">
-            <ShoppingRecommendations eventContext={eventName} recommendations={recs} />
+        {/* GMAIL API / AGGREGATOR MODULE */}
+        <div className="bg-zinc-950 p-6 sm:p-8 rounded-3xl border border-zinc-800 shadow-sm flex flex-col justify-between">
+          <div className="mb-6">
+            <h2 className="text-xl font-bold flex items-center gap-2 text-white">
+              <Mail className="h-5 w-5 text-[#DC143C]" />
+              Inbox Integration
+            </h2>
+            <p className="text-zinc-400 text-sm mt-2">
+              Sync recent digital receipts and style inspirations directly from your Gmail.
+            </p>
           </div>
-        )}
+          <div className="w-full">
+            <AggregatorTest />
+          </div>
+        </div>
+
       </div>
 
       {/* DYNAMIC CATEGORY FILTER BAR */}
@@ -308,14 +327,9 @@ function ClosetContent() {
         ))}
       </div>
 
-      {/* AGGREGATOR COMPONENT */}
-      <div className="w-full">
-        <AggregatorTest />
-      </div>
-
       {/* ERROR STATE */}
       {error && (
-        <div className="flex items-center gap-2 text-red-500 bg-red-950/50 p-4 rounded-xl border border-red-900">
+        <div className="flex items-center gap-2 text-red-500 bg-red-950/50 p-4 rounded-xl border border-red-900 mt-4">
           <AlertCircle className="h-5 w-5" />
           {error}
         </div>
@@ -327,7 +341,7 @@ function ClosetContent() {
           <Loader2 className="h-10 w-10 animate-spin text-[#DC143C]" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
           {filteredItems.map((item) => {
             const url = imageUrls[item.id];
             const isBroken = brokenImages.has(item.id);
@@ -337,7 +351,7 @@ function ClosetContent() {
                 key={item.id}
                 className="group relative bg-black rounded-2xl border border-zinc-800 shadow-sm hover:border-zinc-600 transition-all duration-300 overflow-hidden flex flex-col"
               >
-                {/* Image Container - Forced to perfect square, dark background */}
+                {/* FIXED Image Container - Explicit Width/Height to stop disappearance */}
                 <div className="relative aspect-square bg-zinc-900 flex items-center justify-center p-6 overflow-hidden">
                   {!url || isBroken ? (
                     <div className="flex flex-col items-center justify-center text-zinc-600">
@@ -348,8 +362,9 @@ function ClosetContent() {
                     <Image
                       src={url}
                       alt={item.itemName ?? "Closet item"}
-                      fill
-                      className="object-contain p-4 transition-transform duration-500 group-hover:scale-105"
+                      width={360}
+                      height={360}
+                      className="object-contain max-h-full w-auto transition-transform duration-500 group-hover:scale-105"
                       unoptimized 
                     />
                   )}
