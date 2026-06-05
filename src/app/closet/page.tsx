@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef, Suspense } from "react";
-import Image from "next/image";
 import { useSearchParams } from 'next/navigation';
 import { generateShoppingRecommendations } from '@/app/actions/generate-shopping-recommendations';
 import ShoppingRecommendations, { Recommendation } from '@/components/ShoppingRecommendations';
@@ -225,10 +224,10 @@ function ClosetContent() {
       RENDER
   ----------------------------------------------------------- */
   return (
-    <div className="container mx-auto space-y-8 pb-12 h-[85vh] overflow-y-auto scrollbar-hide text-white">
+    <div className="container mx-auto space-y-6 pb-12 h-[85vh] overflow-y-auto scrollbar-hide text-white">
       
       {/* HEADER */}
-      <Card className="border-0 shadow-none bg-transparent">
+      <Card className="border-0 shadow-none bg-transparent mb-4">
         <CardContent className="pt-6 px-0 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div>
             <h1 className={`${bonheur.className} text-7xl font-bold tracking-wide text-white`}>Digital Closet</h1>
@@ -240,7 +239,7 @@ function ClosetContent() {
           <Button 
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadStatus !== "idle"}
-            className="rounded-full px-8 bg-[#DC143C] text-white hover:bg-red-700"
+            className="rounded-full px-8 bg-[#DC143C] text-white hover:bg-red-700 shadow-lg shadow-red-900/20"
           >
             {uploadStatus === "idle" ? (
                <><Upload className="mr-2 h-4 w-4" /> Add Item</>
@@ -262,180 +261,187 @@ function ClosetContent() {
         </CardContent>
       </Card>
 
-      {/* DASHBOARD CONTROLS: Styling Event & Integrations (Gmail) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      {/* DASHBOARD LAYOUT: Main Grid (Left) + Sidebar (Right) */}
+      <div className="flex flex-col lg:flex-row gap-8">
         
-        {/* STYLING/RECOMMENDATION INTERFACE */}
-        <div className="bg-zinc-950 p-6 sm:p-8 rounded-3xl border border-zinc-800 shadow-sm flex flex-col justify-between">
-          <div className="mb-6">
-            <h2 className="text-xl font-bold flex items-center gap-2 text-white">
-              <CalendarHeart className="h-5 w-5 text-[#DC143C]" />
-              Upcoming Event: {eventName}
-            </h2>
-            <p className="text-zinc-400 text-sm mt-2 flex items-center gap-2">
-              <CloudSun className="h-4 w-4 text-[#DC143C]" />
-              Forecast: {weatherContext}
-            </p>
+        {/* LEFT COLUMN: The Closet Grid */}
+        <div className="flex-1 flex flex-col gap-6">
+          
+          {/* DYNAMIC CATEGORY FILTER BAR */}
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide w-full snap-x">
+            {uniqueCategories.map((category) => (
+              <button
+                key={category}
+                onClick={() => setActiveFilter(category)}
+                className={`whitespace-nowrap px-6 py-2.5 rounded-full text-xs font-bold tracking-wider uppercase transition-all snap-start border
+                  ${activeFilter === category 
+                    ? 'bg-[#DC143C] text-white border-[#DC143C] shadow-md' 
+                    : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-500 hover:text-white'}
+                `}
+              >
+                {category}
+              </button>
+            ))}
           </div>
-          <Button 
-            onClick={handleGenerateLooks} 
-            disabled={isStyling}
-            className="bg-[#DC143C] text-white hover:bg-red-700 rounded-xl px-6 py-6 font-bold uppercase tracking-widest text-xs transition-all border border-[#DC143C] w-full lg:w-max"
-          >
-            {isStyling ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Consulting Stylist...</> : "Find Missing Pieces"}
-          </Button>
 
-          {recs.length > 0 && (
-            <div className="pt-6 border-t border-zinc-800 mt-6">
-              <ShoppingRecommendations eventContext={eventName} recommendations={recs} />
+          {/* ERROR STATE */}
+          {error && (
+            <div className="flex items-center gap-2 text-red-500 bg-red-950/50 p-4 rounded-xl border border-red-900">
+              <AlertCircle className="h-5 w-5" />
+              {error}
+            </div>
+          )}
+
+          {/* THE GRID */}
+          {loading ? (
+            <div className="flex justify-center py-20">
+              <Loader2 className="h-10 w-10 animate-spin text-[#DC143C]" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredItems.map((item) => {
+                const url = imageUrls[item.id];
+                const isBroken = brokenImages.has(item.id);
+
+                return (
+                  <div
+                    key={item.id}
+                    className="group relative bg-black rounded-2xl border border-zinc-800 shadow-sm hover:border-zinc-600 transition-all duration-300 overflow-hidden flex flex-col"
+                  >
+                    {/* IMAGE CONTAINER: Switched to standard HTML <img> to prevent Next.js from dropping the image */}
+                    <div className="relative aspect-square w-full bg-zinc-900 flex items-center justify-center overflow-hidden">
+                      {!url || isBroken ? (
+                        <div className="flex flex-col items-center justify-center text-zinc-600">
+                          <ImageOff className="h-8 w-8 mb-2 opacity-50" />
+                          <span className="text-[10px] uppercase tracking-widest">Unavailable</span>
+                        </div>
+                      ) : (
+                        <img
+                          src={url}
+                          alt={item.itemName ?? "Closet item"}
+                          className="w-full h-full object-contain p-4 transition-transform duration-500 group-hover:scale-105"
+                        />
+                      )}
+
+                      {/* Sleek Hover-Delete Button */}
+                      <button 
+                        onClick={() => handleDelete(item)}
+                        className="absolute top-3 right-3 p-2 bg-black/90 text-[#DC143C] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-sm border border-zinc-800 hover:bg-zinc-900"
+                        title="Remove Item"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    {/* Metadata Footer */}
+                    <div className="p-5 flex flex-col flex-grow bg-black">
+                      <h2 className="text-sm font-bold uppercase tracking-wider mb-3 text-white">
+                        {item.itemName ?? "Untitled Item"}
+                      </h2>
+                      
+                      <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-[#DC143C] font-bold uppercase tracking-widest">Type</span>
+                          <span className="text-xs font-semibold text-white capitalize">
+                            {item.itemType || "Uncategorized"}
+                          </span>
+                        </div>
+                        {item.color && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-[#DC143C] font-bold uppercase tracking-widest">Color</span>
+                            <span className="text-xs font-medium text-white capitalize">{item.color}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {item.narrativeDescription && (
+                        <div className="flex flex-col mt-4">
+                          <div className="flex items-center space-x-2 mb-1.5">
+                            <FileText className="h-4 w-4 text-[#DC143C] flex-shrink-0" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-[#DC143C]">Description</span>
+                          </div>
+                          <p className="text-xs text-white leading-relaxed">
+                            {item.narrativeDescription}
+                          </p>
+                        </div>
+                      )}
+
+                      {item.styleKeywords && item.styleKeywords.length > 0 && (
+                        <div className="flex flex-col mt-4">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <Sparkles className="h-4 w-4 text-[#DC143C] flex-shrink-0" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-[#DC143C]">Style Keywords</span>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {item.styleKeywords.map((keyword, i) => (
+                              <span 
+                                key={`${item.id}-kw-${i}`} 
+                                className="bg-zinc-900 text-white border border-zinc-800 text-[10px] uppercase tracking-wider px-2 py-1 rounded-sm"
+                              >
+                                {keyword}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
 
-        {/* GMAIL API / AGGREGATOR MODULE */}
-        <div className="bg-zinc-950 p-6 sm:p-8 rounded-3xl border border-zinc-800 shadow-sm flex flex-col justify-between">
-          <div className="mb-6">
-            <h2 className="text-xl font-bold flex items-center gap-2 text-white">
-              <Mail className="h-5 w-5 text-[#DC143C]" />
-              Inbox Integration
-            </h2>
-            <p className="text-zinc-400 text-sm mt-2">
-              Sync recent digital receipts and style inspirations directly from your Gmail.
-            </p>
-          </div>
-          <div className="w-full">
-            <AggregatorTest />
-          </div>
-        </div>
+        {/* RIGHT COLUMN: The Sticky Sidebar for Controls */}
+        <div className="w-full lg:w-[350px] xl:w-[400px] flex-shrink-0 flex flex-col gap-6 lg:sticky lg:top-4 h-fit">
+          
+          {/* STYLING/RECOMMENDATION INTERFACE */}
+          <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-800 shadow-sm flex flex-col">
+            <div className="mb-6">
+              <h2 className="text-xl font-bold flex items-center gap-2 text-white">
+                <CalendarHeart className="h-5 w-5 text-[#DC143C]" />
+                Upcoming Event
+              </h2>
+              <p className="text-zinc-300 text-sm mt-2">{eventName}</p>
+              <p className="text-zinc-400 text-xs mt-2 flex items-center gap-2">
+                <CloudSun className="h-3 w-3 text-[#DC143C]" />
+                {weatherContext}
+              </p>
+            </div>
+            
+            <Button 
+              onClick={handleGenerateLooks} 
+              disabled={isStyling}
+              className="bg-[#DC143C] text-white hover:bg-red-700 rounded-xl px-6 py-6 font-bold uppercase tracking-widest text-xs transition-all border border-[#DC143C] w-full"
+            >
+              {isStyling ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Consulting...</> : "Find Missing Pieces"}
+            </Button>
 
-      </div>
-
-      {/* DYNAMIC CATEGORY FILTER BAR */}
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide w-full snap-x">
-        {uniqueCategories.map((category) => (
-          <button
-            key={category}
-            onClick={() => setActiveFilter(category)}
-            className={`whitespace-nowrap px-6 py-2.5 rounded-full text-xs font-bold tracking-wider uppercase transition-all snap-start border
-              ${activeFilter === category 
-                ? 'bg-[#DC143C] text-white border-[#DC143C] shadow-md' 
-                : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-500 hover:text-white'}
-            `}
-          >
-            {category}
-          </button>
-        ))}
-      </div>
-
-      {/* ERROR STATE */}
-      {error && (
-        <div className="flex items-center gap-2 text-red-500 bg-red-950/50 p-4 rounded-xl border border-red-900 mt-4">
-          <AlertCircle className="h-5 w-5" />
-          {error}
-        </div>
-      )}
-
-      {/* CLOSET GRID */}
-      {loading ? (
-        <div className="flex justify-center py-20">
-          <Loader2 className="h-10 w-10 animate-spin text-[#DC143C]" />
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-          {filteredItems.map((item) => {
-            const url = imageUrls[item.id];
-            const isBroken = brokenImages.has(item.id);
-
-            return (
-              <div
-                key={item.id}
-                className="group relative bg-black rounded-2xl border border-zinc-800 shadow-sm hover:border-zinc-600 transition-all duration-300 overflow-hidden flex flex-col"
-              >
-                {/* FIXED Image Container - Explicit Width/Height to stop disappearance */}
-                <div className="relative aspect-square bg-zinc-900 flex items-center justify-center p-6 overflow-hidden">
-                  {!url || isBroken ? (
-                    <div className="flex flex-col items-center justify-center text-zinc-600">
-                      <ImageOff className="h-8 w-8 mb-2 opacity-50" />
-                      <span className="text-[10px] uppercase tracking-widest">Unavailable</span>
-                    </div>
-                  ) : (
-                    <Image
-                      src={url}
-                      alt={item.itemName ?? "Closet item"}
-                      width={360}
-                      height={360}
-                      className="object-contain max-h-full w-auto transition-transform duration-500 group-hover:scale-105"
-                      unoptimized 
-                    />
-                  )}
-
-                  {/* Sleek Hover-Delete Button */}
-                  <button 
-                    onClick={() => handleDelete(item)}
-                    className="absolute top-3 right-3 p-2 bg-black/90 text-[#DC143C] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-sm border border-zinc-800 hover:bg-zinc-900"
-                    title="Remove Item"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-
-                {/* Metadata Footer + High Contrast Descriptions */}
-                <div className="p-5 flex flex-col flex-grow bg-black">
-                  <h2 className="text-sm font-bold uppercase tracking-wider mb-3 text-white">
-                    {item.itemName ?? "Untitled Item"}
-                  </h2>
-                  
-                  <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-[#DC143C] font-bold uppercase tracking-widest">Type</span>
-                      <span className="text-xs font-semibold text-white capitalize">
-                        {item.itemType || "Uncategorized"}
-                      </span>
-                    </div>
-                    {item.color && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-[#DC143C] font-bold uppercase tracking-widest">Color</span>
-                        <span className="text-xs font-medium text-white capitalize">{item.color}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {item.narrativeDescription && (
-                    <div className="flex flex-col mt-4">
-                      <div className="flex items-center space-x-2 mb-1.5">
-                        <FileText className="h-4 w-4 text-[#DC143C] flex-shrink-0" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-[#DC143C]">Description</span>
-                      </div>
-                      <p className="text-xs text-white leading-relaxed">
-                        {item.narrativeDescription}
-                      </p>
-                    </div>
-                  )}
-
-                  {item.styleKeywords && item.styleKeywords.length > 0 && (
-                    <div className="flex flex-col mt-4">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Sparkles className="h-4 w-4 text-[#DC143C] flex-shrink-0" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-[#DC143C]">Style Keywords</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {item.styleKeywords.map((keyword, i) => (
-                          <span 
-                            key={`${item.id}-kw-${i}`} 
-                            className="bg-zinc-900 text-white border border-zinc-800 text-[10px] uppercase tracking-wider px-2 py-1 rounded-sm"
-                          >
-                            {keyword}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
+            {recs.length > 0 && (
+              <div className="pt-6 border-t border-zinc-800 mt-6">
+                <ShoppingRecommendations eventContext={eventName} recommendations={recs} />
               </div>
-            );
-          })}
+            )}
+          </div>
+
+          {/* GMAIL API / AGGREGATOR MODULE */}
+          <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-800 shadow-sm flex flex-col">
+            <div className="mb-6">
+              <h2 className="text-xl font-bold flex items-center gap-2 text-white">
+                <Mail className="h-5 w-5 text-[#DC143C]" />
+                Inbox Integration
+              </h2>
+              <p className="text-zinc-400 text-xs mt-2">
+                Sync digital receipts and style inspirations.
+              </p>
+            </div>
+            <div className="w-full overflow-hidden">
+              <AggregatorTest />
+            </div>
+          </div>
+          
         </div>
-      )}
+      </div>
     </div>
   );
 }
