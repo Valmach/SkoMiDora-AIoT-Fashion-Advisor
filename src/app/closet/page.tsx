@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
 import {
-  Loader2, Upload, Trash2, AlertCircle, ImageOff, Wand2, CalendarHeart, CloudSun, FileText, Sparkles, Mail
+  Loader2, Upload, Trash2, AlertCircle, ImageOff, Wand2, CalendarHeart, CloudSun, FileText, Sparkles
 } from "lucide-react";
 
 import { useFirebase } from "@/firebase/provider";
@@ -84,47 +84,26 @@ function ClosetContent() {
     }
   };
 
-  /* -----------------------------------------------------------
-      FIRESTORE LISTENER
-  ----------------------------------------------------------- */
   useEffect(() => {
     if (!firebase || !firebase.firestore) return;
-
-    const q = query(
-      collection(firebase.firestore, "publicWardrobeItems"), 
-      orderBy("createdAt", "desc")
-    );
-
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
+    const q = query(collection(firebase.firestore, "publicWardrobeItems"), orderBy("createdAt", "desc"));
+    const unsub = onSnapshot(q, (snap) => {
         const next: ClosetItem[] = snap.docs.map((d) => {
             const data = d.data();
-            return {
-                id: d.id,
-                ...data,
-                createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : Date.now(),
-            };
+            return { id: d.id, ...data, createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : Date.now() };
         });
         setItems(next);
         setLoading(false);
-      },
-      (err) => {
+      }, (err) => {
         console.error(err);
         setError("Failed to load wardrobe metadata.");
         setLoading(false);
-      }
-    );
-
+      });
     return () => unsub();
   }, [firebase]);
 
-  /* -----------------------------------------------------------
-      IMAGE RESOLVER
-  ----------------------------------------------------------- */
   useEffect(() => {
     if (!firebase || !firebase.storage) return;
-
     items.forEach(async (item) => {
       if (imageUrls[item.id] || brokenImages.has(item.id)) return;
       if (item.imageUrl && item.imageUrl.startsWith("http")) {
@@ -135,7 +114,6 @@ function ClosetContent() {
         setBrokenImages((prev) => new Set(prev).add(item.id));
         return;
       }
-
       try {
         const normalizedPath = normalizeImagePath(item.imagePath);
         const url = await getDownloadURL(ref(firebase.storage, normalizedPath));
@@ -147,39 +125,22 @@ function ClosetContent() {
     });
   }, [items, firebase, imageUrls, brokenImages]);
 
-  /* -----------------------------------------------------------
-      ACTIONS
-  ----------------------------------------------------------- */
   const handleUpload = useCallback(async (file: File) => {
       if (!firebase || !firebase.storage || !firebase.firestore) return;
-      
       setUploadStatus("uploading");
       toast({ title: "Uploading to cloud...", description: "Please wait." });
-      
       try {
         const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '-');
         const uniqueFileName = `${Date.now()}-${cleanFileName}`;
         const imagePath = `public_wardrobe_items/${uniqueFileName}`;
-        
         const storageRef = ref(firebase.storage, imagePath);
         await uploadBytes(storageRef, file);
         const imageUrl = await getDownloadURL(storageRef);
-
         const aiFriendlyName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, ' ');
-
-        const newItem = {
-          itemName: aiFriendlyName, 
-          itemType: "Uncategorized", 
-          imagePath: imagePath,
-          imageUrl: imageUrl, 
-          createdAt: serverTimestamp(),
-        };
-
+        const newItem = { itemName: aiFriendlyName, itemType: "Uncategorized", imagePath: imagePath, imageUrl: imageUrl, createdAt: serverTimestamp() };
         await addDoc(collection(firebase.firestore, 'publicWardrobeItems'), newItem);
-
         toast({ title: "Success!", description: "Item securely added to digital closet." });
       } catch (e: unknown) {
-        console.error(e);
         toast({ title: "Upload failed", description: "An error occurred", variant: "destructive" });
       } finally {
         setUploadStatus("idle");
@@ -198,7 +159,6 @@ function ClosetContent() {
       setImageUrls((prev) => { const next = { ...prev }; delete next[item.id]; return next; });
       toast({ title: "Item deleted successfully" });
     } catch (e: unknown) {
-      console.error(e);
       toast({ title: "Failed to delete item", description: "An error occurred", variant: "destructive" });
     }
   };
@@ -211,18 +171,9 @@ function ClosetContent() {
     );
   }
 
-  /* -----------------------------------------------------------
-      FILTER LOGIC
-  ----------------------------------------------------------- */
   const uniqueCategories = ["All", ...Array.from(new Set(items.map(item => item.itemType || "Uncategorized")))];
-  
-  const filteredItems = activeFilter === "All" 
-    ? items 
-    : items.filter(item => (item.itemType || "Uncategorized") === activeFilter);
+  const filteredItems = activeFilter === "All" ? items : items.filter(item => (item.itemType || "Uncategorized") === activeFilter);
 
-  /* -----------------------------------------------------------
-      RENDER
-  ----------------------------------------------------------- */
   return (
     <div className="container mx-auto space-y-6 pb-12 h-[85vh] overflow-y-auto scrollbar-hide text-white">
       
@@ -235,40 +186,23 @@ function ClosetContent() {
               <span className="text-[#DC143C]">●</span> {items.length} Curated Pieces
             </p>
           </div>
-
           <Button 
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadStatus !== "idle"}
             className="rounded-full px-8 bg-[#DC143C] text-white hover:bg-red-700 shadow-lg shadow-red-900/20"
           >
-            {uploadStatus === "idle" ? (
-               <><Upload className="mr-2 h-4 w-4" /> Add Item</>
-            ) : (
-               <><Wand2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...</>
-            )}
+            {uploadStatus === "idle" ? <><Upload className="mr-2 h-4 w-4" /> Add Item</> : <><Wand2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...</>}
           </Button>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            accept="image/*"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) handleUpload(f);
-            }}
-          />
+          <input ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
         </CardContent>
       </Card>
 
-      {/* DASHBOARD LAYOUT: Main Grid (Left) + Sidebar (Right) */}
       <div className="flex flex-col lg:flex-row gap-8">
         
-        {/* LEFT COLUMN: The Closet Grid */}
-        <div className="flex-1 flex flex-col gap-6">
+        {/* LEFT MAIN: Filters & Grid */}
+        <div className="flex-1 flex flex-col min-w-0">
           
-          {/* DYNAMIC CATEGORY FILTER BAR */}
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide w-full snap-x">
+          <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide w-full snap-x">
             {uniqueCategories.map((category) => (
               <button
                 key={category}
@@ -284,15 +218,13 @@ function ClosetContent() {
             ))}
           </div>
 
-          {/* ERROR STATE */}
           {error && (
-            <div className="flex items-center gap-2 text-red-500 bg-red-950/50 p-4 rounded-xl border border-red-900">
+            <div className="flex items-center gap-2 text-red-500 bg-red-950/50 p-4 rounded-xl border border-red-900 mb-6">
               <AlertCircle className="h-5 w-5" />
               {error}
             </div>
           )}
 
-          {/* THE GRID */}
           {loading ? (
             <div className="flex justify-center py-20">
               <Loader2 className="h-10 w-10 animate-spin text-[#DC143C]" />
@@ -304,12 +236,8 @@ function ClosetContent() {
                 const isBroken = brokenImages.has(item.id);
 
                 return (
-                  <div
-                    key={item.id}
-                    className="group relative bg-black rounded-2xl border border-zinc-800 shadow-sm hover:border-zinc-600 transition-all duration-300 overflow-hidden flex flex-col"
-                  >
-                    {/* IMAGE CONTAINER: Switched to standard HTML <img> to prevent Next.js from dropping the image */}
-                    <div className="relative aspect-square w-full bg-zinc-900 flex items-center justify-center overflow-hidden">
+                  <div key={item.id} className="group relative bg-black rounded-2xl border border-zinc-800 shadow-sm hover:border-zinc-600 transition-all duration-300 overflow-hidden flex flex-col">
+                    <div className="relative aspect-square w-full bg-zinc-900 flex items-center justify-center overflow-hidden p-6">
                       {!url || isBroken ? (
                         <div className="flex flex-col items-center justify-center text-zinc-600">
                           <ImageOff className="h-8 w-8 mb-2 opacity-50" />
@@ -319,32 +247,20 @@ function ClosetContent() {
                         <img
                           src={url}
                           alt={item.itemName ?? "Closet item"}
-                          className="w-full h-full object-contain p-4 transition-transform duration-500 group-hover:scale-105"
+                          className="max-h-[250px] max-w-full object-contain transition-transform duration-500 group-hover:scale-105"
                         />
                       )}
-
-                      {/* Sleek Hover-Delete Button */}
-                      <button 
-                        onClick={() => handleDelete(item)}
-                        className="absolute top-3 right-3 p-2 bg-black/90 text-[#DC143C] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-sm border border-zinc-800 hover:bg-zinc-900"
-                        title="Remove Item"
-                      >
+                      <button onClick={() => handleDelete(item)} className="absolute top-3 right-3 p-2 bg-black/90 text-[#DC143C] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-sm border border-zinc-800 hover:bg-zinc-900" title="Remove Item">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
 
-                    {/* Metadata Footer */}
                     <div className="p-5 flex flex-col flex-grow bg-black">
-                      <h2 className="text-sm font-bold uppercase tracking-wider mb-3 text-white">
-                        {item.itemName ?? "Untitled Item"}
-                      </h2>
-                      
+                      <h2 className="text-sm font-bold uppercase tracking-wider mb-3 text-white">{item.itemName ?? "Untitled Item"}</h2>
                       <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-[#DC143C] font-bold uppercase tracking-widest">Type</span>
-                          <span className="text-xs font-semibold text-white capitalize">
-                            {item.itemType || "Uncategorized"}
-                          </span>
+                          <span className="text-xs font-semibold text-white capitalize">{item.itemType || "Uncategorized"}</span>
                         </div>
                         {item.color && (
                           <div className="flex items-center gap-2">
@@ -360,9 +276,7 @@ function ClosetContent() {
                             <FileText className="h-4 w-4 text-[#DC143C] flex-shrink-0" />
                             <span className="text-[10px] font-bold uppercase tracking-widest text-[#DC143C]">Description</span>
                           </div>
-                          <p className="text-xs text-white leading-relaxed">
-                            {item.narrativeDescription}
-                          </p>
+                          <p className="text-xs text-white leading-relaxed">{item.narrativeDescription}</p>
                         </div>
                       )}
 
@@ -374,10 +288,7 @@ function ClosetContent() {
                           </div>
                           <div className="flex flex-wrap gap-1.5">
                             {item.styleKeywords.map((keyword, i) => (
-                              <span 
-                                key={`${item.id}-kw-${i}`} 
-                                className="bg-zinc-900 text-white border border-zinc-800 text-[10px] uppercase tracking-wider px-2 py-1 rounded-sm"
-                              >
+                              <span key={`${item.id}-kw-${i}`} className="bg-zinc-900 text-white border border-zinc-800 text-[10px] uppercase tracking-wider px-2 py-1 rounded-sm">
                                 {keyword}
                               </span>
                             ))}
@@ -392,10 +303,9 @@ function ClosetContent() {
           )}
         </div>
 
-        {/* RIGHT COLUMN: The Sticky Sidebar for Controls */}
-        <div className="w-full lg:w-[350px] xl:w-[400px] flex-shrink-0 flex flex-col gap-6 lg:sticky lg:top-4 h-fit">
+        {/* RIGHT SIDEBAR: Styling & Aggregator */}
+        <div className="w-full lg:w-[350px] xl:w-[400px] shrink-0 flex flex-col gap-6">
           
-          {/* STYLING/RECOMMENDATION INTERFACE */}
           <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-800 shadow-sm flex flex-col">
             <div className="mb-6">
               <h2 className="text-xl font-bold flex items-center gap-2 text-white">
@@ -408,7 +318,6 @@ function ClosetContent() {
                 {weatherContext}
               </p>
             </div>
-            
             <Button 
               onClick={handleGenerateLooks} 
               disabled={isStyling}
@@ -416,7 +325,6 @@ function ClosetContent() {
             >
               {isStyling ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Consulting...</> : "Find Missing Pieces"}
             </Button>
-
             {recs.length > 0 && (
               <div className="pt-6 border-t border-zinc-800 mt-6">
                 <ShoppingRecommendations eventContext={eventName} recommendations={recs} />
@@ -424,20 +332,8 @@ function ClosetContent() {
             )}
           </div>
 
-          {/* GMAIL API / AGGREGATOR MODULE */}
           <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-800 shadow-sm flex flex-col">
-            <div className="mb-6">
-              <h2 className="text-xl font-bold flex items-center gap-2 text-white">
-                <Mail className="h-5 w-5 text-[#DC143C]" />
-                Inbox Integration
-              </h2>
-              <p className="text-zinc-400 text-xs mt-2">
-                Sync digital receipts and style inspirations.
-              </p>
-            </div>
-            <div className="w-full overflow-hidden">
-              <AggregatorTest />
-            </div>
+            <AggregatorTest />
           </div>
           
         </div>
