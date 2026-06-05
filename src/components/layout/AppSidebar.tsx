@@ -21,6 +21,8 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   CalendarDays,
+  Sparkles,
+  Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -68,11 +70,22 @@ export default function AppSidebar() {
       color: "text-amber-500",
     },
     {
-      // ✅ FIXED: Changed from /recommendations to /outfit-recommendations
       href: "/outfit-recommendations", 
       label: "Outfits",
       icon: Lightbulb,
       color: "text-yellow-400",
+    },
+    {
+      href: "/stylist",
+      label: "AI Stylist",
+      icon: Sparkles,
+      color: "text-[#E1AD01]",
+    },
+    {
+      href: "/inbox",
+      label: "Inbox",
+      icon: Mail,
+      color: "text-indigo-400",
     },
     {
       href: "/settings",
