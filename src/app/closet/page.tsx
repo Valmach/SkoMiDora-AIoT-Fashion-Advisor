@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 
 import {
-  Loader2, Upload, Trash2, AlertCircle, Tag, Palette, Sparkles, FileText, ImageOff, Wand2, CalendarHeart
+  Loader2, Upload, Trash2, AlertCircle, Tag, Palette, Sparkles, FileText, ImageOff, Wand2, CalendarHeart, CloudSun
 } from "lucide-react";
 
 import { useFirebase } from "@/firebase/provider";
@@ -65,12 +65,16 @@ export default function ClosetPage() {
   // --- NEW STYLING ENGINE STATE ---
   const [isStyling, setIsStyling] = useState(false);
   const [recs, setRecs] = useState<Recommendation[]>([]);
+  
+  // THE NEW WEATHER CONTEXT
   const eventName = "Summer Gala at the Met"; 
+  const weatherContext = "Oslo, Norway - 19°C (66°F), mild with a chance of light evening breeze"; 
 
   const handleGenerateLooks = async () => {
     setIsStyling(true);
     try {
-      const result = await generateShoppingRecommendations(eventName);
+      // Pass BOTH parameters down to the Server Action
+      const result = await generateShoppingRecommendations(eventName, weatherContext);
       if (result.success && result.recommendations) {
         setRecs(result.recommendations);
       } else {
@@ -278,6 +282,11 @@ export default function ClosetPage() {
               <CalendarHeart className="h-5 w-5 text-amber-600" />
               Upcoming Event: {eventName}
             </h2>
+            {/* Added a visual indicator for the weather context */}
+            <p className="text-muted-foreground text-sm mt-1 flex items-center gap-1">
+              <CloudSun className="h-4 w-4" />
+              Forecast: {weatherContext}
+            </p>
             <p className="text-muted-foreground text-sm mt-1">Nothing to wear in your current wardrobe?</p>
           </div>
           <Button 
