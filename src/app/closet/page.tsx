@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
 import {
-  Loader2, Upload, Trash2, AlertCircle, ImageOff, Wand2, CalendarHeart, CloudSun, FileText, Sparkles
+  Loader2, Upload, Trash2, AlertCircle, ImageOff, Wand2, CalendarHeart, CloudSun, FileText, Sparkles, Mail
 } from "lucide-react";
 
 import { useFirebase } from "@/firebase/provider";
@@ -199,7 +199,53 @@ function ClosetContent() {
 
       <div className="flex flex-col lg:flex-row gap-8">
         
-        {/* LEFT MAIN: Filters & Grid */}
+        {/* NEW LEFT SIDEBAR: Styling & Aggregator Tools */}
+        <div className="w-full lg:w-[350px] xl:w-[400px] shrink-0 flex flex-col gap-6 lg:sticky lg:top-4 h-fit">
+          
+          <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-800 shadow-sm flex flex-col">
+            <div className="mb-6">
+              <h2 className="text-xl font-bold flex items-center gap-2 text-white">
+                <CalendarHeart className="h-5 w-5 text-[#DC143C]" />
+                Upcoming Event
+              </h2>
+              <p className="text-zinc-300 text-sm mt-2">{eventName}</p>
+              <p className="text-zinc-400 text-xs mt-2 flex items-center gap-2">
+                <CloudSun className="h-3 w-3 text-[#DC143C]" />
+                {weatherContext}
+              </p>
+            </div>
+            <Button 
+              onClick={handleGenerateLooks} 
+              disabled={isStyling}
+              className="bg-[#DC143C] text-white hover:bg-red-700 rounded-xl px-6 py-6 font-bold uppercase tracking-widest text-xs transition-all border border-[#DC143C] w-full"
+            >
+              {isStyling ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Consulting...</> : "Find Missing Pieces"}
+            </Button>
+            {recs.length > 0 && (
+              <div className="pt-6 border-t border-zinc-800 mt-6">
+                <ShoppingRecommendations eventContext={eventName} recommendations={recs} />
+              </div>
+            )}
+          </div>
+
+          <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-800 shadow-sm flex flex-col">
+            <div className="mb-6">
+              <h2 className="text-xl font-bold flex items-center gap-2 text-white">
+                <Mail className="h-5 w-5 text-[#DC143C]" />
+                Inbox Integration
+              </h2>
+              <p className="text-zinc-400 text-xs mt-2">
+                Sync digital receipts and style inspirations.
+              </p>
+            </div>
+            <div className="w-full overflow-hidden">
+              <AggregatorTest />
+            </div>
+          </div>
+          
+        </div>
+
+        {/* NEW RIGHT MAIN: Filters & Clothing Grid */}
         <div className="flex-1 flex flex-col min-w-0">
           
           <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide w-full snap-x">
@@ -303,40 +349,6 @@ function ClosetContent() {
           )}
         </div>
 
-        {/* RIGHT SIDEBAR: Styling & Aggregator */}
-        <div className="w-full lg:w-[350px] xl:w-[400px] shrink-0 flex flex-col gap-6">
-          
-          <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-800 shadow-sm flex flex-col">
-            <div className="mb-6">
-              <h2 className="text-xl font-bold flex items-center gap-2 text-white">
-                <CalendarHeart className="h-5 w-5 text-[#DC143C]" />
-                Upcoming Event
-              </h2>
-              <p className="text-zinc-300 text-sm mt-2">{eventName}</p>
-              <p className="text-zinc-400 text-xs mt-2 flex items-center gap-2">
-                <CloudSun className="h-3 w-3 text-[#DC143C]" />
-                {weatherContext}
-              </p>
-            </div>
-            <Button 
-              onClick={handleGenerateLooks} 
-              disabled={isStyling}
-              className="bg-[#DC143C] text-white hover:bg-red-700 rounded-xl px-6 py-6 font-bold uppercase tracking-widest text-xs transition-all border border-[#DC143C] w-full"
-            >
-              {isStyling ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Consulting...</> : "Find Missing Pieces"}
-            </Button>
-            {recs.length > 0 && (
-              <div className="pt-6 border-t border-zinc-800 mt-6">
-                <ShoppingRecommendations eventContext={eventName} recommendations={recs} />
-              </div>
-            )}
-          </div>
-
-          <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-800 shadow-sm flex flex-col">
-            <AggregatorTest />
-          </div>
-          
-        </div>
       </div>
     </div>
   );
