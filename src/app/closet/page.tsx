@@ -14,11 +14,10 @@ import { Bonheur_Royale } from 'next/font/google';
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 
 import {
-  Loader2, Upload, Trash2, AlertCircle, Tag, Palette, Sparkles, FileText, ImageOff, Wand2, CalendarHeart, CloudSun
+  Loader2, Upload, Trash2, AlertCircle, ImageOff, Wand2, CalendarHeart, CloudSun
 } from "lucide-react";
 
 import { useFirebase } from "@/firebase/provider";
@@ -59,13 +58,15 @@ function ClosetContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading">("idle");
+  
+  // NEW: State for the category filter
+  const [activeFilter, setActiveFilter] = useState<string>("All");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isStyling, setIsStyling] = useState(false);
   const [recs, setRecs] = useState<Recommendation[]>([]);
   
-  // FIXED: Fallbacks for direct navigation to the closet
   const eventName = searchParams.get('event') || "Everyday Styling"; 
   const weatherContext = searchParams.get('weather') || "Current local weather - comfortable seasonal wear"; 
 
@@ -182,11 +183,7 @@ function ClosetContent() {
         toast({ title: "Success!", description: "Item securely added to digital closet." });
       } catch (e: unknown) {
         console.error(e);
-        toast({ 
-          title: "Upload failed", 
-          description: e instanceof Error ? e.message : "An unknown error occurred", 
-          variant: "destructive" 
-        });
+        toast({ title: "Upload failed", description: "An error occurred", variant: "destructive" });
       } finally {
         setUploadStatus("idle");
         if (fileInputRef.current) fileInputRef.current.value = "";
@@ -195,31 +192,17 @@ function ClosetContent() {
 
   const handleDelete = async (item: ClosetItem) => {
     if (!item.id || !firebase) return;
-    
     try {
       await deleteDoc(doc(firebase.firestore, "publicWardrobeItems", item.id));
-      
       if (item.imagePath && firebase.storage) {
         const normalizedPath = normalizeImagePath(item.imagePath);
-        await deleteObject(ref(firebase.storage, normalizedPath)).catch((e) => {
-          console.warn("Image file already missing or couldn't be deleted", e);
-        });
+        await deleteObject(ref(firebase.storage, normalizedPath)).catch((e) => console.warn(e));
       }
-
-      setImageUrls((prev) => {
-        const next = { ...prev };
-        delete next[item.id];
-        return next;
-      });
-      
+      setImageUrls((prev) => { const next = { ...prev }; delete next[item.id]; return next; });
       toast({ title: "Item deleted successfully" });
     } catch (e: unknown) {
       console.error(e);
-      toast({ 
-        title: "Failed to delete item", 
-        description: e instanceof Error ? e.message : "An unknown error occurred", 
-        variant: "destructive" 
-      });
+      toast({ title: "Failed to delete item", description: "An error occurred", variant: "destructive" });
     }
   };
 
@@ -232,22 +215,36 @@ function ClosetContent() {
   }
 
   /* -----------------------------------------------------------
+      FILTER LOGIC
+  ----------------------------------------------------------- */
+  // Dynamically generate categories based on what's actually in the user's closet
+  const uniqueCategories = ["All", ...Array.from(new Set(items.map(item => item.itemType || "Uncategorized")))];
+  
+  // Apply the filter to the items list
+  const filteredItems = activeFilter === "All" 
+    ? items 
+    : items.filter(item => (item.itemType || "Uncategorized") === activeFilter);
+
+  /* -----------------------------------------------------------
       RENDER
   ----------------------------------------------------------- */
   return (
-    <div className="container mx-auto space-y-8 pb-12 h-[85vh] overflow-y-auto">
-      <Card>
-        <CardContent className="pt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+    <div className="container mx-auto space-y-8 pb-12 h-[85vh] overflow-y-auto scrollbar-hide">
+      
+      {/* HEADER */}
+      <Card className="border-0 shadow-none bg-transparent">
+        <CardContent className="pt-6 px-0 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div>
-            <h1 className={`${bonheur.className} text-6xl font-bold tracking-wide`}>Digital Closet</h1>
-            <p className="text-muted-foreground">
-              {items.length} curated items
+            <h1 className={`${bonheur.className} text-7xl font-bold tracking-wide`}>Digital Closet</h1>
+            <p className="text-muted-foreground uppercase tracking-widest text-xs mt-2 font-semibold">
+              {items.length} Curated Pieces
             </p>
           </div>
 
           <Button 
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadStatus !== "idle"}
+            className="rounded-full px-8 bg-black text-white hover:bg-zinc-800"
           >
             {uploadStatus === "idle" ? (
                <><Upload className="mr-2 h-4 w-4" /> Add Item</>
@@ -269,134 +266,125 @@ function ClosetContent() {
         </CardContent>
       </Card>
 
-      {/* --- The Styling/Recommendation Interface --- */}
-      <div className="w-full bg-card p-6 rounded-2xl border shadow-sm">
+      {/* STYLING/RECOMMENDATION INTERFACE */}
+      <div className="w-full bg-white dark:bg-zinc-950 p-6 sm:p-8 rounded-3xl border shadow-sm">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
           <div>
             <h2 className="text-xl font-bold flex items-center gap-2">
-              <CalendarHeart className="h-5 w-5 text-amber-600" />
+              <CalendarHeart className="h-5 w-5 text-red-600" />
               Upcoming Event: {eventName}
             </h2>
-            <p className="text-muted-foreground text-sm mt-1 flex items-center gap-1">
-              <CloudSun className="h-4 w-4" />
+            <p className="text-muted-foreground text-sm mt-2 flex items-center gap-2">
+              <CloudSun className="h-4 w-4 text-zinc-400" />
               Forecast: {weatherContext}
             </p>
-            <p className="text-muted-foreground text-sm mt-1">Nothing to wear in your current wardrobe?</p>
           </div>
-          {/* FIXED: Removed the lock on the disabled property */}
           <Button 
             onClick={handleGenerateLooks} 
             disabled={isStyling}
-            className="bg-black text-white hover:bg-gray-800"
+            className="bg-[#DC143C] text-white hover:bg-red-700 rounded-xl px-6 py-6 font-bold uppercase tracking-widest text-xs transition-all"
           >
-            {isStyling ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Styling...</> : "Find Missing Pieces"}
+            {isStyling ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Consulting Stylist...</> : "Find Missing Pieces"}
           </Button>
         </div>
 
         {recs.length > 0 && (
-          <ShoppingRecommendations eventContext={eventName} recommendations={recs} />
+          <div className="pt-6 border-t mt-6">
+            <ShoppingRecommendations eventContext={eventName} recommendations={recs} />
+          </div>
         )}
       </div>
 
+      {/* DYNAMIC CATEGORY FILTER BAR */}
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide w-full snap-x">
+        {uniqueCategories.map((category) => (
+          <button
+            key={category}
+            onClick={() => setActiveFilter(category)}
+            className={`whitespace-nowrap px-6 py-2.5 rounded-full text-xs font-bold tracking-wider uppercase transition-all snap-start
+              ${activeFilter === category 
+                ? 'bg-black text-white shadow-md' 
+                : 'bg-white text-zinc-500 border hover:border-zinc-400 hover:text-black dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-400'}
+            `}
+          >
+            {category}
+          </button>
+        ))}
+      </div>
+
+      {/* AGGREGATOR COMPONENT */}
       <div className="w-full">
         <AggregatorTest />
       </div>
 
+      {/* ERROR STATE */}
       {error && (
-        <div className="flex items-center gap-2 text-destructive">
+        <div className="flex items-center gap-2 text-red-500 bg-red-50 p-4 rounded-xl">
           <AlertCircle className="h-5 w-5" />
           {error}
         </div>
       )}
 
+      {/* CLOSET GRID */}
       {loading ? (
         <div className="flex justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin" />
+          <Loader2 className="h-10 w-10 animate-spin text-zinc-300" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {items.map((item) => {
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {filteredItems.map((item) => {
             const url = imageUrls[item.id];
             const isBroken = brokenImages.has(item.id);
 
             return (
               <div
                 key={item.id}
-                className="bg-card p-5 rounded-2xl border shadow-sm space-y-4"
+                className="group relative bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col"
               >
-                <h2 className="text-xl font-bold text-center">
-                  {item.itemName ?? "Untitled Item"}
-                </h2>
-
-                <div className="rounded-xl bg-muted flex items-center justify-center min-h-[300px] overflow-hidden">
+                {/* Image Container - Forced to perfect square */}
+                <div className="relative aspect-square bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center p-6 overflow-hidden">
                   {!url || isBroken ? (
-                    <div className="flex flex-col items-center justify-center">
-                      <ImageOff className="h-10 w-10 opacity-30" />
-                      <span className="text-xs text-muted-foreground">
-                        Image unavailable
-                      </span>
+                    <div className="flex flex-col items-center justify-center text-zinc-400">
+                      <ImageOff className="h-8 w-8 mb-2 opacity-50" />
+                      <span className="text-[10px] uppercase tracking-widest">Unavailable</span>
                     </div>
                   ) : (
                     <Image
                       src={url}
                       alt={item.itemName ?? "Closet item"}
-                      width={360}
-                      height={360}
-                      className="object-contain max-h-[300px] w-auto transition-transform duration-300 hover:scale-105"
+                      fill
+                      className="object-contain p-4 transition-transform duration-500 group-hover:scale-105"
                       unoptimized 
                     />
                   )}
+
+                  {/* Sleek Hover-Delete Button */}
+                  <button 
+                    onClick={() => handleDelete(item)}
+                    className="absolute top-3 right-3 p-2 bg-white/90 dark:bg-black/90 text-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-sm hover:bg-red-50 dark:hover:bg-red-950"
+                    title="Remove Item"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
 
-                <Button variant="destructive" onClick={() => handleDelete(item)} className="w-full">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Remove
-                </Button>
-
-                <div className="space-y-3 pt-4">
-                  <div className="flex items-center space-x-3">
-                    <Tag className="h-5 w-5 text-accent flex-shrink-0" />
-                    <span className="font-semibold text-sm">Type:</span>
-                    <Badge variant="secondary" className="capitalize">
-                      {item.itemType || "Uncategorized"}
-                    </Badge>
-                  </div>
+                {/* Minimalist Metadata Footer */}
+                <div className="p-4 flex flex-col flex-grow">
+                  <h2 className="text-sm font-bold uppercase tracking-wider mb-1 truncate">
+                    {item.itemName ?? "Untitled Item"}
+                  </h2>
                   
-                  <div className="flex items-center space-x-3">
-                    <Palette className="h-5 w-5 text-accent flex-shrink-0" />
-                    <span className="font-semibold text-sm">Colour:</span>
-                    <span className="text-sm text-muted-foreground">
-                      {item.color || "Not specified"}
+                  <div className="flex items-center justify-between mt-auto pt-2">
+                    <span className="text-xs text-zinc-500 capitalize">
+                      {item.itemType || "Uncategorized"}
                     </span>
+                    {item.color && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-zinc-400 uppercase tracking-widest">Color</span>
+                        <span className="text-xs font-medium capitalize">{item.color}</span>
+                      </div>
+                    )}
                   </div>
-
-                  {item.narrativeDescription && (
-                    <div className="flex flex-col space-y-2 mt-2">
-                      <div className="flex items-center space-x-3">
-                        <FileText className="h-5 w-5 text-accent flex-shrink-0" />
-                        <span className="font-semibold text-sm">Description</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground pl-8 leading-relaxed">
-                        {item.narrativeDescription}
-                      </p>
-                    </div>
-                  )}
-
-                  {item.styleKeywords && item.styleKeywords.length > 0 && (
-                    <div className="flex flex-col space-y-2 mt-2">
-                      <div className="flex items-center space-x-3">
-                        <Sparkles className="h-5 w-5 text-accent flex-shrink-0" />
-                        <span className="font-semibold text-sm">Style Keywords</span>
-                      </div>
-                      <div className="flex flex-wrap gap-2 pl-8">
-                        {item.styleKeywords.map((keyword, i) => (
-                          <Badge key={`${item.id}-kw-${i}`} variant="destructive" className="capitalize">
-                            {keyword}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             );
