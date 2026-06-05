@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
 import {
-  Loader2, Upload, Trash2, AlertCircle, ImageOff, Wand2, CalendarHeart, CloudSun
+  Loader2, Upload, Trash2, AlertCircle, ImageOff, Wand2, CalendarHeart, CloudSun, FileText, Sparkles
 } from "lucide-react";
 
 import { useFirebase } from "@/firebase/provider";
@@ -59,9 +59,7 @@ function ClosetContent() {
   const [error, setError] = useState<string | null>(null);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading">("idle");
   
-  // NEW: State for the category filter
   const [activeFilter, setActiveFilter] = useState<string>("All");
-
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isStyling, setIsStyling] = useState(false);
@@ -217,10 +215,8 @@ function ClosetContent() {
   /* -----------------------------------------------------------
       FILTER LOGIC
   ----------------------------------------------------------- */
-  // Dynamically generate categories based on what's actually in the user's closet
   const uniqueCategories = ["All", ...Array.from(new Set(items.map(item => item.itemType || "Uncategorized")))];
   
-  // Apply the filter to the items list
   const filteredItems = activeFilter === "All" 
     ? items 
     : items.filter(item => (item.itemType || "Uncategorized") === activeFilter);
@@ -331,7 +327,7 @@ function ClosetContent() {
           <Loader2 className="h-10 w-10 animate-spin text-zinc-300" />
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredItems.map((item) => {
             const url = imageUrls[item.id];
             const isBroken = brokenImages.has(item.id);
@@ -368,14 +364,14 @@ function ClosetContent() {
                   </button>
                 </div>
 
-                {/* Minimalist Metadata Footer */}
-                <div className="p-4 flex flex-col flex-grow">
-                  <h2 className="text-sm font-bold uppercase tracking-wider mb-1 truncate">
+                {/* Metadata Footer + Restored Descriptions */}
+                <div className="p-5 flex flex-col flex-grow">
+                  <h2 className="text-sm font-bold uppercase tracking-wider mb-2">
                     {item.itemName ?? "Untitled Item"}
                   </h2>
                   
-                  <div className="flex items-center justify-between mt-auto pt-2">
-                    <span className="text-xs text-zinc-500 capitalize">
+                  <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                    <span className="text-xs font-semibold text-zinc-500 capitalize">
                       {item.itemType || "Uncategorized"}
                     </span>
                     {item.color && (
@@ -385,6 +381,37 @@ function ClosetContent() {
                       </div>
                     )}
                   </div>
+
+                  {item.narrativeDescription && (
+                    <div className="flex flex-col mt-4">
+                      <div className="flex items-center space-x-2 mb-1.5">
+                        <FileText className="h-4 w-4 text-zinc-400 flex-shrink-0" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Description</span>
+                      </div>
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                        {item.narrativeDescription}
+                      </p>
+                    </div>
+                  )}
+
+                  {item.styleKeywords && item.styleKeywords.length > 0 && (
+                    <div className="flex flex-col mt-4">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Sparkles className="h-4 w-4 text-zinc-400 flex-shrink-0" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Style Keywords</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {item.styleKeywords.map((keyword, i) => (
+                          <span 
+                            key={`${item.id}-kw-${i}`} 
+                            className="bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300 text-[10px] uppercase tracking-wider px-2 py-1 rounded-sm"
+                          >
+                            {keyword}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -395,7 +422,6 @@ function ClosetContent() {
   );
 }
 
-// Wrap the export in Suspense to satisfy Next.js build requirements for useSearchParams
 export default function ClosetPage() {
   return (
     <Suspense fallback={<div className="flex justify-center items-center h-[85vh]"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>}>
