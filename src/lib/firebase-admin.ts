@@ -1,17 +1,19 @@
-import { initializeApp, getApps, applicationDefault } from 'firebase-admin/app';
+import { initializeApp, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 
 export function getFirebaseAdmin() {
   const apps = getApps();
-  // Look specifically for the default app, ignoring any internal Google Cloud apps
   const defaultApp = apps.find(app => app.name === '[DEFAULT]');
 
   let app;
   if (!defaultApp) {
     console.log("[Firebase Admin] Bootstrapping [DEFAULT] instance...");
+    
+    // We removed the strict 'credential' requirement. 
+    // Firebase will now automatically and safely discover Cloud Run credentials 
+    // without crashing if it runs locally or during the Next.js build.
     app = initializeApp({
-      credential: applicationDefault(),
       projectId: 'styleai-footwear', 
     });
   } else {
