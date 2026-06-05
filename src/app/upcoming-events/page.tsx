@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+// 1. Import Next.js Router
+import { useRouter } from 'next/navigation'; 
 import { getUpcomingEventsStyleAdviceAction } from '@/app/actions/get-calendar-data';
 import UpcomingEventAdviceCard from '@/components/UpcomingEventAdviceCard';
 import { collection, getDocs } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
-import { Loader2, Calendar } from 'lucide-react';
+import { Loader2, Calendar, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
 import { Outfit, Imperial_Script } from "next/font/google"; 
@@ -15,10 +17,9 @@ const outfit = Outfit({
   weight: ["300", "400", "700"], 
 });
 
-// Configure the Imperial Script font
 const imperial = Imperial_Script({
   subsets: ["latin"],
-  weight: ["400"], // Normal weight
+  weight: ["400"], 
 });
 
 export default function UpcomingEventsPage() {
@@ -26,6 +27,9 @@ export default function UpcomingEventsPage() {
   const [closetItems, setClosetItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  
+  // 2. Initialize the router
+  const router = useRouter(); 
 
   const fetchData = async () => {
     setLoading(true);
@@ -75,7 +79,6 @@ export default function UpcomingEventsPage() {
            
            <div className="flex items-center gap-3">
              <Calendar className="h-8 md:h-10 w-8 md:w-10 text-[#DC143C]" />
-             {/* Updated to Imperial Script, normal weight, original text */}
              <h1 className={`text-5xl md:text-6xl font-normal tracking-wide ${imperial.className}`}> 
                <span className="text-white">Your Google Calendar </span>
                <span className="text-[#DC143C]">Events</span>
@@ -102,14 +105,37 @@ export default function UpcomingEventsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {events.map((event, index) => (
-              <UpcomingEventAdviceCard 
-                key={index} 
-                eventAdvice={event} 
-                analyzedItems={closetItems}
-                cardIndex={index}
-              />
-            ))}
+            {events.map((event, index) => {
+              
+              // 3. Extract the exact name and weather from your event object.
+              // NOTE: Change 'event.summary' and 'event.weather' to match your actual API data!
+              const currentEventName = event.summary || event.title || event.name || "Upcoming Event";
+              const currentWeather = event.weather || event.temperature || event.weatherContext || "Weather data unavailable";
+
+              return (
+                <div key={index} className="flex flex-col h-full space-y-4">
+                  {/* The original Card */}
+                  <div className="flex-grow">
+                    <UpcomingEventAdviceCard 
+                      eventAdvice={event} 
+                      analyzedItems={closetItems}
+                      cardIndex={index}
+                    />
+                  </div>
+
+                  {/* The new Hand-Off Button */}
+                  <Button 
+                    onClick={() => {
+                      router.push(`/closet?event=${encodeURIComponent(currentEventName)}&weather=${encodeURIComponent(currentWeather)}`);
+                    }}
+                    className="w-full bg-[#DC143C] text-white hover:bg-red-700 uppercase tracking-widest text-xs font-bold py-6 rounded-xl flex items-center justify-center gap-2 transition-all"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Style This Event
+                  </Button>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
