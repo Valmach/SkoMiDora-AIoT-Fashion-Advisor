@@ -6,14 +6,14 @@ import {
   addDoc, serverTimestamp, doc, deleteDoc 
 } from "firebase/firestore";
 import { ref, getDownloadURL, uploadBytes, deleteObject } from "firebase/storage"; 
-import { Bonheur_Royale, Montserrat } from 'next/font/google';
+import { Bonheur_Royale, Playfair_Display, Inter } from 'next/font/google';
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
 import {
-  Loader2, Upload, Trash2, AlertCircle, ImageOff, Wand2, FileText, Sparkles
+  Loader2, Upload, Trash2, AlertCircle, ImageOff, Wand2, FileText, Sparkles, Globe, Tag
 } from "lucide-react";
 
 import { useFirebase } from "@/firebase/provider";
@@ -23,11 +23,17 @@ const bonheur = Bonheur_Royale({
   weight: ['400'],
 });
 
-const montserrat = Montserrat({
+const playfair = Playfair_Display({
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
+  weight: ['400', '600', '700'],
 });
 
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600'],
+});
+
+// Updated to match your exact Firebase schema + Future luxury fields
 type ClosetItem = {
   id: string;
   itemName?: string;
@@ -35,6 +41,11 @@ type ClosetItem = {
   color?: string;
   narrativeDescription?: string;
   styleKeywords?: string[];
+  detailedSpecifications?: string;
+  generalMaterial?: string;
+  designer?: string; 
+  originCountry?: string;
+  productUrl?: string;
   imagePath?: string;
   imageUrl?: string; 
   createdAt?: any;
@@ -114,7 +125,15 @@ export default function ClosetPage() {
         await uploadBytes(storageRef, file);
         const imageUrl = await getDownloadURL(storageRef);
         const aiFriendlyName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, ' ');
-        const newItem = { itemName: aiFriendlyName, itemType: "Uncategorized", imagePath: imagePath, imageUrl: imageUrl, createdAt: serverTimestamp() };
+        
+        const newItem: Partial<ClosetItem> = { 
+          itemName: aiFriendlyName, 
+          itemType: "Uncategorized", 
+          imagePath: imagePath, 
+          imageUrl: imageUrl, 
+          createdAt: serverTimestamp() 
+        };
+        
         await addDoc(collection(firebase.firestore, 'publicWardrobeItems'), newItem);
         toast({ title: "Success!", description: "Item securely added to digital closet." });
       } catch (e: unknown) {
@@ -152,7 +171,7 @@ export default function ClosetPage() {
   const filteredItems = activeFilter === "All" ? items : items.filter(item => (item.itemType || "Uncategorized") === activeFilter);
 
   return (
-    <div className={`container mx-auto space-y-6 pb-12 h-[85vh] overflow-y-auto scrollbar-hide bg-[#121212] text-zinc-100 ${montserrat.className} px-4 pt-4`}>
+    <div className={`container mx-auto space-y-6 pb-12 h-[85vh] overflow-y-auto scrollbar-hide bg-[#121212] text-zinc-100 ${inter.className} px-4 pt-4`}>
       
       {/* HEADER */}
       <Card className="border-0 shadow-none bg-transparent mb-4">
@@ -204,7 +223,7 @@ export default function ClosetPage() {
           <Loader2 className="h-10 w-10 animate-spin text-[#D15B6A]" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
           {filteredItems.map((item) => {
             const url = imageUrls[item.id];
             const isBroken = brokenImages.has(item.id);
@@ -221,7 +240,7 @@ export default function ClosetPage() {
                     <img
                       src={url}
                       alt={item.itemName ?? "Closet item"}
-                      className="max-h-[250px] max-w-full object-contain transition-transform duration-700 group-hover:scale-110 drop-shadow-2xl"
+                      className="max-h-[300px] max-w-full object-contain transition-transform duration-700 group-hover:scale-105 drop-shadow-2xl"
                     />
                   )}
                   <button onClick={() => handleDelete(item)} className="absolute top-4 right-4 p-2.5 bg-[#121212]/90 text-[#D15B6A] rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-lg border border-white/5 hover:bg-[#722F37] hover:text-white" title="Remove Item">
@@ -229,43 +248,82 @@ export default function ClosetPage() {
                   </button>
                 </div>
 
-                <div className="p-6 flex flex-col flex-grow">
-                  {/* BUMPED: Title text increased to text-base */}
-                  <h2 className="text-base font-bold uppercase tracking-widest mb-4 text-white leading-tight">{item.itemName ?? "Untitled Item"}</h2>
-                  <div className="flex items-center justify-between pb-4 border-b border-white/5">
+                <div className="p-8 flex flex-col flex-grow">
+                  
+                  {/* DESIGNER / ORIGIN ROW */}
+                  {(item.designer || item.originCountry) && (
+                    <div className="flex items-center justify-between mb-2">
+                      {item.designer && (
+                        <div className="flex items-center gap-1.5 text-[#D15B6A]">
+                          <Tag className="h-3 w-3" />
+                          <span className="text-[10px] font-bold uppercase tracking-widest">{item.designer}</span>
+                        </div>
+                      )}
+                      {item.originCountry && (
+                        <div className="flex items-center gap-1.5 text-zinc-400">
+                          <Globe className="h-3 w-3" />
+                          <span className="text-[10px] uppercase tracking-widest">{item.originCountry}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* LUXURY SERIF TITLE */}
+                  <h2 className={`${playfair.className} text-2xl font-bold tracking-wide mb-6 text-white leading-tight`}>
+                    {item.itemName ?? "Untitled Item"}
+                  </h2>
+
+                  <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
                     <div className="flex flex-col gap-1">
-                      {/* BUMPED: Labels brightened and increased slightly */}
                       <span className="text-[10px] text-[#D15B6A] font-bold uppercase tracking-widest">Type</span>
-                      <span className="text-sm font-medium text-zinc-200 capitalize">{item.itemType || "Uncategorized"}</span>
+                      <span className="text-sm font-medium text-white capitalize">{item.itemType || "Uncategorized"}</span>
                     </div>
                     {item.color && (
                       <div className="flex flex-col gap-1 items-end">
                         <span className="text-[10px] text-[#D15B6A] font-bold uppercase tracking-widest">Color</span>
-                        <span className="text-sm font-medium text-zinc-200 capitalize">{item.color}</span>
+                        <span className="text-sm font-medium text-white capitalize">{item.color}</span>
                       </div>
                     )}
                   </div>
 
+                  {/* EXACT FIRESTORE METADATA MAPPING */}
+                  {(item.generalMaterial || item.detailedSpecifications) && (
+                    <div className="flex flex-col gap-4 mb-4">
+                      {item.generalMaterial && (
+                        <div>
+                          <span className="text-[10px] text-[#D15B6A] font-bold uppercase tracking-widest block mb-1">Material</span>
+                          <span className="text-sm text-white font-medium">{item.generalMaterial}</span>
+                        </div>
+                      )}
+                      {item.detailedSpecifications && (
+                        <div>
+                          <span className="text-[10px] text-[#D15B6A] font-bold uppercase tracking-widest block mb-1">Specifications</span>
+                          <span className="text-sm text-zinc-300 leading-relaxed block">{item.detailedSpecifications}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* LARGE WHITE DESCRIPTION TEXT */}
                   {item.narrativeDescription && (
-                    <div className="flex flex-col mt-5">
+                    <div className="flex flex-col mt-2">
                       <div className="flex items-center space-x-2 mb-2">
                         <FileText className="h-4 w-4 text-[#D15B6A] flex-shrink-0" />
                         <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D15B6A]">Editorial Note</span>
                       </div>
-                      {/* BUMPED: Description made larger, brighter, and thicker */}
-                      <p className="text-sm text-zinc-300 leading-relaxed font-normal">{item.narrativeDescription}</p>
+                      <p className="text-sm text-white leading-relaxed font-normal">{item.narrativeDescription}</p>
                     </div>
                   )}
 
                   {item.styleKeywords && item.styleKeywords.length > 0 && (
-                    <div className="flex flex-col mt-6 pt-4 border-t border-white/5">
+                    <div className="flex flex-col mt-6 pt-4 border-t border-white/10">
                       <div className="flex items-center space-x-2 mb-3">
                         <Sparkles className="h-4 w-4 text-[#D15B6A] flex-shrink-0" />
                         <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D15B6A]">Aesthetics</span>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {item.styleKeywords.map((keyword, i) => (
-                          <span key={`${item.id}-kw-${i}`} className="bg-white/5 backdrop-blur-sm text-zinc-200 border border-white/10 text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-sm">
+                          <span key={`${item.id}-kw-${i}`} className="bg-white/5 backdrop-blur-sm text-white border border-white/10 text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-sm">
                             {keyword}
                           </span>
                         ))}
