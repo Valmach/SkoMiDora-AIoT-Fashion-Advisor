@@ -5,11 +5,14 @@ import { db as adminDb } from '@/lib/firebase-admin';
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
+// 1. UNIVERSAL FASHION SCHEMA (Matches your Firebase Database exactly)
 const FashionItemSchema = z.object({
-  itemName: z.string().describe("The specific name of the item purchased. If absolutely none found, return 'FAILED_TO_FIND_ITEM'"),
-  brand: z.string().describe("The designer, brand name, or manufacturer. Default to 'Unknown' if not found."),
-  clothingType: z.string().describe("Categorize the item (e.g., Electronics, Home, Shoes, Accessory)."),
+  itemName: z.string().describe("Clean, elegant name for the item (e.g., 'Satin Bow Pump'). If the receipt is NOT for clothing, shoes, or accessories, return 'FAILED_TO_FIND_ITEM'"),
+  itemType: z.string().describe("Category (e.g., Shoes, Dress, Top, Bag, Outerwear). Default to 'Uncategorized' if unknown."),
+  designer: z.string().describe("The designer, brand name, or retailer (e.g., 'Chanel', 'Zara', 'Shopify Store'). Default to 'Unknown'."),
   color: z.string().describe("The primary color of the item, or 'N/A'"),
+  generalMaterial: z.string().describe("Material if mentioned (e.g., 'Leather', 'Silk'), or 'N/A'"),
+  price: z.string().describe("Price as a string (e.g., '$120.00'), or 'N/A'"),
   imageUrl: z.string().optional().describe("A URL pointing to the product image, if found in the email HTML"),
 });
 
@@ -49,15 +52,17 @@ export async function parseBrandEmails() {
     oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
+    // 2. UNIVERSAL GMAIL QUERY
+    // Look for receipts and orders, ignoring Amazon-specific locks
     const response = await gmail.users.messages.list({
       userId: 'me',
-      q: 'Amazon', 
+      q: 'subject:(receipt OR order OR confirmation) -label:promotions', 
       maxResults: 5, 
     });
 
     const messages = response.data.messages;
     if (!messages || messages.length === 0) {
-      return { success: true, count: 0, message: "No order emails found." };
+      return { success: true, count: 0, message: "No recent order emails found." };
     }
 
     let ingestedCount = 0;
@@ -75,40 +80,41 @@ export async function parseBrandEmails() {
       const emailBody = extractEmailBody(msgData.data.payload);
       const emailSnippet = msgData.data.snippet || "";
       
-      // We pass BOTH the clean snippet and the HTML body (truncated to save AI tokens)
       const textToParse = `
-        INBOX PREVIEW SNIPPET (Highly Reliable Text): 
+        INBOX PREVIEW SNIPPET: 
         ${emailSnippet}
         
-        RAW EMAIL BODY (May contain messy HTML): 
+        RAW EMAIL BODY: 
         ${emailBody.substring(0, 8000)}
       `;
 
+      // 3. THE LUXURY FASHION AI PROMPT
       const { output } = await ai.generate({
         model: 'googleai/gemini-2.5-flash',
-        prompt: `You are an expert data extraction bot. Your job is to find the purchased product inside this messy, forwarded Amazon receipt email. 
+        prompt: `You are an expert data extraction bot for a luxury digital closet application. Your job is to find FASHION items inside this messy email receipt.
         
         CRITICAL INSTRUCTIONS:
         1. Ignore all HTML tags, layout code, and forwarding headers.
-        2. Look heavily at the "INBOX PREVIEW SNIPPET" as it often contains the plain text of the item name.
-        3. Extract the primary item purchased. Even if it is a book, a cable, or a household good, extract it.
+        2. Extract ONLY clothing, footwear, accessories, or jewelry. 
+        3. If this receipt is for electronics, books, groceries, Uber rides, software, or non-fashion items, you MUST set itemName to 'FAILED_TO_FIND_ITEM'.
         
         Email Content:\n${textToParse}`,
         output: { schema: FashionItemSchema }
       });
 
-      // Only save to DB if it actually found an item and didn't trigger our failure string
+      // 4. SAVE DIRECTLY TO DIGITAL CLOSET
       if (output && output.itemName && output.itemName !== "FAILED_TO_FIND_ITEM" && output.itemName !== "N/A") {
-        const docRef = await adminDb.collection('wardrobeItems').add({
+        
+        // Pushing to publicWardrobeItems so it shows up in your main closet
+        const docRef = await adminDb.collection('publicWardrobeItems').add({
           ...output,
-          ingestedAt: new Date().toISOString(),
-          source: 'gmail_pipeline_amazon_test'
+          createdAt: new Date().toISOString(), // Changed to createdAt to match your Closet schema
+          source: 'universal_email_ingestion'
         });
 
         ingestedCount++;
         lastParsedItem = output;
       } else {
-        // Capture the failure so we can see it in the UI output
         lastParsedItem = output; 
       }
     }

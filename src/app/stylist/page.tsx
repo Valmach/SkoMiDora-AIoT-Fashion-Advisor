@@ -8,9 +8,10 @@ import ShoppingRecommendations, { Recommendation } from '@/components/ShoppingRe
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Sparkles, Search, CalendarHeart } from "lucide-react";
-import { Inter } from 'next/font/google';
+import { Inter, Great_Vibes } from 'next/font/google';
 
 const inter = Inter({ subsets: ['latin'], weight: ['300', '400', '500'] });
+const greatVibes = Great_Vibes({ subsets: ['latin'], weight: ['400'] });
 
 function StylistContent() {
   const { toast } = useToast();
@@ -58,11 +59,8 @@ function StylistContent() {
             </span>
           </div>
           
-          {/* NATIVE PLAYBILL FONT */}
-          <h1 
-            className="text-5xl md:text-7xl font-normal text-white mb-6 tracking-wide leading-tight"
-            style={{ fontFamily: 'Playbill, Impact, sans-serif', letterSpacing: '0.05em' }}
-          >
+          {/* GREAT VIBES LUXURY TITLE */}
+          <h1 className={`${greatVibes.className} text-6xl md:text-8xl font-normal text-white mb-4 tracking-wide leading-tight`}>
             Styling Consultation
           </h1>
           
@@ -96,10 +94,7 @@ function StylistContent() {
         <div className="mt-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
           <div className="flex items-center gap-3 mb-8 px-2 border-b border-zinc-900 pb-5">
             <Sparkles className="h-6 w-6 text-[#9A1B22]" />
-            <h2 
-              className="text-4xl font-normal text-white tracking-wide"
-              style={{ fontFamily: 'Playbill, Impact, sans-serif', letterSpacing: '0.05em' }}
-            >
+            <h2 className={`${greatVibes.className} text-5xl font-normal text-white tracking-wide`}>
               Curated for: <span className="text-[#9A1B22]">{displayHighlight}</span>
             </h2>
           </div>
