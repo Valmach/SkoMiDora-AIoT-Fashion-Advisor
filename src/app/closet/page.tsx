@@ -143,7 +143,7 @@ export default function ClosetPage() {
   if (!firebase) {
     return (
       <div className="flex justify-center items-center h-[85vh] bg-[#121212]">
-        <Loader2 className="h-8 w-8 animate-spin text-[#722F37]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#D15B6A]" />
       </div>
     );
   }
@@ -160,7 +160,7 @@ export default function ClosetPage() {
           <div>
             <h1 className={`${bonheur.className} text-7xl font-bold tracking-wide text-white`}>Digital Closet</h1>
             <p className="text-zinc-400 uppercase tracking-[0.2em] text-xs mt-2 font-medium">
-              <span className="text-[#722F37]">●</span> {items.length} Curated Pieces
+              <span className="text-[#D15B6A]">●</span> {items.length} Curated Pieces
             </p>
           </div>
           <Button 
@@ -201,7 +201,7 @@ export default function ClosetPage() {
       {/* WARDROBE GRID */}
       {loading ? (
         <div className="flex justify-center py-20">
-          <Loader2 className="h-10 w-10 animate-spin text-[#722F37]" />
+          <Loader2 className="h-10 w-10 animate-spin text-[#D15B6A]" />
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
@@ -224,22 +224,24 @@ export default function ClosetPage() {
                       className="max-h-[250px] max-w-full object-contain transition-transform duration-700 group-hover:scale-110 drop-shadow-2xl"
                     />
                   )}
-                  <button onClick={() => handleDelete(item)} className="absolute top-4 right-4 p-2.5 bg-[#121212]/90 text-[#722F37] rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-lg border border-white/5 hover:bg-[#722F37] hover:text-white" title="Remove Item">
+                  <button onClick={() => handleDelete(item)} className="absolute top-4 right-4 p-2.5 bg-[#121212]/90 text-[#D15B6A] rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-lg border border-white/5 hover:bg-[#722F37] hover:text-white" title="Remove Item">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
 
                 <div className="p-6 flex flex-col flex-grow">
-                  <h2 className="text-sm font-semibold uppercase tracking-[0.15em] mb-4 text-white">{item.itemName ?? "Untitled Item"}</h2>
+                  {/* BUMPED: Title text increased to text-base */}
+                  <h2 className="text-base font-bold uppercase tracking-widest mb-4 text-white leading-tight">{item.itemName ?? "Untitled Item"}</h2>
                   <div className="flex items-center justify-between pb-4 border-b border-white/5">
                     <div className="flex flex-col gap-1">
-                      <span className="text-[9px] text-[#722F37] font-bold uppercase tracking-widest">Type</span>
-                      <span className="text-xs font-medium text-zinc-300 capitalize">{item.itemType || "Uncategorized"}</span>
+                      {/* BUMPED: Labels brightened and increased slightly */}
+                      <span className="text-[10px] text-[#D15B6A] font-bold uppercase tracking-widest">Type</span>
+                      <span className="text-sm font-medium text-zinc-200 capitalize">{item.itemType || "Uncategorized"}</span>
                     </div>
                     {item.color && (
                       <div className="flex flex-col gap-1 items-end">
-                        <span className="text-[9px] text-[#722F37] font-bold uppercase tracking-widest">Color</span>
-                        <span className="text-xs font-medium text-zinc-300 capitalize">{item.color}</span>
+                        <span className="text-[10px] text-[#D15B6A] font-bold uppercase tracking-widest">Color</span>
+                        <span className="text-sm font-medium text-zinc-200 capitalize">{item.color}</span>
                       </div>
                     )}
                   </div>
@@ -247,22 +249,23 @@ export default function ClosetPage() {
                   {item.narrativeDescription && (
                     <div className="flex flex-col mt-5">
                       <div className="flex items-center space-x-2 mb-2">
-                        <FileText className="h-3.5 w-3.5 text-[#722F37] flex-shrink-0" />
-                        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#722F37]">Editorial Note</span>
+                        <FileText className="h-4 w-4 text-[#D15B6A] flex-shrink-0" />
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D15B6A]">Editorial Note</span>
                       </div>
-                      <p className="text-xs text-zinc-400 leading-relaxed font-light">{item.narrativeDescription}</p>
+                      {/* BUMPED: Description made larger, brighter, and thicker */}
+                      <p className="text-sm text-zinc-300 leading-relaxed font-normal">{item.narrativeDescription}</p>
                     </div>
                   )}
 
                   {item.styleKeywords && item.styleKeywords.length > 0 && (
                     <div className="flex flex-col mt-6 pt-4 border-t border-white/5">
                       <div className="flex items-center space-x-2 mb-3">
-                        <Sparkles className="h-3.5 w-3.5 text-[#722F37] flex-shrink-0" />
-                        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#722F37]">Aesthetics</span>
+                        <Sparkles className="h-4 w-4 text-[#D15B6A] flex-shrink-0" />
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D15B6A]">Aesthetics</span>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {item.styleKeywords.map((keyword, i) => (
-                          <span key={`${item.id}-kw-${i}`} className="bg-white/5 backdrop-blur-sm text-zinc-300 border border-white/10 text-[9px] uppercase tracking-widest px-2.5 py-1.5">
+                          <span key={`${item.id}-kw-${i}`} className="bg-white/5 backdrop-blur-sm text-zinc-200 border border-white/10 text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-sm">
                             {keyword}
                           </span>
                         ))}
