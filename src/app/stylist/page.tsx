@@ -8,9 +8,8 @@ import ShoppingRecommendations, { Recommendation } from '@/components/ShoppingRe
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Sparkles, Search, CalendarHeart } from "lucide-react";
-import { Playfair_Display, Inter } from 'next/font/google';
+import { Inter } from 'next/font/google';
 
-const playfair = Playfair_Display({ subsets: ['latin'], weight: ['400', '600', '700', '800'] });
 const inter = Inter({ subsets: ['latin'], weight: ['300', '400', '500'] });
 
 function StylistContent() {
@@ -20,18 +19,13 @@ function StylistContent() {
   const [isStyling, setIsStyling] = useState(false);
   const [recs, setRecs] = useState<Recommendation[]>([]);
   
-  // 1. SMART CONTEXT LOGIC
+  // THE CONNECTION: Reading the URL from the Events page
   const urlEvent = searchParams.get('event');
   const weatherContext = searchParams.get('weather') || ""; 
   
-  const isEventContext = !!urlEvent;
+  // Fallback if they just click the sidebar without selecting an event first
+  const displayHighlight = urlEvent || "General Wardrobe Refresh";
   
-  // Dynamic Text Variables based on context
-  const displayTitle = isEventContext ? "Event Consultation" : "Styling Consultation";
-  const displaySubtitle = isEventContext ? "Finding pieces for this event:" : "Curating pieces for your:";
-  const displayHighlight = isEventContext ? urlEvent : "Everyday Wardrobe";
-  const buttonText = isEventContext ? "Find Pieces For This Event" : "Analyze & Refresh Wardrobe";
-
   const handleGenerateLooks = async () => {
     setIsStyling(true);
     try {
@@ -58,26 +52,25 @@ function StylistContent() {
         
         <div className="mb-10">
           <div className="flex items-center gap-2 mb-5">
-            {isEventContext ? (
-              <CalendarHeart className="h-5 w-5 text-[#9A1B22]" />
-            ) : (
-              <Sparkles className="h-5 w-5 text-[#9A1B22]" />
-            )}
+            <CalendarHeart className="h-5 w-5 text-[#9A1B22]" />
             <span className="text-xs font-bold uppercase tracking-[0.25em] text-zinc-500">
               Personal Shopper
             </span>
           </div>
           
-          {/* PLAYFAIR DISPLAY LUXURY TITLE */}
-          <h1 className={`${playfair.className} text-5xl md:text-6xl font-bold text-white mb-6 tracking-wide leading-tight`}>
-            {displayTitle}
+          {/* NATIVE PLAYBILL FONT */}
+          <h1 
+            className="text-5xl md:text-7xl font-normal text-white mb-6 tracking-wide leading-tight"
+            style={{ fontFamily: 'Playbill, Impact, sans-serif', letterSpacing: '0.05em' }}
+          >
+            Styling Consultation
           </h1>
           
           <div className="flex flex-col gap-1.5">
             <p className="text-zinc-400 text-xl font-light tracking-wide">
-              {displaySubtitle} <span className="text-white font-medium italic">{displayHighlight}</span>
+              Find pieces for this event: <span className="text-white font-medium italic">{displayHighlight}</span>
             </p>
-            {isEventContext && weatherContext && (
+            {weatherContext && (
               <p className="text-[#9A1B22] text-sm font-medium tracking-widest uppercase mt-2">
                 • {weatherContext}
               </p>
@@ -93,7 +86,7 @@ function StylistContent() {
           {isStyling ? (
             <><Loader2 className="mr-3 h-5 w-5 animate-spin" /> Consulting Stylist...</>
           ) : (
-            <><Search className="mr-3 h-4 w-4" /> {buttonText}</>
+            <><Search className="mr-3 h-4 w-4" /> Find Missing Pieces</>
           )}
         </Button>
       </div>
@@ -103,8 +96,11 @@ function StylistContent() {
         <div className="mt-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
           <div className="flex items-center gap-3 mb-8 px-2 border-b border-zinc-900 pb-5">
             <Sparkles className="h-6 w-6 text-[#9A1B22]" />
-            <h2 className={`${playfair.className} text-3xl font-bold text-white tracking-wide`}>
-              Curated for: <span className="text-[#9A1B22] italic">{displayHighlight}</span>
+            <h2 
+              className="text-4xl font-normal text-white tracking-wide"
+              style={{ fontFamily: 'Playbill, Impact, sans-serif', letterSpacing: '0.05em' }}
+            >
+              Curated for: <span className="text-[#9A1B22]">{displayHighlight}</span>
             </h2>
           </div>
           <ShoppingRecommendations eventContext={displayHighlight} recommendations={recs} />
