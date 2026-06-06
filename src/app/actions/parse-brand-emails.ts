@@ -1,9 +1,12 @@
 'use server';
 
 import { google } from 'googleapis';
-import { db as adminDb } from '@/lib/firebase-admin';
+import { getFirebaseAdmin } from '@/lib/firebase-admin';
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+
+// Initialize the database using your new lazy-loaded function
+const { db: adminDb } = getFirebaseAdmin();
 
 // 1. UNIVERSAL FASHION SCHEMA (Matches your Firebase Database exactly)
 const FashionItemSchema = z.object({
@@ -108,7 +111,7 @@ export async function parseBrandEmails() {
         // Pushing to publicWardrobeItems so it shows up in your main closet
         const docRef = await adminDb.collection('publicWardrobeItems').add({
           ...output,
-          createdAt: new Date().toISOString(), // Changed to createdAt to match your Closet schema
+          createdAt: new Date().toISOString(), 
           source: 'universal_email_ingestion'
         });
 
