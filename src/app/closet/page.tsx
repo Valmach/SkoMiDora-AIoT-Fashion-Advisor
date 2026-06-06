@@ -33,7 +33,6 @@ const inter = Inter({
   weight: ['300', '400', '500', '600'],
 });
 
-// Updated to match your exact Firebase schema + Future luxury fields
 type ClosetItem = {
   id: string;
   itemName?: string;
@@ -161,8 +160,8 @@ export default function ClosetPage() {
 
   if (!firebase) {
     return (
-      <div className="flex justify-center items-center h-[85vh] bg-[#121212]">
-        <Loader2 className="h-8 w-8 animate-spin text-[#D15B6A]" />
+      <div className="flex justify-center items-center h-[85vh] bg-black">
+        <Loader2 className="h-8 w-8 animate-spin text-[#9A1B22]" />
       </div>
     );
   }
@@ -171,7 +170,7 @@ export default function ClosetPage() {
   const filteredItems = activeFilter === "All" ? items : items.filter(item => (item.itemType || "Uncategorized") === activeFilter);
 
   return (
-    <div className={`container mx-auto space-y-6 pb-12 h-[85vh] overflow-y-auto scrollbar-hide bg-[#121212] text-zinc-100 ${inter.className} px-4 pt-4`}>
+    <div className={`container mx-auto space-y-6 pb-12 h-[85vh] overflow-y-auto scrollbar-hide bg-black text-zinc-100 ${inter.className} px-4 pt-4`}>
       
       {/* HEADER */}
       <Card className="border-0 shadow-none bg-transparent mb-4">
@@ -179,13 +178,13 @@ export default function ClosetPage() {
           <div>
             <h1 className={`${bonheur.className} text-7xl font-bold tracking-wide text-white`}>Digital Closet</h1>
             <p className="text-zinc-400 uppercase tracking-[0.2em] text-xs mt-2 font-medium">
-              <span className="text-[#D15B6A]">●</span> {items.length} Curated Pieces
+              <span className="text-[#9A1B22]">●</span> {items.length} Curated Pieces
             </p>
           </div>
           <Button 
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadStatus !== "idle"}
-            className="rounded-none px-8 py-6 bg-[#722F37] text-white hover:bg-[#5a252b] uppercase tracking-widest text-xs transition-all shadow-lg"
+            className="rounded-none px-8 py-6 bg-[#9A1B22] text-white hover:bg-[#7A151B] uppercase tracking-widest text-xs transition-all shadow-lg"
           >
             {uploadStatus === "idle" ? <><Upload className="mr-3 h-4 w-4" /> Add Item</> : <><Wand2 className="mr-3 h-4 w-4 animate-spin" /> Uploading...</>}
           </Button>
@@ -199,10 +198,10 @@ export default function ClosetPage() {
           <button
             key={category}
             onClick={() => setActiveFilter(category)}
-            className={`whitespace-nowrap px-6 py-3 text-xs font-semibold tracking-[0.15em] uppercase transition-all snap-start border border-white/10
+            className={`whitespace-nowrap px-6 py-3 text-xs font-semibold tracking-[0.15em] uppercase transition-all snap-start border border-zinc-800
               ${activeFilter === category 
-                ? 'bg-[#722F37] text-white shadow-md' 
-                : 'bg-white/5 backdrop-blur-md text-zinc-400 hover:bg-white/10 hover:text-white'}
+                ? 'bg-[#9A1B22] text-white border-[#9A1B22] shadow-md' 
+                : 'bg-black text-zinc-500 hover:border-zinc-500 hover:text-white'}
             `}
           >
             {category}
@@ -211,8 +210,8 @@ export default function ClosetPage() {
       </div>
 
       {error && (
-        <div className="flex items-center gap-3 text-red-400 bg-[#722F37]/20 p-4 border border-[#722F37]/50 backdrop-blur-md">
-          <AlertCircle className="h-5 w-5" />
+        <div className="flex items-center gap-3 text-white bg-[#9A1B22]/20 p-4 border border-[#9A1B22]/50">
+          <AlertCircle className="h-5 w-5 text-[#9A1B22]" />
           <span className="text-sm tracking-wide">{error}</span>
         </div>
       )}
@@ -220,7 +219,7 @@ export default function ClosetPage() {
       {/* WARDROBE GRID */}
       {loading ? (
         <div className="flex justify-center py-20">
-          <Loader2 className="h-10 w-10 animate-spin text-[#D15B6A]" />
+          <Loader2 className="h-10 w-10 animate-spin text-[#9A1B22]" />
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
@@ -229,10 +228,10 @@ export default function ClosetPage() {
             const isBroken = brokenImages.has(item.id);
 
             return (
-              <div key={item.id} className="group relative bg-[#1A1A1A]/60 backdrop-blur-xl border border-white/5 shadow-2xl hover:border-white/15 transition-all duration-500 overflow-hidden flex flex-col">
-                <div className="relative aspect-square w-full bg-[#121212]/80 flex items-center justify-center overflow-hidden p-8">
+              <div key={item.id} className="group relative bg-[#050505] border border-zinc-900 shadow-2xl hover:border-[#9A1B22]/50 transition-all duration-500 overflow-hidden flex flex-col">
+                <div className="relative aspect-square w-full bg-black flex items-center justify-center overflow-hidden p-8 border-b border-zinc-900">
                   {!url || isBroken ? (
-                    <div className="flex flex-col items-center justify-center text-zinc-700">
+                    <div className="flex flex-col items-center justify-center text-zinc-800">
                       <ImageOff className="h-8 w-8 mb-3 opacity-50" />
                       <span className="text-[10px] uppercase tracking-widest">Unavailable</span>
                     </div>
@@ -243,7 +242,7 @@ export default function ClosetPage() {
                       className="max-h-[300px] max-w-full object-contain transition-transform duration-700 group-hover:scale-105 drop-shadow-2xl"
                     />
                   )}
-                  <button onClick={() => handleDelete(item)} className="absolute top-4 right-4 p-2.5 bg-[#121212]/90 text-[#D15B6A] rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-lg border border-white/5 hover:bg-[#722F37] hover:text-white" title="Remove Item">
+                  <button onClick={() => handleDelete(item)} className="absolute top-4 right-4 p-2.5 bg-black/90 text-[#9A1B22] rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-lg border border-zinc-800 hover:bg-[#9A1B22] hover:text-white" title="Remove Item">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
@@ -252,17 +251,17 @@ export default function ClosetPage() {
                   
                   {/* DESIGNER / ORIGIN ROW */}
                   {(item.designer || item.originCountry) && (
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center justify-between mb-3">
                       {item.designer && (
-                        <div className="flex items-center gap-1.5 text-[#D15B6A]">
-                          <Tag className="h-3 w-3" />
-                          <span className="text-[10px] font-bold uppercase tracking-widest">{item.designer}</span>
+                        <div className="flex items-center gap-2">
+                          <Tag className="h-3 w-3 text-[#9A1B22]" />
+                          <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest">{item.designer}</span>
                         </div>
                       )}
                       {item.originCountry && (
-                        <div className="flex items-center gap-1.5 text-zinc-400">
-                          <Globe className="h-3 w-3" />
-                          <span className="text-[10px] uppercase tracking-widest">{item.originCountry}</span>
+                        <div className="flex items-center gap-2">
+                          <Globe className="h-3 w-3 text-[#9A1B22]" />
+                          <span className="text-[10px] text-zinc-400 uppercase tracking-widest">{item.originCountry}</span>
                         </div>
                       )}
                     </div>
@@ -273,14 +272,14 @@ export default function ClosetPage() {
                     {item.itemName ?? "Untitled Item"}
                   </h2>
 
-                  <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[10px] text-[#D15B6A] font-bold uppercase tracking-widest">Type</span>
+                  <div className="flex items-center justify-between pb-5 border-b border-zinc-900 mb-5">
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">Type</span>
                       <span className="text-sm font-medium text-white capitalize">{item.itemType || "Uncategorized"}</span>
                     </div>
                     {item.color && (
-                      <div className="flex flex-col gap-1 items-end">
-                        <span className="text-[10px] text-[#D15B6A] font-bold uppercase tracking-widest">Color</span>
+                      <div className="flex flex-col gap-1.5 items-end">
+                        <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">Color</span>
                         <span className="text-sm font-medium text-white capitalize">{item.color}</span>
                       </div>
                     )}
@@ -288,17 +287,17 @@ export default function ClosetPage() {
 
                   {/* EXACT FIRESTORE METADATA MAPPING */}
                   {(item.generalMaterial || item.detailedSpecifications) && (
-                    <div className="flex flex-col gap-4 mb-4">
+                    <div className="flex flex-col gap-5 mb-5">
                       {item.generalMaterial && (
                         <div>
-                          <span className="text-[10px] text-[#D15B6A] font-bold uppercase tracking-widest block mb-1">Material</span>
+                          <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest block mb-1.5">Material</span>
                           <span className="text-sm text-white font-medium">{item.generalMaterial}</span>
                         </div>
                       )}
                       {item.detailedSpecifications && (
                         <div>
-                          <span className="text-[10px] text-[#D15B6A] font-bold uppercase tracking-widest block mb-1">Specifications</span>
-                          <span className="text-sm text-zinc-300 leading-relaxed block">{item.detailedSpecifications}</span>
+                          <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest block mb-1.5">Specifications</span>
+                          <span className="text-sm text-zinc-400 leading-relaxed block">{item.detailedSpecifications}</span>
                         </div>
                       )}
                     </div>
@@ -307,23 +306,23 @@ export default function ClosetPage() {
                   {/* LARGE WHITE DESCRIPTION TEXT */}
                   {item.narrativeDescription && (
                     <div className="flex flex-col mt-2">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <FileText className="h-4 w-4 text-[#D15B6A] flex-shrink-0" />
-                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D15B6A]">Editorial Note</span>
+                      <div className="flex items-center space-x-2 mb-3">
+                        <FileText className="h-3.5 w-3.5 text-[#9A1B22] flex-shrink-0" />
+                        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500">Editorial Note</span>
                       </div>
-                      <p className="text-sm text-white leading-relaxed font-normal">{item.narrativeDescription}</p>
+                      <p className="text-sm text-zinc-300 leading-relaxed font-normal">{item.narrativeDescription}</p>
                     </div>
                   )}
 
                   {item.styleKeywords && item.styleKeywords.length > 0 && (
-                    <div className="flex flex-col mt-6 pt-4 border-t border-white/10">
-                      <div className="flex items-center space-x-2 mb-3">
-                        <Sparkles className="h-4 w-4 text-[#D15B6A] flex-shrink-0" />
-                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D15B6A]">Aesthetics</span>
+                    <div className="flex flex-col mt-6 pt-5 border-t border-zinc-900">
+                      <div className="flex items-center space-x-2 mb-4">
+                        <Sparkles className="h-3.5 w-3.5 text-[#9A1B22] flex-shrink-0" />
+                        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500">Aesthetics</span>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {item.styleKeywords.map((keyword, i) => (
-                          <span key={`${item.id}-kw-${i}`} className="bg-white/5 backdrop-blur-sm text-white border border-white/10 text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-sm">
+                          <span key={`${item.id}-kw-${i}`} className="bg-zinc-900 text-zinc-300 border border-zinc-800 text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-sm">
                             {keyword}
                           </span>
                         ))}
