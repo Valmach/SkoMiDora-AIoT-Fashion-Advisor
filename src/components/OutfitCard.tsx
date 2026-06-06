@@ -39,51 +39,52 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
   };
 
   return (
-    <Card className="bg-zinc-900 border-zinc-800 overflow-hidden flex flex-col h-full min-h-[800px] hover:border-[#DC143C]/30 transition-all duration-300 group">
+    <Card className="bg-[#050505] border-zinc-900 overflow-hidden flex flex-col h-full min-h-[800px] hover:border-[#9A1B22]/50 transition-all duration-300 group">
       
-      {/* HEADER */}
-      <CardHeader className="pb-3 bg-zinc-950/50 border-b border-zinc-800/50 px-4 pt-4 relative h-[120px] shrink-0">
+      {/* HEADER - Changed to h-auto so text can breathe */}
+      <CardHeader className="pb-3 bg-black border-b border-zinc-900 px-5 pt-5 relative h-auto min-h-[120px] shrink-0">
         <div className="flex justify-between items-start gap-4 relative z-10 h-full">
           <div className="flex-1 flex flex-col h-full">
-            <div className="flex items-center gap-2 text-[10px] font-medium text-zinc-500 mb-2 uppercase tracking-wider">
-              <span className="text-[#DC143C]">0{index + 1}</span>
+            <div className="flex items-center gap-2 text-[10px] font-bold text-zinc-500 mb-3 uppercase tracking-[0.2em]">
+              <span className="text-[#9A1B22]">0{index + 1}</span>
               <span>•</span>
               <span>{outfit.location || "Curated Look"}</span>
             </div>
-            <CardTitle className="text-sm text-zinc-200 font-serif font-normal tracking-wide leading-relaxed line-clamp-3">
+            {/* Removed line-clamp-3 so titles don't get cut off */}
+            <CardTitle className="text-sm text-zinc-200 font-serif font-normal tracking-wide leading-relaxed">
               {outfit.outfitIdea}
             </CardTitle>
           </div>
           {outfit.weather && (
-            <Badge variant="outline" className="bg-zinc-900 text-zinc-500 border-zinc-800 text-[9px] px-1.5 py-0.5 shrink-0 mt-1">
+            <Badge variant="outline" className="bg-black text-zinc-500 border-zinc-800 text-[9px] px-2 py-1 shrink-0 mt-1 uppercase tracking-widest">
               {outfit.weather}
             </Badge>
           )}
         </div>
       </CardHeader>
 
-      {/* CONTENT - Reduced gap-5 to gap-3 for tighter stacking */}
-      <CardContent className="flex-1 flex flex-col gap-3 pt-4 px-4 pb-6 bg-zinc-900 overflow-hidden">
+      {/* CONTENT */}
+      <CardContent className="flex-1 flex flex-col gap-4 pt-5 px-5 pb-6 bg-[#050505] overflow-hidden">
         
-        {/* 1. WARDROBE GRID - Removed flex-1 so it no longer pushes the video away */}
+        {/* 1. WARDROBE GRID */}
         <div className="w-full">
           <div className="grid grid-cols-2 gap-x-3 gap-y-4 h-full content-start">
             {items.slice(0, 4).map((item, i) => { 
               const imageUrl = findClosetImage(item);
               return (
                 <div key={i} className="flex flex-col gap-1.5">
-                  <div className="relative aspect-[3/4] rounded-md bg-zinc-950 border border-zinc-800 overflow-hidden shadow-sm w-full p-1 group/item">
+                  <div className="relative aspect-[3/4] rounded-sm bg-black border border-zinc-900 overflow-hidden shadow-sm w-full p-1 group/item">
                     {imageUrl ? (
                       <Image 
                         src={imageUrl} alt={item} fill 
-                        className="object-contain opacity-90 group-hover/item:opacity-100 transition-opacity"
+                        className="object-contain opacity-80 group-hover/item:opacity-100 transition-opacity duration-500"
                         sizes="(max-width: 768px) 50vw, 33vw"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-2xl opacity-20">👕</div>
+                      <div className="w-full h-full flex items-center justify-center bg-black text-2xl opacity-20">👕</div>
                     )}
                   </div>
-                  <p className="text-[11px] text-zinc-400 font-light tracking-wider uppercase truncate" title={item}>
+                  <p className="text-[10px] text-zinc-400 font-medium tracking-[0.1em] uppercase truncate" title={item}>
                     {item}
                   </p>
                 </div>
@@ -93,17 +94,17 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
         </div>
 
         {/* 2. VIDEO STRIP */}
-        <div className="relative w-full h-32 bg-zinc-950 rounded-lg border border-zinc-800 group/video overflow-hidden shrink-0 shadow-inner">
+        <div className="relative w-full h-32 bg-black border border-zinc-900 group/video overflow-hidden shrink-0">
           <WardrobeMedia src={VIDEO_URL} alt="Style Motion" />
-           <div className="absolute bottom-2 right-2 z-20 flex items-center gap-1.5 opacity-80">
-              <Sparkles size={10} className="text-[#DC143C]" />
-              <span className="text-[9px] uppercase tracking-wider text-white font-medium text-shadow-sm">Style Motion</span>
+           <div className="absolute bottom-3 right-3 z-20 flex items-center gap-2 opacity-90">
+              <Sparkles size={12} className="text-[#9A1B22]" />
+              <span className="text-[9px] uppercase tracking-[0.2em] text-white font-bold drop-shadow-md">Style Motion</span>
            </div>
         </div>
 
-     {/* 3. REASONING TEXT - Removed mt-auto so it snaps tight to the video strip */}
-     <div className="relative pl-3 border-l-2 border-[#DC143C]/30 h-auto min-h-[60px]">
-          <p className="text-xs text-zinc-400 font-light leading-relaxed italic line-clamp-4">
+       {/* 3. REASONING TEXT */}
+       <div className="relative pl-4 border-l-2 border-[#9A1B22]/50 h-auto min-h-[60px] mt-2">
+          <p className="text-xs text-zinc-400 font-light leading-loose italic">
             &ldquo;{outfit.reasoning}&rdquo;
           </p>
         </div>
