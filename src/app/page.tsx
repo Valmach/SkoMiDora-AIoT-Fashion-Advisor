@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
 import { useState, useEffect, useTransition } from "react";
-import { Bonheur_Royale } from "next/font/google"; 
+import { Bonheur_Royale, Corinthia } from "next/font/google"; 
 import {
   Card,
   CardContent,
@@ -22,9 +22,15 @@ import StyleDnaDisplay from "@/components/StyleDnaDisplay";
 import { collection, query, onSnapshot } from "firebase/firestore";
 import { useFirebase } from "@/firebase/provider";
 
+// Font Initializations
 const bonheur = Bonheur_Royale({
   subsets: ["latin"],
   weight: ["400"],
+});
+
+const corinthia = Corinthia({
+  subsets: ["latin"],
+  weight: ["700"], // Using bold for better button legibility
 });
 
 const STYLE_DNA_LOCAL_STORAGE_KEY = "skomidoraStyleDNA";
@@ -37,7 +43,7 @@ export default function DashboardPage() {
   );
   const [isAnalyzing, startAnalyzingTransition] = useTransition();
   const [analysisError, setAnalysisError] = useState<string | null>(null);
-  const [showDna, setShowDna] = useState(false); // Track if DNA should be visible
+  const [showDna, setShowDna] = useState(false);
   const { toast } = useToast();
 
   const [wardrobeItemCount, setWardrobeItemCount] = useState(0);
@@ -77,12 +83,12 @@ export default function DashboardPage() {
   
     startAnalyzingTransition(async () => {
       setAnalysisError(null);
-      setShowDna(false); // Hide while loading
+      setShowDna(false); 
       try {
         const result = await analyzeStyleDNAAction();
         if (result && 'styleDNA' in result && result.styleDNA) {
           setStyleDNA(result.styleDNA as string); 
-          setShowDna(true); // ✅ Only show after successful click/analysis
+          setShowDna(true); 
           toast({ title: "Style DNA Updated!" });
         }
       } catch (e: any) {
@@ -92,53 +98,54 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="container mx-auto space-y-8">
-      <Card className="shadow-xl border-primary/20">
-        <CardHeader>
-          <CardTitle className={`${bonheur.className} text-7xl font-bold pb-2`}>
+    <div className="container mx-auto space-y-8 pt-8">
+      <Card className="shadow-2xl border-zinc-900 bg-[#050505]">
+        <CardHeader className="pb-8">
+          <CardTitle className={`${bonheur.className} text-7xl md:text-8xl font-normal pb-2 tracking-wide`}>
             <span className="text-white">Welcome to </span>
-            <span className="text-[#DC143C]">SkoMiDora</span>
+            <span className="text-[#9A1B22]">SkoMiDora</span>
           </CardTitle>
-          <CardDescription className="text-muted-foreground font-sans">
-            Your personal AIoT Powered stylist for footwear and fashion.
-            Lets get you dressed.
+          <CardDescription className="text-zinc-400 font-sans text-base tracking-wide font-light">
+            Your personal AIoT Powered stylist for footwear and fashion. Lets get you dressed.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           
-          {/* ✅ DNA DISPLAY: Only visible when showDna is true (after button click) */}
+          {/* DNA DISPLAY */}
           {showDna && styleDNA && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000 mb-8">
               <StyleDnaDisplay styleDNA={styleDNA} />
             </div>
           )}
 
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-5">
+            {/* My Digital Closet Button */}
             <Button
               asChild
-              variant="destructive"
-              className="flex-1 font-calligraphy text-lg"
+              className={`flex-1 ${corinthia.className} text-3xl md:text-4xl py-8 bg-[#9A1B22] hover:bg-[#7A151B] text-white rounded-none transition-all shadow-lg hover:shadow-[#9A1B22]/20`}
             >
-              <Link href="/closet">
-                <Archive className="mr-2 h-4 w-4" /> My Digital Closet
+              <Link href="/closet" className="flex items-center justify-center">
+                <Archive className="mr-3 h-5 w-5" /> My Digital Closet
               </Link>
             </Button>
+            
+            {/* Analyse My Style Button */}
             <Button
               onClick={handleAnalyzeDNA}
               disabled={isAnalyzing || isDataLoading}
-              className="flex-1 font-calligraphy text-lg bg-black hover:bg-destructive text-white"
-              variant="secondary"
+              className={`flex-1 ${corinthia.className} text-3xl md:text-4xl py-8 bg-black hover:bg-zinc-900 border border-zinc-800 hover:border-[#9A1B22] text-white rounded-none transition-all shadow-lg`}
             >
               {isAnalyzing ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-3 h-5 w-5 animate-spin text-[#9A1B22]" />
               ) : (
-                <Brain className="mr-2 h-4 w-4" />
+                <Brain className="mr-3 h-5 w-5 text-[#9A1B22]" />
               )}
               {isAnalyzing ? "Analyzing..." : "Analyse My Style."}
             </Button>
           </div>
+
           {analysisError && (
-            <div className="text-center py-2 text-destructive-foreground bg-destructive/20 p-2 rounded-md text-sm flex items-center gap-2">
+            <div className="text-center py-3 text-[#9A1B22] bg-[#9A1B22]/10 border border-[#9A1B22]/30 rounded-none text-sm flex items-center justify-center gap-2 mt-4 tracking-wider">
               <AlertTriangle className="h-4 w-4" /> <p>{analysisError}</p>
             </div>
           )}
