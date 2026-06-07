@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-// 1. Import Next.js Router
 import { useRouter } from 'next/navigation'; 
 import { getUpcomingEventsStyleAdviceAction } from '@/app/actions/get-calendar-data';
 import UpcomingEventAdviceCard from '@/components/UpcomingEventAdviceCard';
@@ -28,7 +27,6 @@ export default function UpcomingEventsPage() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   
-  // 2. Initialize the router
   const router = useRouter(); 
 
   const fetchData = async () => {
@@ -71,17 +69,17 @@ export default function UpcomingEventsPage() {
     <div className={`min-h-screen bg-black text-white p-6 md:p-12 ${outfit.className}`}>
       
       {/* HEADER SECTION */}
-      <div className="max-w-7xl mx-auto mb-12 flex flex-col md:flex-row justify-between items-end border-b border-zinc-800 pb-8 gap-6">
+      <div className="max-w-7xl mx-auto mb-12 flex flex-col md:flex-row justify-between items-end border-b border-zinc-900 pb-8 gap-6">
         <div>
-           <div className="flex items-center gap-2 text-zinc-400 text-xs font-bold uppercase tracking-widest mb-3">
-             <span className="text-[#DC143C]">●</span> Synced Agenda
+           <div className="flex items-center gap-2 text-zinc-500 text-xs font-bold uppercase tracking-[0.2em] mb-4">
+             <span className="text-[#9A1B22]">●</span> Synced Agenda
            </div>
            
-           <div className="flex items-center gap-3">
-             <Calendar className="h-8 md:h-10 w-8 md:w-10 text-[#DC143C]" />
+           <div className="flex items-center gap-4">
+             <Calendar className="h-8 md:h-10 w-8 md:w-10 text-[#9A1B22]" />
              <h1 className={`text-5xl md:text-6xl font-normal tracking-wide ${imperial.className}`}> 
                <span className="text-white">Your Google Calendar </span>
-               <span className="text-[#DC143C]">Events</span>
+               <span className="text-[#9A1B22]">Events</span>
              </h1>
            </div>
         </div>
@@ -89,10 +87,10 @@ export default function UpcomingEventsPage() {
         <Button 
           onClick={fetchData} 
           variant="outline" 
-          className="rounded-full border-zinc-700 hover:bg-zinc-800 text-xs uppercase tracking-wider"
+          className="rounded-none border-zinc-800 hover:bg-zinc-900 hover:text-white text-xs uppercase tracking-[0.15em]"
           disabled={loading}
         >
-          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Refresh Agenda"}
+          {loading ? <Loader2 className="mr-3 h-4 w-4 animate-spin" /> : "Refresh Agenda"}
         </Button>
       </div>
 
@@ -100,20 +98,18 @@ export default function UpcomingEventsPage() {
       <div className="max-w-7xl mx-auto">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
-            <Loader2 className="h-10 w-10 animate-spin text-[#DC143C]" />
-            <p className="text-zinc-500 text-sm uppercase tracking-widest">Consulting AI Stylist...</p>
+            <Loader2 className="h-10 w-10 animate-spin text-[#9A1B22]" />
+            <p className="text-zinc-500 text-xs uppercase tracking-[0.2em] font-medium">Consulting AI Stylist...</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {events.map((event, index) => {
               
-              // 3. Extract the exact name and weather from your event object.
-              // NOTE: Change 'event.summary' and 'event.weather' to match your actual API data!
               const currentEventName = event.summary || event.title || event.name || "Upcoming Event";
               const currentWeather = event.weather || event.temperature || event.weatherContext || "Weather data unavailable";
 
               return (
-                <div key={index} className="flex flex-col h-full space-y-4">
+                <div key={index} className="flex flex-col h-full space-y-4 group">
                   {/* The original Card */}
                   <div className="flex-grow">
                     <UpcomingEventAdviceCard 
@@ -123,12 +119,12 @@ export default function UpcomingEventsPage() {
                     />
                   </div>
 
-                  {/* The new Hand-Off Button */}
+                  {/* The updated Hand-Off Button -> Routes to Stylist */}
                   <Button 
                     onClick={() => {
-                      router.push(`/closet?event=${encodeURIComponent(currentEventName)}&weather=${encodeURIComponent(currentWeather)}`);
+                      router.push(`/stylist?event=${encodeURIComponent(currentEventName)}&weather=${encodeURIComponent(currentWeather)}`);
                     }}
-                    className="w-full bg-[#DC143C] text-white hover:bg-red-700 uppercase tracking-widest text-xs font-bold py-6 rounded-xl flex items-center justify-center gap-2 transition-all"
+                    className="w-full bg-[#9A1B22] text-white hover:bg-[#7A151B] uppercase tracking-[0.2em] text-[11px] font-bold py-7 rounded-none flex items-center justify-center gap-3 transition-all shadow-lg group-hover:shadow-[0_0_20px_rgba(154,27,34,0.2)]"
                   >
                     <Sparkles className="h-4 w-4" />
                     Style This Event
