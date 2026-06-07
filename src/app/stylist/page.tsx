@@ -94,22 +94,34 @@ function StylistContent() {
           </h1>
           
           {/* EDITABLE DESTINATION & EVENT INPUT */}
-          <div className="max-w-2xl">
-            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-3 flex items-center gap-2">
+          <div className="max-w-2xl relative group/input">
+            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 mb-3 flex items-center gap-2">
               <MapPin className="h-3 w-3 text-[#9A1B22]" /> 
               Destination & Event Context
             </label>
-            <input 
-              type="text"
-              value={eventContext}
-              onChange={(e) => setEventContext(e.target.value)}
-              placeholder="e.g., Winter trip to Oslo, Gala in Paris, London business trip..."
-              className="w-full bg-black border border-zinc-800 text-white px-5 py-4 text-sm font-light tracking-wide focus:border-[#9A1B22] focus:ring-1 focus:ring-[#9A1B22] outline-none transition-all placeholder:text-zinc-700"
-            />
+            
+            <div className="relative">
+              <input 
+                type="text"
+                value={eventContext}
+                onChange={(e) => setEventContext(e.target.value)}
+                placeholder="e.g., Winter trip to Oslo, Gala in Paris, London business trip..."
+                className="w-full bg-zinc-900/30 border border-zinc-800 hover:border-zinc-700 text-zinc-100 pl-5 pr-12 py-4 text-sm font-light tracking-wide focus:border-[#9A1B22] focus:bg-black outline-none transition-all duration-300 placeholder:text-zinc-500 shadow-inner rounded-none"
+              />
+              {/* Icon that fades in when the user clicks into the input */}
+              <div className="absolute inset-y-0 right-0 pr-5 flex items-center pointer-events-none transition-opacity duration-500 opacity-0 group-focus-within/input:opacity-100">
+                <Sparkles className="h-4 w-4 text-[#9A1B22]" />
+              </div>
+            </div>
+
+            {/* Upgraded Weather Status Badge */}
             {weatherContext && (
-              <p className="text-[#9A1B22] text-xs font-medium tracking-widest uppercase mt-3">
-                • Predicted Weather: {weatherContext}
-              </p>
+              <div className="mt-4 flex items-center gap-2 bg-[#9A1B22]/10 border border-[#9A1B22]/20 px-3 py-2 w-fit">
+                <div className="h-1.5 w-1.5 rounded-full bg-[#9A1B22] animate-pulse" />
+                <p className="text-[#9A1B22] text-[9px] font-bold tracking-[0.2em] uppercase">
+                  {weatherContext}
+                </p>
+              </div>
             )}
           </div>
         </div>
