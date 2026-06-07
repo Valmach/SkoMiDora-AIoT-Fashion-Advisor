@@ -7,11 +7,13 @@ import ShoppingRecommendations, { Recommendation } from '@/components/ShoppingRe
 
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Sparkles, Search, CalendarHeart } from "lucide-react";
+import { Loader2, Sparkles, Search, CalendarHeart, Tag } from "lucide-react";
 import { Inter, Great_Vibes } from 'next/font/google';
 
-const inter = Inter({ subsets: ['latin'], weight: ['300', '400', '500'] });
+const inter = Inter({ subsets: ['latin'], weight: ['300', '400', '500', '600'] });
 const greatVibes = Great_Vibes({ subsets: ['latin'], weight: ['400'] });
+
+const CATEGORIES = ["All Categories", "Outerwear", "Tops", "Bottoms", "Dresses", "Footwear", "Accessories"];
 
 function StylistContent() {
   const { toast } = useToast();
@@ -19,18 +21,18 @@ function StylistContent() {
 
   const [isStyling, setIsStyling] = useState(false);
   const [recs, setRecs] = useState<Recommendation[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string>("All Categories");
   
-  // THE CONNECTION: Reading the URL from the Events page
   const urlEvent = searchParams.get('event');
   const weatherContext = searchParams.get('weather') || ""; 
-  
-  // Fallback if they just click the sidebar without selecting an event first
   const displayHighlight = urlEvent || "General Wardrobe Refresh";
   
   const handleGenerateLooks = async () => {
     setIsStyling(true);
+    setRecs([]); // Clear old results while loading
     try {
-      const result = await generateShoppingRecommendations(displayHighlight, weatherContext);
+      // Pass the activeCategory to the updated Server Action
+      const result = await generateShoppingRecommendations(displayHighlight, weatherContext, activeCategory);
       if (result.success && result.recommendations) {
         setRecs(result.recommendations);
       } else {
@@ -59,7 +61,6 @@ function StylistContent() {
             </span>
           </div>
           
-          {/* GREAT VIBES LUXURY TITLE */}
           <h1 className={`${greatVibes.className} text-6xl md:text-8xl font-normal text-white mb-4 tracking-wide leading-tight`}>
             Styling Consultation
           </h1>
@@ -76,6 +77,29 @@ function StylistContent() {
           </div>
         </div>
         
+        {/* CATEGORY FILTER STRIP */}
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-4">
+             <Tag className="h-3 w-3 text-[#9A1B22]" />
+             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Target Category</span>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className={`whitespace-nowrap px-6 py-2.5 text-[11px] font-semibold tracking-widest uppercase transition-all snap-start
+                  ${activeCategory === cat 
+                    ? 'bg-[#9A1B22] text-white shadow-md' 
+                    : 'bg-black text-zinc-500 border border-zinc-800 hover:border-zinc-500 hover:text-white'}
+                `}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <Button 
           onClick={handleGenerateLooks} 
           disabled={isStyling}
@@ -84,7 +108,7 @@ function StylistContent() {
           {isStyling ? (
             <><Loader2 className="mr-3 h-5 w-5 animate-spin" /> Consulting Stylist...</>
           ) : (
-            <><Search className="mr-3 h-4 w-4" /> Find Missing Pieces</>
+            <><Search className="mr-3 h-4 w-4" /> Find {activeCategory === "All Categories" ? "Missing Pieces" : activeCategory}</>
           )}
         </Button>
       </div>
@@ -95,7 +119,7 @@ function StylistContent() {
           <div className="flex items-center gap-3 mb-8 px-2 border-b border-zinc-900 pb-5">
             <Sparkles className="h-6 w-6 text-[#9A1B22]" />
             <h2 className={`${greatVibes.className} text-5xl font-normal text-white tracking-wide`}>
-              Curated for: <span className="text-[#9A1B22]">{displayHighlight}</span>
+              Curated <span className="text-[#9A1B22]">{activeCategory !== "All Categories" ? activeCategory : "Pieces"}</span>
             </h2>
           </div>
           <ShoppingRecommendations eventContext={displayHighlight} recommendations={recs} />

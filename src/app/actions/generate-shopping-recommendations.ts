@@ -13,14 +13,17 @@ const ShoppingRecommendationSchema = z.object({
   }))
 });
 
-// Notice we added weatherContext as a required parameter here
-export async function generateShoppingRecommendations(eventContext: string, weatherContext: string, userPreference: string = "high-end luxury") {
-  console.log(`[Server Action] Starting recommendation for: ${eventContext} | Weather: ${weatherContext}`);
+export async function generateShoppingRecommendations(
+  eventContext: string, 
+  weatherContext: string, 
+  targetCategory: string = "All Categories", // NEW CATEGORY PARAMETER
+  userPreference: string = "high-end luxury"
+) {
+  console.log(`[Server Action] Starting recommendation for: ${eventContext} | Weather: ${weatherContext} | Category: ${targetCategory}`);
 
   try {
     const { db } = getFirebaseAdmin();
 
-    // Pull the massive wardrobe chunk
     const snapshot = await db.collection('publicWardrobeItems').limit(500).get();
     
     let currentWardrobe = "";
@@ -32,7 +35,7 @@ export async function generateShoppingRecommendations(eventContext: string, weat
       currentWardrobe = "The user's closet is currently empty.";
     }
 
-    // THE UPGRADED PROMPT
+    // THE CATEGORY-AWARE PROMPT
     const prompt = `
       You are an elite personal stylist for high-net-worth clients. 
       The user has an upcoming event: "${eventContext}".
@@ -43,20 +46,18 @@ export async function generateShoppingRecommendations(eventContext: string, weat
 
       CRITICAL STYLING RULES:
       1. CLIMATE ENFORCEMENT: You MUST strictly filter the inventory and recommendations based on the ${weatherContext} weather. 
-         - If it is mild (e.g., 19°C/66°F), require light layers, appropriate footwear, and avoid extreme summer or extreme winter gear.
-         - Do not suggest items that would make the user uncomfortably hot or uncomfortably cold.
-      2. Based on their event, the strict weather parameters, and their preference for ${userPreference}, identify 3 specific shopping opportunities. 
+      2. TARGET CATEGORY ENFORCEMENT: The user is specifically looking for: "${targetCategory}".
+         - If this says "All Categories", provide a mixed curation (e.g., 1 top, 1 shoe, 1 bag).
+         - If this specifies a distinct category (e.g., "Footwear", "Outerwear", "Tops", "Bottoms", "Accessories"), ALL 3 recommendations MUST be from that exact category. Do not mix and match.
       3. Focus heavily on integrating items from premier designers such as Gabriela Hearst, Manolo Blahnik, Burberry, Fendi, and Chanel.
-      4. Ensure the recommendations complement what they already own (e.g., if they own a great Chanel dress, recommend a complementary Manolo Blahnik heel).
+      4. Ensure the recommendations complement what they already own.
     `;
 
     console.log("[Server Action] Sending prompt to Gemini via Genkit...");
     const { output } = await ai.generate({
       model: 'googleai/gemini-2.5-flash',
       prompt: prompt,
-      output: {
-        schema: ShoppingRecommendationSchema
-      }
+      output: { schema: ShoppingRecommendationSchema }
     });
 
     if (!output || !output.recommendations) {
