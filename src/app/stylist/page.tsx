@@ -13,16 +13,23 @@ import { Inter, Great_Vibes } from 'next/font/google';
 const inter = Inter({ subsets: ['latin'], weight: ['300', '400', '500', '600'] });
 const greatVibes = Great_Vibes({ subsets: ['latin'], weight: ['400'] });
 
+// UPGRADED TAXONOMY: Merging original granular pieces with the new detailed categories
 const CATEGORIES = [
   "Any Missing Piece", 
-  "Blouse", 
-  "Jacket", 
-  "Skirt", 
+  "Shirts & Blouses", 
+  "T-Shirts & Sweats",
+  "Tank Tops",
+  "Sweaters & Cardigans",
+  "Jackets & Outerwear", 
   "Trousers", 
-  "Dress", 
-  "Shoe", 
-  "Handbag", 
-  "Jewelry"
+  "Jeans",
+  "Skirts", 
+  "Dresses", 
+  "Innerwear & Underwear",
+  "Shoes", 
+  "Handbags", 
+  "Jewelry",
+  "Accessories"
 ];
 
 function StylistContent() {
@@ -149,7 +156,7 @@ function StylistContent() {
           <div className="flex items-center gap-3 mb-8 px-2 border-b border-zinc-900 pb-5">
             <Sparkles className="h-6 w-6 text-[#9A1B22]" />
             <h2 className={`${greatVibes.className} text-5xl font-normal text-white tracking-wide`}>
-              Curated <span className="text-[#9A1B22]">{activeCategory !== "Any Missing Piece" ? activeCategory + "s" : "Pieces"}</span>
+              Curated <span className="text-[#9A1B22]">{activeCategory !== "Any Missing Piece" ? activeCategory : "Pieces"}</span>
             </h2>
           </div>
           <ShoppingRecommendations eventContext={eventContext || "General Wardrobe Refresh"} recommendations={recs} />
