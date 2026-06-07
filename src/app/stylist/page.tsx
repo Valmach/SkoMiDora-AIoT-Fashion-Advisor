@@ -1,19 +1,18 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import { useSearchParams } from 'next/navigation';
 import { generateShoppingRecommendations } from '@/app/actions/generate-shopping-recommendations';
 import ShoppingRecommendations, { Recommendation } from '@/components/ShoppingRecommendations';
 
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Sparkles, Search, CalendarHeart, Tag } from "lucide-react";
+import { Loader2, Sparkles, Search, CalendarHeart, Tag, MapPin } from "lucide-react";
 import { Inter, Great_Vibes } from 'next/font/google';
 
 const inter = Inter({ subsets: ['latin'], weight: ['300', '400', '500', '600'] });
 const greatVibes = Great_Vibes({ subsets: ['latin'], weight: ['400'] });
 
-// UPGRADED TAXONOMY: Specific, granular pieces to complete a look
 const CATEGORIES = [
   "Any Missing Piece", 
   "Blouse", 
@@ -34,15 +33,27 @@ function StylistContent() {
   const [recs, setRecs] = useState<Recommendation[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>("Any Missing Piece");
   
-  const urlEvent = searchParams.get('event');
+  // Create an editable state for the event/destination
+  const [eventContext, setEventContext] = useState("");
+  
   const weatherContext = searchParams.get('weather') || ""; 
-  const displayHighlight = urlEvent || "General Wardrobe Refresh";
+
+  // Pre-fill the input if they clicked here from a specific calendar event
+  useEffect(() => {
+    const urlEvent = searchParams.get('event');
+    if (urlEvent) {
+      setEventContext(urlEvent);
+    }
+  }, [searchParams]);
   
   const handleGenerateLooks = async () => {
+    // Fallback to a general refresh if they leave the input completely blank
+    const finalContext = eventContext.trim() || "General Wardrobe Refresh";
+
     setIsStyling(true);
     setRecs([]); 
     try {
-      const result = await generateShoppingRecommendations(displayHighlight, weatherContext, activeCategory);
+      const result = await generateShoppingRecommendations(finalContext, weatherContext, activeCategory);
       if (result.success && result.recommendations) {
         setRecs(result.recommendations);
       } else {
@@ -71,24 +82,33 @@ function StylistContent() {
             </span>
           </div>
           
-          <h1 className={`${greatVibes.className} text-6xl md:text-8xl font-normal text-white mb-4 tracking-wide leading-tight`}>
+          <h1 className={`${greatVibes.className} text-6xl md:text-8xl font-normal text-white mb-6 tracking-wide leading-tight`}>
             Styling Consultation
           </h1>
           
-          <div className="flex flex-col gap-1.5">
-            <p className="text-zinc-400 text-xl font-light tracking-wide">
-              Find pieces for this event: <span className="text-white font-medium italic">{displayHighlight}</span>
-            </p>
+          {/* EDITABLE DESTINATION & EVENT INPUT */}
+          <div className="max-w-2xl">
+            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-3 flex items-center gap-2">
+              <MapPin className="h-3 w-3 text-[#9A1B22]" /> 
+              Destination & Event Context
+            </label>
+            <input 
+              type="text"
+              value={eventContext}
+              onChange={(e) => setEventContext(e.target.value)}
+              placeholder="e.g., Winter trip to Oslo, Gala in Paris, London business trip..."
+              className="w-full bg-black border border-zinc-800 text-white px-5 py-4 text-sm font-light tracking-wide focus:border-[#9A1B22] focus:ring-1 focus:ring-[#9A1B22] outline-none transition-all placeholder:text-zinc-700"
+            />
             {weatherContext && (
-              <p className="text-[#9A1B22] text-sm font-medium tracking-widest uppercase mt-2">
-                • {weatherContext}
+              <p className="text-[#9A1B22] text-xs font-medium tracking-widest uppercase mt-3">
+                • Predicted Weather: {weatherContext}
               </p>
             )}
           </div>
         </div>
         
-        {/* CATEGORY FILTER STRIP - Now uses flex-wrap to eliminate the scrollbar mess */}
-        <div className="mb-8">
+        {/* CATEGORY FILTER STRIP */}
+        <div className="mb-8 mt-8 border-t border-zinc-900/50 pt-8">
           <div className="flex items-center gap-2 mb-4">
              <Tag className="h-3 w-3 text-[#9A1B22]" />
              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Target Specific Garment</span>
@@ -132,7 +152,7 @@ function StylistContent() {
               Curated <span className="text-[#9A1B22]">{activeCategory !== "Any Missing Piece" ? activeCategory + "s" : "Pieces"}</span>
             </h2>
           </div>
-          <ShoppingRecommendations eventContext={displayHighlight} recommendations={recs} />
+          <ShoppingRecommendations eventContext={eventContext || "General Wardrobe Refresh"} recommendations={recs} />
         </div>
       )}
 
