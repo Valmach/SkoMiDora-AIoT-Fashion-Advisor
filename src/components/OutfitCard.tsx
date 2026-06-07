@@ -41,25 +41,29 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
   return (
     <Card className="bg-[#050505] border-zinc-900 overflow-hidden flex flex-col h-full min-h-[800px] hover:border-[#9A1B22]/50 transition-all duration-300 group">
       
-      {/* HEADER - Changed to h-auto so text can breathe */}
-      <CardHeader className="pb-3 bg-black border-b border-zinc-900 px-5 pt-5 relative h-auto min-h-[120px] shrink-0">
-        <div className="flex justify-between items-start gap-4 relative z-10 h-full">
-          <div className="flex-1 flex flex-col h-full">
-            <div className="flex items-center gap-2 text-[10px] font-bold text-zinc-500 mb-3 uppercase tracking-[0.2em]">
+      {/* HEADER - Re-architected to stack cleanly and prevent text crushing */}
+      <CardHeader className="pb-4 bg-black border-b border-zinc-900 px-5 pt-5 relative h-auto shrink-0">
+        <div className="flex flex-col gap-3 relative z-10 w-full">
+          
+          {/* Top Row: Meta Information */}
+          <div className="flex items-start justify-between gap-3 w-full">
+            <div className="flex items-center gap-2 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] shrink-0 mt-1">
               <span className="text-[#9A1B22]">0{index + 1}</span>
               <span>•</span>
-              <span>{outfit.location || "Curated Look"}</span>
+              <span className="truncate max-w-[120px]">{outfit.location || "Curated Look"}</span>
             </div>
-            {/* Removed line-clamp-3 so titles don't get cut off */}
-            <CardTitle className="text-sm text-zinc-200 font-serif font-normal tracking-wide leading-relaxed">
-              {outfit.outfitIdea}
-            </CardTitle>
+            {outfit.weather && (
+              <Badge variant="outline" className="bg-black text-zinc-500 border-zinc-800 text-[8px] px-2 py-0.5 uppercase tracking-widest text-right max-w-[50%] line-clamp-2 leading-tight">
+                {outfit.weather}
+              </Badge>
+            )}
           </div>
-          {outfit.weather && (
-            <Badge variant="outline" className="bg-black text-zinc-500 border-zinc-800 text-[9px] px-2 py-1 shrink-0 mt-1 uppercase tracking-widest">
-              {outfit.weather}
-            </Badge>
-          )}
+
+          {/* Bottom Row: The Outfit Idea (Now gets 100% width) */}
+          <CardTitle className="text-sm text-zinc-200 font-serif font-normal tracking-wide leading-relaxed w-full">
+            {outfit.outfitIdea}
+          </CardTitle>
+          
         </div>
       </CardHeader>
 
