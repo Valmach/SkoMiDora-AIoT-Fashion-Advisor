@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 
-// Dictionary mapping base languages to Google's premium voice models
+// FIXED: Mapped to verified, ultra-premium Google Cloud TTS models
 const voiceMap: Record<string, { languageCode: string, name: string }> = {
-  'en': { languageCode: 'en-GB', name: 'en-GB-Journey-F' }, 
-  'fr': { languageCode: 'fr-FR', name: 'fr-FR-Journey-F' }, 
-  'es': { languageCode: 'es-ES', name: 'es-ES-Journey-F' }, 
-  'it': { languageCode: 'it-IT', name: 'it-IT-Wavenet-A' }, 
-  'no': { languageCode: 'nb-NO', name: 'nb-NO-Wavenet-E' }, 
-  'de': { languageCode: 'de-DE', name: 'de-DE-Journey-F' }, 
+  'en': { languageCode: 'en-US', name: 'en-US-Journey-F' },   // The ultra-premium warm US Female voice
+  'fr': { languageCode: 'fr-FR', name: 'fr-FR-Neural2-A' },   // Premium French Female
+  'es': { languageCode: 'es-ES', name: 'es-ES-Neural2-A' },   // Premium Spanish Female
+  'it': { languageCode: 'it-IT', name: 'it-IT-Neural2-A' },   // Premium Italian Female
+  'no': { languageCode: 'nb-NO', name: 'nb-NO-Wavenet-E' },   // Premium Norwegian Female
+  'de': { languageCode: 'de-DE', name: 'de-DE-Neural2-A' },   // Premium German Female
 };
 
 export async function POST(request: Request) {
@@ -23,17 +23,21 @@ export async function POST(request: Request) {
       throw new Error("Missing GOOGLE_TTS_API_KEY in environment variables");
     }
 
-    // Extract the base language (e.g., 'fr' from 'fr-FR')
-    const baseLang = locale.split('-')[0];
+    // Extract the base language and match it against our verified dictionary
+    const baseLang = locale.split('-')[0].toLowerCase();
     const selectedVoice = voiceMap[baseLang] || voiceMap['en'];
 
-    // Call the direct Google Cloud REST API
+    // Call the direct Google Cloud REST API (bypassing the protobufjs webpack crash)
     const ttsUrl = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`;
     
     const payload = {
       input: { text: text },
       voice: selectedVoice,
-      audioConfig: { audioEncoding: 'MP3' }
+      audioConfig: { 
+        audioEncoding: 'MP3',
+        speakingRate: 1.0, // Ensures a natural, luxurious pacing
+        pitch: 0 
+      }
     };
 
     const response = await fetch(ttsUrl, {
@@ -44,7 +48,7 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error("GCP TTS API Error:", errorData);
+      console.error("GCP TTS API Error:", JSON.stringify(errorData, null, 2));
       throw new Error(`Google API responded with status: ${response.status}`);
     }
 
@@ -54,7 +58,7 @@ export async function POST(request: Request) {
       throw new Error("No audio content returned from GCP");
     }
 
-    // The REST API returns a base64 string. We must decode it into a Buffer for the audio player.
+    // Decode the base64 string into a Buffer for the browser audio player
     const audioBuffer = Buffer.from(data.audioContent, 'base64');
 
     return new NextResponse(audioBuffer, {
