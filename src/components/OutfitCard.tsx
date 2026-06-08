@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, MapPin, CloudRain, Snowflake, Sun } from "lucide-react";
+import { MapPin, CloudRain, Snowflake, Sun } from "lucide-react";
 
 interface OutfitCardProps {
   outfit: {
@@ -35,28 +35,37 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
     return fuzzy?.imageUrl || null;
   };
 
-  // 1. DYNAMIC CITY MATCHER (Fallback to sleek architecture if unknown)
-  const getCityImage = (loc: string = "") => {
-    const l = loc.toLowerCase();
-    if (l.includes('paris')) return "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&q=80&w=800";
-    if (l.includes('oslo') || l.includes('nordic')) return "https://images.unsplash.com/photo-1517457210515-32c0f209ddc6?auto=format&fit=crop&q=80&w=800";
-    if (l.includes('london')) return "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&q=80&w=800";
-    if (l.includes('rome') || l.includes('italy')) return "https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&q=80&w=800";
-    if (l.includes('new york') || l.includes('nyc')) return "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?auto=format&fit=crop&q=80&w=800";
-    return "https://images.unsplash.com/photo-1600607686527-6fb886090705?auto=format&fit=crop&q=80&w=800"; // Dark luxury aesthetic
+  // 1. DEEP SEARCH CITY MATCHER
+  const getCityContext = () => {
+    // Scan everything the AI generated to hunt for destination clues
+    const textContext = `${outfit.location || ""} ${outfit.outfitIdea || ""} ${outfit.reasoning || ""}`.toLowerCase();
+    
+    if (textContext.includes('paris') || textContext.includes('france')) return { bg: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&q=80&w=800", label: "Paris" };
+    if (textContext.includes('oslo') || textContext.includes('nordic') || textContext.includes('norway')) return { bg: "https://images.unsplash.com/photo-1517457210515-32c0f209ddc6?auto=format&fit=crop&q=80&w=800", label: "Oslo" };
+    if (textContext.includes('london') || textContext.includes('uk')) return { bg: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&q=80&w=800", label: "London" };
+    if (textContext.includes('rome') || textContext.includes('italy')) return { bg: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&q=80&w=800", label: "Rome" };
+    if (textContext.includes('new york') || textContext.includes('nyc')) return { bg: "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?auto=format&fit=crop&q=80&w=800", label: "New York" };
+    if (textContext.includes('tokyo') || textContext.includes('japan')) return { bg: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&q=80&w=800", label: "Tokyo" };
+    if (textContext.includes('milan')) return { bg: "https://images.unsplash.com/photo-1534346761502-3c220c32d4af?auto=format&fit=crop&q=80&w=800", label: "Milan" };
+
+    // Upgraded Fallback: An actual sweeping luxury city street scape
+    const fallbackLabel = outfit.location && outfit.location.toLowerCase() !== "curated style" ? outfit.location.split(',')[0] : "Atmosphere";
+    return { bg: "https://images.unsplash.com/photo-1449844908441-8829872d2607?auto=format&fit=crop&q=80&w=800", label: fallbackLabel };
   };
 
   // 2. DYNAMIC WEATHER CSS OVERLAY
-  const getWeatherEffect = (weather: string = "") => {
-    const w = weather.toLowerCase();
-    if (w.includes('rain') || w.includes('drizzle')) return { overlay: "bg-gradient-to-b from-slate-900/90 via-slate-800/50 to-black", icon: <CloudRain size={12} className="text-slate-400" /> };
+  const getWeatherEffect = () => {
+    const w = `${outfit.weather || ""} ${outfit.reasoning || ""}`.toLowerCase();
+    
+    if (w.includes('rain') || w.includes('drizzle') || w.includes('wet')) return { overlay: "bg-gradient-to-b from-slate-900/90 via-slate-800/50 to-black", icon: <CloudRain size={12} className="text-slate-400" /> };
     if (w.includes('snow') || w.includes('cold') || w.includes('winter')) return { overlay: "bg-gradient-to-b from-zinc-200/20 via-transparent to-black mix-blend-screen", icon: <Snowflake size={12} className="text-zinc-300" /> };
-    if (w.includes('sun') || w.includes('warm') || w.includes('hot') || w.includes('clear')) return { overlay: "bg-gradient-to-b from-amber-500/20 via-transparent to-black mix-blend-overlay", icon: <Sun size={12} className="text-amber-500" /> };
+    if (w.includes('sun') || w.includes('warm') || w.includes('hot') || w.includes('clear') || w.includes('summer')) return { overlay: "bg-gradient-to-b from-amber-500/20 via-transparent to-black mix-blend-overlay", icon: <Sun size={12} className="text-amber-500" /> };
+    
     return { overlay: "bg-gradient-to-t from-black via-black/60 to-transparent", icon: <MapPin size={12} className="text-zinc-500" /> };
   };
 
-  const bgImage = getCityImage(outfit.location);
-  const { overlay, icon } = getWeatherEffect(outfit.weather);
+  const { bg: bgImage, label: cityLabel } = getCityContext();
+  const { overlay, icon } = getWeatherEffect();
 
   return (
     <Card className="bg-[#050505] border-zinc-900 overflow-hidden flex flex-col h-full min-h-[800px] hover:border-[#9A1B22]/50 transition-all duration-500 group shadow-2xl rounded-none">
@@ -68,7 +77,7 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
             <div className="flex items-center gap-2 text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] shrink-0 mt-1">
               <span className="text-[#9A1B22]">0{index + 1}</span>
               <span>•</span>
-              <span className="truncate max-w-[120px]">{outfit.location || "Curated Look"}</span>
+              <span className="truncate max-w-[120px]">{cityLabel.toUpperCase()}</span>
             </div>
             {outfit.weather && (
               <Badge variant="outline" className="bg-black text-zinc-500 border-zinc-800 text-[8px] px-2 py-0.5 uppercase tracking-widest text-right max-w-[50%] line-clamp-2 leading-tight rounded-none">
@@ -112,12 +121,12 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
           </div>
         </div>
 
-        {/* 2. DYNAMIC CITY ATMOSPHERICS (Replaces the heavy MP4) */}
+        {/* 2. DYNAMIC CITY ATMOSPHERICS */}
         <div className="relative w-full h-36 border border-zinc-900 group/city overflow-hidden shrink-0 mt-2 bg-black rounded-sm">
            {/* Black & White Desaturated City Image */}
            <img 
              src={bgImage} 
-             alt={outfit.location}
+             alt={cityLabel}
              className="absolute inset-0 w-full h-full object-cover opacity-50 mix-blend-luminosity group-hover/city:scale-105 transition-transform duration-1000 ease-in-out"
              loading="lazy"
            />
@@ -128,7 +137,7 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
            <div className="absolute bottom-3 right-3 z-20 flex items-center gap-2 opacity-90 backdrop-blur-sm bg-black/40 px-3 py-1.5 border border-zinc-800/50">
               {icon}
               <span className="text-[9px] uppercase tracking-[0.2em] text-zinc-300 font-bold drop-shadow-md">
-                {outfit.location ? outfit.location.split(',')[0] : "Atmosphere"}
+                {cityLabel}
               </span>
            </div>
         </div>
