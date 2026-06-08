@@ -19,15 +19,13 @@ const nextConfig = {
     }
   },
 
-  // Image Domains
+  // Image Domains - Upgraded to wildcard to prevent ANY future image blocks
   images: {
     remotePatterns: [
-      { protocol: 'https', hostname: 'firebasestorage.googleapis.com' },
-      { protocol: 'https', hostname: '*.googleusercontent.com' },
-      { protocol: 'https', hostname: 'storage.googleapis.com' },
-      { protocol: 'https', hostname: 'via.placeholder.com' },
-      { protocol: 'https', hostname: 'placehold.co' },
-      { protocol: 'https', hostname: 'images.unsplash.com' },
+      {
+        protocol: 'https',
+        hostname: '**', // This wildcard allows all secure external images
+      },
     ],
   },
 
