@@ -66,9 +66,9 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
     if (textContext.includes('paris') || textContext.includes('france') || textContext.includes('parisian')) 
       return { bg: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&q=80&w=800", label: "Paris" };
     
-    // VERIFIED: Custom Oslo Aerial Sunset
+    // VERIFIED: Raw Direct Image URL for Oslo Sunset
     if (textContext.includes('oslo') || textContext.includes('nordic') || textContext.includes('norway') || textContext.includes('scandinavian')) 
-      return { bg: "https://images.unsplash.com/photo-vY6GrOJJcoU?auto=format&fit=crop&q=80&w=800", label: "Oslo" }; 
+      return { bg: "https://plus.unsplash.com/premium_photo-1697729974131-40aabc4817c0?q=80&w=831&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", label: "Oslo" }; 
     
     if (textContext.includes('london') || textContext.includes('uk') || textContext.includes('british')) 
       return { bg: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&q=80&w=800", label: "London" }; 
