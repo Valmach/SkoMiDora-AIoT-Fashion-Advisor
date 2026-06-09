@@ -66,12 +66,14 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
     if (textContext.includes('paris') || textContext.includes('france') || textContext.includes('parisian')) 
       return { bg: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&q=80&w=800", label: "Paris" };
     
+    // VERIFIED: Oslo Opera House / Waterfront
     if (textContext.includes('oslo') || textContext.includes('nordic') || textContext.includes('norway') || textContext.includes('scandinavian')) 
-      return { bg: "https://images.unsplash.com/photo-1585229232371-3ebdfad50d4a?auto=format&fit=crop&q=80&w=800", label: "Oslo" }; 
+      return { bg: "https://images.unsplash.com/photo-1628178877119-9403b963628e?auto=format&fit=crop&q=80&w=800", label: "Oslo" }; 
     
     if (textContext.includes('london') || textContext.includes('uk') || textContext.includes('british')) 
       return { bg: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&q=80&w=800", label: "London" }; 
     
+    // VERIFIED: Roman Colosseum
     if (textContext.includes('rome') || textContext.includes('italy') || textContext.includes('mediterranean') || textContext.includes('roman')) 
       return { bg: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&q=80&w=800", label: "Rome" }; 
     
@@ -116,7 +118,6 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
               <span className="truncate max-w-[120px]">{displayLocation.toUpperCase()}</span>
             </div>
             
-            {/* STRICT TRUNCATION FIX: whitespace-nowrap and truncate force a single line */}
             {outfit.weather && (
               <Badge 
                 variant="outline" 
@@ -161,7 +162,6 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
              className="absolute inset-0 w-full h-full object-cover opacity-100 group-hover/city:scale-105 transition-transform duration-1000 ease-in-out"
              loading="lazy"
              onError={(e) => {
-               // SELF-HEALING IMAGE: Gracefully falls back if Unsplash link breaks
                e.currentTarget.src = FALLBACK_CITY_IMG;
              }}
            />

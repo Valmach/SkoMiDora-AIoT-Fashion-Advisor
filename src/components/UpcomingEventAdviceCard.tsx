@@ -21,19 +21,20 @@ interface AdviceProps {
     reasoning: string;
     styleKeywords: string[];
     location?: string;
-    cityBg?: string; // Tells TypeScript to expect the landmark image from the backend
+    cityBg?: string; 
   };
   analyzedItems: any[];
   cardIndex: number;
 }
 
+// FULLY SYNCHRONIZED VERIFIED LANDMARKS
 const CITY_IMAGES: Record<string, string> = {
-  'Paris': 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=800&q=80', 
-  'New York': 'https://images.unsplash.com/photo-1496442226666-8d4a0e62e6e9?auto=format&fit=crop&w=800&q=80', 
-  'Oslo': 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=800&q=80',
-  'Roma': 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=800&q=80',
-  'Rome': 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=800&q=80',
-  'Default': 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&q=80' 
+  'Paris': 'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=800&q=80', 
+  'New York': 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?auto=format&fit=crop&w=800&q=80', 
+  'Oslo': 'https://images.unsplash.com/photo-1628178877119-9403b963628e?auto=format&fit=crop&w=800&q=80', // Fixed: Oslo Opera House
+  'Rome': 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=800&q=80', // Fixed: Colosseum
+  'London': 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=800&q=80', // Added London
+  'Default': 'https://images.unsplash.com/photo-1473625247510-8ceb1760943f?auto=format&fit=crop&w=800&q=80' // Synchronized fallback
 };
 
 export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, cardIndex }: AdviceProps) {
@@ -43,7 +44,6 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
 
-  // Clean up audio if the component unmounts
   useEffect(() => {
     return () => {
       if (audioElement) {
@@ -53,7 +53,6 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
   }, [audioElement]);
 
   const handleSpeak = async () => {
-    // If it is already playing, stop it
     if (isSpeaking && audioElement) {
       audioElement.pause();
       setIsSpeaking(false);
@@ -66,7 +65,6 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
       const textToRead = `${eventAdvice.eventName}. ${eventAdvice.weatherForecast}. Stylist Notes: ${eventAdvice.reasoning}`;
       const userLocale = navigator.language || 'en-US'; 
       
-      // Call our new Next.js API route for premium Google Cloud TTS
       const response = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -75,7 +73,6 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
 
       if (!response.ok) throw new Error('Failed to fetch premium audio');
 
-      // Convert the response to an MP3 Blob and play it dynamically
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
@@ -92,10 +89,12 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
   };
 
   const getCityImage = (name: string) => {
-    if (name.includes("Paris")) return CITY_IMAGES['Paris'];
-    if (name.includes("New York")) return CITY_IMAGES['New York'];
-    if (name.includes("Oslo")) return CITY_IMAGES['Oslo'];
-    if (name.includes("Roma") || name.includes("Rome")) return CITY_IMAGES['Roma'];
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes("paris")) return CITY_IMAGES['Paris'];
+    if (lowerName.includes("new york")) return CITY_IMAGES['New York'];
+    if (lowerName.includes("oslo")) return CITY_IMAGES['Oslo'];
+    if (lowerName.includes("roma") || lowerName.includes("rome")) return CITY_IMAGES['Rome'];
+    if (lowerName.includes("london")) return CITY_IMAGES['London'];
     return CITY_IMAGES['Default'];
   };
 
@@ -108,10 +107,11 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
         
         <div className="h-56 w-full bg-zinc-800 relative overflow-hidden group shrink-0">
           <img 
-            // PREFERS THE DYNAMIC BACKEND IMAGE OVER THE LOCAL DICTIONARY
             src={eventAdvice.cityBg || getCityImage(eventAdvice.eventName)} 
             alt={eventAdvice.eventName}
             className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-700 group-hover:scale-110 transform transition-transform"
+            // SELF HEALING FALLBACK ADDED HERE
+            onError={(e) => { e.currentTarget.src = CITY_IMAGES['Default']; }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-transparent to-transparent opacity-80" />
           
