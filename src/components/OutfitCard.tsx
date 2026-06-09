@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, CloudRain, Snowflake, Sun } from "lucide-react";
 
+// Bypasses Next.js domain restrictions and handles broken DB links gracefully
 const SafeImage = ({ src, alt }: { src: string, alt: string }) => {
   const [hasError, setHasError] = useState(false);
 
@@ -40,6 +41,7 @@ interface OutfitCardProps {
   analyzedItems: any[];
 }
 
+// Universal architectural fallback
 const FALLBACK_CITY_IMG = "https://images.unsplash.com/photo-1473625247510-8ceb1760943f?auto=format&fit=crop&q=80&w=800";
 
 export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardProps) {
@@ -57,20 +59,32 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
     return fuzzy?.imageUrl || null;
   };
 
-  // NEW FIX: This function now controls BOTH the background image AND the text label.
-  // It scans the AI's actual reasoning text, guaranteeing they always match perfectly.
+  // INTELLIGENT EXTRACTION & VERIFIED LANDMARKS
   const getCityData = () => {
     const textContext = `${outfit.location || ""} ${outfit.outfitIdea || ""} ${outfit.reasoning || ""}`.toLowerCase();
     
-    if (textContext.includes('paris') || textContext.includes('france') || textContext.includes('parisian')) return { bg: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&q=80&w=800", label: "Paris" };
-    if (textContext.includes('oslo') || textContext.includes('nordic') || textContext.includes('norway') || textContext.includes('scandinavian')) return { bg: "https://images.unsplash.com/photo-1514890547357-a9ee288728e0?auto=format&fit=crop&q=80&w=800", label: "Oslo" }; 
-    if (textContext.includes('london') || textContext.includes('uk') || textContext.includes('british')) return { bg: "https://images.unsplash.com/photo-1520939817805-64a23d865b16?auto=format&fit=crop&q=80&w=800", label: "London" }; 
-    if (textContext.includes('rome') || textContext.includes('italy') || textContext.includes('mediterranean') || textContext.includes('roman')) return { bg: "https://images.unsplash.com/photo-1533676802871-efa80c98696b?auto=format&fit=crop&q=80&w=800", label: "Rome" }; 
-    if (textContext.includes('new york') || textContext.includes('nyc') || textContext.includes('manhattan')) return { bg: "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?auto=format&fit=crop&q=80&w=800", label: "New York" }; 
-    if (textContext.includes('tokyo') || textContext.includes('japan')) return { bg: "https://images.unsplash.com/photo-1536098561-6c4ffcb36fb7?auto=format&fit=crop&q=80&w=800", label: "Tokyo" }; 
-    if (textContext.includes('milan') || textContext.includes('milanese')) return { bg: "https://images.unsplash.com/photo-1534346761502-3c220c32d4af?auto=format&fit=crop&q=80&w=800", label: "Milan" }; 
+    if (textContext.includes('paris') || textContext.includes('france') || textContext.includes('parisian')) 
+      return { bg: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&q=80&w=800", label: "Paris" };
+    
+    if (textContext.includes('oslo') || textContext.includes('nordic') || textContext.includes('norway') || textContext.includes('scandinavian')) 
+      return { bg: "https://images.unsplash.com/photo-1585229232371-3ebdfad50d4a?auto=format&fit=crop&q=80&w=800", label: "Oslo" }; 
+    
+    if (textContext.includes('london') || textContext.includes('uk') || textContext.includes('british')) 
+      return { bg: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&q=80&w=800", label: "London" }; 
+    
+    if (textContext.includes('rome') || textContext.includes('italy') || textContext.includes('mediterranean') || textContext.includes('roman')) 
+      return { bg: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&q=80&w=800", label: "Rome" }; 
+    
+    if (textContext.includes('new york') || textContext.includes('nyc') || textContext.includes('manhattan')) 
+      return { bg: "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?auto=format&fit=crop&q=80&w=800", label: "New York" }; 
+    
+    if (textContext.includes('tokyo') || textContext.includes('japan')) 
+      return { bg: "https://images.unsplash.com/photo-1536098561-6c4ffcb36fb7?auto=format&fit=crop&q=80&w=800", label: "Tokyo" }; 
+    
+    if (textContext.includes('milan') || textContext.includes('milanese')) 
+      return { bg: "https://images.unsplash.com/photo-1534346761502-3c220c32d4af?auto=format&fit=crop&q=80&w=800", label: "Milan" }; 
 
-    // Final safety fallback
+    // Final safety fallback for unmapped cities
     let fallbackText = "Destination";
     if (outfit.location && outfit.location.toLowerCase() !== "curated style" && outfit.location.toLowerCase() !== "global destination") {
       fallbackText = outfit.location.split(',')[0].trim();
@@ -86,7 +100,6 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
     return { overlay: "bg-transparent", icon: <MapPin size={12} className="text-zinc-200" /> };
   };
 
-  // Execute extraction
   const { bg: bgImage, label: displayLocation } = getCityData();
   const { overlay, icon } = getWeatherEffect();
 
@@ -103,6 +116,7 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
               <span className="truncate max-w-[120px]">{displayLocation.toUpperCase()}</span>
             </div>
             
+            {/* STRICT TRUNCATION FIX: whitespace-nowrap and truncate force a single line */}
             {outfit.weather && (
               <Badge 
                 variant="outline" 
@@ -147,6 +161,7 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
              className="absolute inset-0 w-full h-full object-cover opacity-100 group-hover/city:scale-105 transition-transform duration-1000 ease-in-out"
              loading="lazy"
              onError={(e) => {
+               // SELF-HEALING IMAGE: Gracefully falls back if Unsplash link breaks
                e.currentTarget.src = FALLBACK_CITY_IMG;
              }}
            />
