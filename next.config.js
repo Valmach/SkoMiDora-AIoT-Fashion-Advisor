@@ -19,7 +19,7 @@ const nextConfig = {
     }
   },
 
-  // Image Domains - Upgraded to wildcard to prevent ANY future image blocks
+  // Image Domains - Upgraded to wildcard and optimization bypassed
   images: {
     remotePatterns: [
       {
@@ -27,6 +27,7 @@ const nextConfig = {
         hostname: '**', // This wildcard allows all secure external images
       },
     ],
+    unoptimized: true, // CRITICAL FIX: Bypasses Next.js compression timeouts for heavy renders
   },
 
   // REDIRECTS
