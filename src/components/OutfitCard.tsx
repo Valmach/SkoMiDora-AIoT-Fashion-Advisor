@@ -40,7 +40,6 @@ interface OutfitCardProps {
   analyzedItems: any[];
 }
 
-// 1. BULLETPROOF FALLBACK URL
 const FALLBACK_CITY_IMG = "https://images.unsplash.com/photo-1473625247510-8ceb1760943f?auto=format&fit=crop&q=80&w=800";
 
 export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardProps) {
@@ -58,25 +57,25 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
     return fuzzy?.imageUrl || null;
   };
 
-  // 2. DYNAMIC LOCATION EXTRACTION (Kills the "Atmosphere" bug)
-  const displayLocation = outfit.location && outfit.location.toLowerCase() !== "curated style" 
-    ? outfit.location.split(',')[0].trim() 
-    : "Global Destination";
-
-  // 3. IMAGE MATCHER WITH STABLE LINKS
-  const getCityImage = () => {
+  // NEW FIX: This function now controls BOTH the background image AND the text label.
+  // It scans the AI's actual reasoning text, guaranteeing they always match perfectly.
+  const getCityData = () => {
     const textContext = `${outfit.location || ""} ${outfit.outfitIdea || ""} ${outfit.reasoning || ""}`.toLowerCase();
     
-    if (textContext.includes('paris') || textContext.includes('france') || textContext.includes('parisian')) return "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&q=80&w=800";
-    // Swapped Oslo to a highly stable, verified Nordic URL
-    if (textContext.includes('oslo') || textContext.includes('nordic') || textContext.includes('norway') || textContext.includes('scandinavian')) return "https://images.unsplash.com/photo-1514890547357-a9ee288728e0?auto=format&fit=crop&q=80&w=800"; 
-    if (textContext.includes('london') || textContext.includes('uk') || textContext.includes('british')) return "https://images.unsplash.com/photo-1520939817805-64a23d865b16?auto=format&fit=crop&q=80&w=800"; 
-    if (textContext.includes('rome') || textContext.includes('italy') || textContext.includes('mediterranean') || textContext.includes('roman')) return "https://images.unsplash.com/photo-1533676802871-efa80c98696b?auto=format&fit=crop&q=80&w=800"; 
-    if (textContext.includes('new york') || textContext.includes('nyc') || textContext.includes('manhattan')) return "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?auto=format&fit=crop&q=80&w=800"; 
-    if (textContext.includes('tokyo') || textContext.includes('japan')) return "https://images.unsplash.com/photo-1536098561-6c4ffcb36fb7?auto=format&fit=crop&q=80&w=800"; 
-    if (textContext.includes('milan') || textContext.includes('milanese')) return "https://images.unsplash.com/photo-1534346761502-3c220c32d4af?auto=format&fit=crop&q=80&w=800"; 
+    if (textContext.includes('paris') || textContext.includes('france') || textContext.includes('parisian')) return { bg: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&q=80&w=800", label: "Paris" };
+    if (textContext.includes('oslo') || textContext.includes('nordic') || textContext.includes('norway') || textContext.includes('scandinavian')) return { bg: "https://images.unsplash.com/photo-1514890547357-a9ee288728e0?auto=format&fit=crop&q=80&w=800", label: "Oslo" }; 
+    if (textContext.includes('london') || textContext.includes('uk') || textContext.includes('british')) return { bg: "https://images.unsplash.com/photo-1520939817805-64a23d865b16?auto=format&fit=crop&q=80&w=800", label: "London" }; 
+    if (textContext.includes('rome') || textContext.includes('italy') || textContext.includes('mediterranean') || textContext.includes('roman')) return { bg: "https://images.unsplash.com/photo-1533676802871-efa80c98696b?auto=format&fit=crop&q=80&w=800", label: "Rome" }; 
+    if (textContext.includes('new york') || textContext.includes('nyc') || textContext.includes('manhattan')) return { bg: "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?auto=format&fit=crop&q=80&w=800", label: "New York" }; 
+    if (textContext.includes('tokyo') || textContext.includes('japan')) return { bg: "https://images.unsplash.com/photo-1536098561-6c4ffcb36fb7?auto=format&fit=crop&q=80&w=800", label: "Tokyo" }; 
+    if (textContext.includes('milan') || textContext.includes('milanese')) return { bg: "https://images.unsplash.com/photo-1534346761502-3c220c32d4af?auto=format&fit=crop&q=80&w=800", label: "Milan" }; 
 
-    return FALLBACK_CITY_IMG; 
+    // Final safety fallback
+    let fallbackText = "Destination";
+    if (outfit.location && outfit.location.toLowerCase() !== "curated style" && outfit.location.toLowerCase() !== "global destination") {
+      fallbackText = outfit.location.split(',')[0].trim();
+    }
+    return { bg: FALLBACK_CITY_IMG, label: fallbackText }; 
   };
 
   const getWeatherEffect = () => {
@@ -87,29 +86,27 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
     return { overlay: "bg-transparent", icon: <MapPin size={12} className="text-zinc-200" /> };
   };
 
-  const bgImage = getCityImage();
+  // Execute extraction
+  const { bg: bgImage, label: displayLocation } = getCityData();
   const { overlay, icon } = getWeatherEffect();
 
   return (
     <Card className="bg-[#050505] border-zinc-900 overflow-hidden flex flex-col h-full min-h-[800px] hover:border-[#9A1B22]/50 transition-all duration-500 group shadow-2xl rounded-none">
       
-      {/* HEADER STABILIZATION */}
       <CardHeader className="pb-4 bg-black border-b border-zinc-900 px-5 pt-5 relative h-auto shrink-0 overflow-hidden">
         <div className="flex flex-col gap-3 relative z-10 w-full">
           
           <div className="flex items-start justify-between gap-3 w-full">
-            {/* Reduced city text size to 9px (text-[9px]) to make it ultra-sleek */}
             <div className="flex items-center gap-2 text-[9px] font-bold text-zinc-400 uppercase tracking-[0.2em] shrink-0 mt-1">
               <span className="text-[#9A1B22]">0{index + 1}</span>
               <span className="text-zinc-700">•</span>
               <span className="truncate max-w-[120px]">{displayLocation.toUpperCase()}</span>
             </div>
             
-            {/* STRICT TRUNCATION: Prevents the AI's long weather paragraphs from breaking the layout */}
             {outfit.weather && (
               <Badge 
                 variant="outline" 
-                title={outfit.weather} // Shows full text on mouse hover
+                title={outfit.weather}
                 className="bg-zinc-900/50 text-zinc-400 border-zinc-800 text-[8px] px-2 py-0.5 uppercase tracking-wider text-right max-w-[45%] truncate whitespace-nowrap overflow-hidden rounded-sm block"
               >
                 {outfit.weather}
@@ -117,7 +114,6 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
             )}
           </div>
           
-          {/* Reduced title text size slightly to prevent visual dominance */}
           <CardTitle className="text-sm text-zinc-200 font-serif font-normal tracking-wide leading-relaxed w-full line-clamp-2">
             {outfit.outfitIdea}
           </CardTitle>
@@ -126,7 +122,6 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
 
       <CardContent className="flex-1 flex flex-col gap-4 pt-5 px-5 pb-6 bg-[#050505] overflow-hidden">
         
-        {/* WARDROBE GRID */}
         <div className="w-full">
           <div className="grid grid-cols-2 gap-x-3 gap-y-4 h-full content-start">
             {items.slice(0, 4).map((item, i) => { 
@@ -145,7 +140,6 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
           </div>
         </div>
 
-        {/* DYNAMIC CITY ATMOSPHERICS */}
         <div className="relative w-full h-36 border border-zinc-900 group/city overflow-hidden shrink-0 mt-2 bg-zinc-900 rounded-sm">
            <img 
              src={bgImage} 
@@ -153,7 +147,6 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
              className="absolute inset-0 w-full h-full object-cover opacity-100 group-hover/city:scale-105 transition-transform duration-1000 ease-in-out"
              loading="lazy"
              onError={(e) => {
-               // 4. SELF-HEALING IMAGE: Instead of hiding, it swaps to the safe fallback instantly
                e.currentTarget.src = FALLBACK_CITY_IMG;
              }}
            />
@@ -168,7 +161,6 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
            </div>
         </div>
 
-       {/* REASONING TEXT */}
        <div className="relative pl-4 border-l-2 border-[#9A1B22]/50 h-auto min-h-[60px] mt-4">
           <p className="text-xs text-zinc-400 font-light leading-loose italic line-clamp-4">
             &ldquo;{outfit.reasoning}&rdquo;
