@@ -10,19 +10,17 @@ import {
   orderBy,
   Timestamp,
 } from 'firebase/firestore';
-import { Dancing_Script } from 'next/font/google'; // 1. Import the Font
+import { Dancing_Script } from 'next/font/google'; 
 
 import { firestore as db } from '@/lib/firebase';
 import { getDailyOutfitsAction } from '@/app/actions/get-daily-outfits';
 
-
 import { Loader2, Sparkles, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-// 2. Configure the Font
 const dancingScript = Dancing_Script({ 
   subsets: ['latin'],
-  weight: ['400', '700'], // Load normal and bold weights
+  weight: ['400', '700'], 
 });
 
 export default function OutfitRecommendationsPage() {
@@ -31,7 +29,6 @@ export default function OutfitRecommendationsPage() {
   const [isPending, startTransition] = useTransition();
   const [dataLoaded, setDataLoaded] = useState(false);
 
-  // 1. LIVE LISTENER: Get Closet Data
   useEffect(() => {
     if (!db) return;
 
@@ -55,7 +52,6 @@ export default function OutfitRecommendationsPage() {
 
       setCloset(items);
 
-      // 2. SERVER ACTION: Get AI Outfits
       startTransition(async () => {
         try {
           const recs = await getDailyOutfitsAction(items);
@@ -72,7 +68,9 @@ export default function OutfitRecommendationsPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-black text-white p-8 lg:p-16">
+    // FIX: Swapped `p-8` for explicit horizontal/bottom padding, and a heavy `pt-28 lg:pt-32` 
+    // to force the content down below the global fixed header.
+    <div className="min-h-screen bg-black text-white px-4 pb-8 pt-28 md:px-8 lg:px-16 lg:pb-16 lg:pt-32">
       <div className="max-w-7xl mx-auto">
         
         {/* HEADER */}
@@ -85,8 +83,7 @@ export default function OutfitRecommendationsPage() {
               </span>
             </div>
 
-            {/* 3. NEW TITLE: Dancing Script + White & Crimson Red */}
-            <h1 className={`${dancingScript.className} text-5xl md:text-6xl text-white tracking-wide`}>
+            <h1 className={`${dancingScript.className} text-5xl md:text-6xl text-white tracking-wide mt-2`}>
               <span style={{ color: '#DC143C' }}>3 Outfits</span> From Your Closet
             </h1>
           </div>
@@ -94,10 +91,10 @@ export default function OutfitRecommendationsPage() {
           <Button
             onClick={() => window.location.reload()}
             variant="outline"
-            className="rounded-full h-14 px-8 border-zinc-700 bg-black text-white hover:bg-zinc-900 uppercase font-bold tracking-wider text-xs"
+            className="rounded-none h-14 px-8 border-zinc-700 bg-black text-white hover:bg-zinc-900 uppercase font-bold tracking-wider text-xs shrink-0"
           >
             <RefreshCcw
-              className={`mr-2 h-4 w-4 ${isPending ? 'animate-spin' : ''}`}
+              className={`mr-3 h-4 w-4 ${isPending ? 'animate-spin' : ''}`}
             />
             Refresh Looks
           </Button>
@@ -106,20 +103,23 @@ export default function OutfitRecommendationsPage() {
         {/* CONTENT GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
           {!dataLoaded ? (
-            // Loading Skeletons
+            // FIX: Updated loading skeletons to match the new sharp luxury aesthetic
             [1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="h-[600px] rounded-[4rem] bg-zinc-900 animate-pulse border border-zinc-800 flex items-center justify-center"
+                className="h-[800px] rounded-none bg-[#050505] animate-pulse border border-zinc-900 flex flex-col"
               >
-                <Loader2 className="animate-spin text-zinc-600 h-10 w-10" />
+                <div className="h-24 bg-black border-b border-zinc-900 w-full" />
+                <div className="flex-1 flex items-center justify-center">
+                  <Loader2 className="animate-spin text-zinc-600 h-8 w-8" />
+                </div>
               </div>
             ))
           ) : recommendations.length === 0 ? (
             // Empty State
             <div className="col-span-full flex flex-col items-center justify-center py-20 text-zinc-500">
               <Sparkles className="h-16 w-16 mb-4 opacity-20" />
-              <p className="text-xl">Add items to your closet to see outfits.</p>
+              <p className="text-xl font-light">Add items to your closet to see outfits.</p>
             </div>
           ) : (
             // Cards
