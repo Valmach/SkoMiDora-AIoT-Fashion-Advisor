@@ -1,0 +1,33 @@
+[debug] [2026-06-09T14:17:35.859Z] ----------------------------------------------------------------------
+[debug] [2026-06-09T14:17:35.861Z] Command:       /nix/store/ws50yvm6vzlzf7jzz6n7xh4szddrack1-nodejs-20.19.1/bin/node /nix/store/gm9mcvzb17vv8cla08khrg29vxn3sq4r-firebase-tools-15.1.0/lib/node_modules/firebase-tools/lib/bin/firebase.js deploy --only hosting,functions --force --non-interactive
+[debug] [2026-06-09T14:17:35.862Z] CLI Version:   15.1.0
+[debug] [2026-06-09T14:17:35.862Z] Platform:      linux
+[debug] [2026-06-09T14:17:35.862Z] Node Version:  v20.19.1
+[debug] [2026-06-09T14:17:35.862Z] Time:          Tue Jun 09 2026 14:17:35 GMT+0000 (Coordinated Universal Time)
+[debug] [2026-06-09T14:17:35.862Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-06-09T14:17:37.689Z] Object "" in "firebase.json" has unknown property: {"additionalProperty":"projects"}
+[debug] [2026-06-09T14:17:37.692Z] Checked if tokens are valid: false, expires at: 1781015322252
+[debug] [2026-06-09T14:17:37.692Z] Checked if tokens are valid: false, expires at: 1781015322252
+[debug] [2026-06-09T14:17:37.693Z] > refreshing access token with scopes: []
+[debug] [2026-06-09T14:17:37.695Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-06-09T14:17:37.695Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-06-09T14:17:37.793Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-06-09T14:17:37.794Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-06-09T14:17:37.806Z] >>> [apiv2][query] GET https://monospace-pa.googleapis.com/v1/workspaces/skomidora-aiot-29612212 [none]
+[debug] [2026-06-09T14:17:38.599Z] <<< [apiv2][status] GET https://monospace-pa.googleapis.com/v1/workspaces/skomidora-aiot-29612212 200
+[debug] [2026-06-09T14:17:38.599Z] <<< [apiv2][body] GET https://monospace-pa.googleapis.com/v1/workspaces/skomidora-aiot-29612212 {"workspaceId":"skomidora-aiot-29612212","name":"SkoMiDora-AIoT","workspaceRedirectUrl":"firebase-skomidora-aiot-1763488482243.cluster-lr6dwlc2lzbcctqhqorax5zmro.cloudworkstations.dev","status":"WORKSPACE_STATUS_RUNNING","lastAccessDatetime":"2026-06-09T14:13:26.198221Z","workspaceTemplate":"WORKSPACE_TEMPLATE_FLUTTER","owner":"SELF","serviceAccountEmail":"msp-7062561622066257727@monospace-per-ws-sa-2.iam.gserviceaccount.com","enableNix":true,"ownerEmail":"ValXMachi@gmail.com","templateArgs":"{\"signedUrl\":\"https://monospace-local-import-bucket-us.storage.googleapis.com/skomidora-aiot-29612212-SkoMiDora-AI-Fashion-Advisor-skomidora.zip?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=monospace-local-import-manager%40monospace-local-import-bucket.iam.gserviceaccount.com%2F20251118%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20251118T175440Z&X-Goog-Expires=3600&X-Goog-SignedHeaders=host&x-goog-signature=651d280a5ed93aba08ccbf7997cf24ed8889226c05c30d0d03b86efe6f587a823d14c5a06096f373879ee995265c5a183b588a7a936c9496289d90a39e54bede5ccd3c0cd61998d215bfb91cbfb20cf3b4b35dcb5a773049edec8b49a51214e05ee9dfe22834cdede67ac7097f8a7be6682c70ca8c5200310c01fa8b05c17cd1c34090113ea02aeb557567769c6653df8634e7b2a65563b4dc259acf7850391788baaaa3598db0d373549c8fadc579eea27507a2d29ebe4f7b939733d570a582a086ad2fc5451063bb471aa22fd0b1f01ceee20a88fa63fe00847a4367e0bbe478eddb752dd013e91fd0904f19e0710ed2659bd7b2d8b4717eb8df0b12ec4c13\"}","templateRepoUrl":"file:///usr/local/monospace/templates/private/_local_import","workstationAccessToken":"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2Nsb3VkLmdvb2dsZS5jb20vd29ya3N0YXRpb25zIiwiYXVkIjoiZmlyZWJhc2Utc2tvbWlkb3JhLWFpb3QtMTc2MzQ4ODQ4MjI0My5jbHVzdGVyLWxyNmR3bGMybHpiY2N0cWhxb3JheDV6bXJvLmNsb3Vkd29ya3N0YXRpb25zLmRldiIsImlhdCI6MTc4MTAxNDY1OCwiZXhwIjoxNzgxMTAxMDU4fQ.DKpBcHIIjicVZfnQ311mN8rrH5pzrtfUwPb83ImiGT3rkwCVFSqb60A46Ydym0JHWz_kMbDPwP2YbiZ0PcrFicbESdZOc1T0tL_j-Y4y0cOm79qlUr9fjZDQzLrrxkKbiLggnv_NUEJPgcGtupELC8S_N7Qh-r0UGrpkCsJf7wRFLQHTStIsQ2UEzS_JR4zGe2p6DggfPNvXLNVhFp4AkgYlNheuz46gfollgD15L_o0RhqtepCxCTGVqNyQF-AnPDS0FSLGKFVxu-m3567j39xafc3r8akRwDA1-NQG9CeJT8U9vruU4166nDw_PgBdKUnR4d_Ll9NtHrum3lqfgA","firebaseProjectId":"styleai-footwear"}
+[debug] [2026-06-09T14:17:38.600Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2026-06-09T14:17:38.601Z] > authorizing via signed-in user (valxmachi@gmail.com)
+[debug] [2026-06-09T14:17:38.601Z] [iam] checking project styleai-footwear for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-06-09T14:17:38.601Z] Checked if tokens are valid: true, expires at: 1781018256794
+[debug] [2026-06-09T14:17:38.601Z] Checked if tokens are valid: true, expires at: 1781018256794
+[debug] [2026-06-09T14:17:38.601Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/styleai-footwear:testIamPermissions [none]
+[debug] [2026-06-09T14:17:38.601Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/styleai-footwear:testIamPermissions x-goog-quota-user=projects/styleai-footwear
+[debug] [2026-06-09T14:17:38.601Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/styleai-footwear:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-06-09T14:17:38.646Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/styleai-footwear:testIamPermissions 200
+[debug] [2026-06-09T14:17:38.646Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/styleai-footwear:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-06-09T14:17:38.647Z] Checked if tokens are valid: true, expires at: 1781018256794
+[debug] [2026-06-09T14:17:38.647Z] Checked if tokens are valid: true, expires at: 1781018256794
+[debug] [2026-06-09T14:17:38.647Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/styleai-footwear [none]
+[debug] [2026-06-09T14:17:38.861Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/styleai-footwear 200

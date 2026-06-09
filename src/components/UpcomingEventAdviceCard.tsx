@@ -31,7 +31,7 @@ interface AdviceProps {
 const CITY_IMAGES: Record<string, string> = {
   'Paris': 'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=800&q=80', 
   'New York': 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?auto=format&fit=crop&w=800&q=80', 
-  'Oslo': 'https://images.unsplash.com/photo-vY6GrOJJcoU?auto=format&fit=crop&w=800&q=80', // Custom Oslo Sunset Applied
+  'Oslo': 'https://images.unsplash.com/photo-vY6GrOJJcoU?auto=format&fit=crop&w=800&q=80', // Custom Oslo Sunset
   'Rome': 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=800&q=80', 
   'London': 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=800&q=80', 
   'Default': 'https://images.unsplash.com/photo-1473625247510-8ceb1760943f?auto=format&fit=crop&w=800&q=80' 
@@ -107,10 +107,10 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
         
         <div className="h-56 w-full bg-zinc-800 relative overflow-hidden group shrink-0">
           <img 
-            src={eventAdvice.cityBg || getCityImage(eventAdvice.eventName)} 
+            // FIX: Removed eventAdvice.cityBg to strictly force our local dictionary
+            src={getCityImage(eventAdvice.eventName)} 
             alt={eventAdvice.eventName}
             className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-700 group-hover:scale-110 transform transition-transform"
-            // SELF HEALING FALLBACK ADDED HERE
             onError={(e) => { e.currentTarget.src = CITY_IMAGES['Default']; }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-transparent to-transparent opacity-80" />
