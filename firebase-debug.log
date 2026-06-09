@@ -31,3 +31,160 @@
 [debug] [2026-06-09T14:17:38.647Z] Checked if tokens are valid: true, expires at: 1781018256794
 [debug] [2026-06-09T14:17:38.647Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/styleai-footwear [none]
 [debug] [2026-06-09T14:17:38.861Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/styleai-footwear 200
+[debug] [2026-06-09T14:17:49.139Z] ----------------------------------------------------------------------
+[debug] [2026-06-09T14:17:49.142Z] Command:       /nix/store/ws50yvm6vzlzf7jzz6n7xh4szddrack1-nodejs-20.19.1/bin/node /nix/store/gm9mcvzb17vv8cla08khrg29vxn3sq4r-firebase-tools-15.1.0/lib/node_modules/firebase-tools/lib/bin/firebase.js deploy --only hosting,functions --force --non-interactive
+[debug] [2026-06-09T14:17:49.142Z] CLI Version:   15.1.0
+[debug] [2026-06-09T14:17:49.142Z] Platform:      linux
+[debug] [2026-06-09T14:17:49.142Z] Node Version:  v20.19.1
+[debug] [2026-06-09T14:17:49.142Z] Time:          Tue Jun 09 2026 14:17:49 GMT+0000 (Coordinated Universal Time)
+[debug] [2026-06-09T14:17:49.143Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-06-09T14:17:50.478Z] Object "" in "firebase.json" has unknown property: {"additionalProperty":"projects"}
+[debug] [2026-06-09T14:17:50.480Z] Checked if tokens are valid: true, expires at: 1781018256794
+[debug] [2026-06-09T14:17:50.481Z] Checked if tokens are valid: true, expires at: 1781018256794
+[debug] [2026-06-09T14:17:50.483Z] >>> [apiv2][query] GET https://monospace-pa.googleapis.com/v1/workspaces/skomidora-aiot-29612212 [none]
+[debug] [2026-06-09T14:17:51.071Z] <<< [apiv2][status] GET https://monospace-pa.googleapis.com/v1/workspaces/skomidora-aiot-29612212 200
+[debug] [2026-06-09T14:17:51.071Z] <<< [apiv2][body] GET https://monospace-pa.googleapis.com/v1/workspaces/skomidora-aiot-29612212 {"workspaceId":"skomidora-aiot-29612212","name":"SkoMiDora-AIoT","workspaceRedirectUrl":"firebase-skomidora-aiot-1763488482243.cluster-lr6dwlc2lzbcctqhqorax5zmro.cloudworkstations.dev","status":"WORKSPACE_STATUS_RUNNING","lastAccessDatetime":"2026-06-09T14:13:26.198221Z","workspaceTemplate":"WORKSPACE_TEMPLATE_FLUTTER","owner":"SELF","serviceAccountEmail":"msp-7062561622066257727@monospace-per-ws-sa-2.iam.gserviceaccount.com","enableNix":true,"ownerEmail":"ValXMachi@gmail.com","templateArgs":"{\"signedUrl\":\"https://monospace-local-import-bucket-us.storage.googleapis.com/skomidora-aiot-29612212-SkoMiDora-AI-Fashion-Advisor-skomidora.zip?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=monospace-local-import-manager%40monospace-local-import-bucket.iam.gserviceaccount.com%2F20251118%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20251118T175440Z&X-Goog-Expires=3600&X-Goog-SignedHeaders=host&x-goog-signature=651d280a5ed93aba08ccbf7997cf24ed8889226c05c30d0d03b86efe6f587a823d14c5a06096f373879ee995265c5a183b588a7a936c9496289d90a39e54bede5ccd3c0cd61998d215bfb91cbfb20cf3b4b35dcb5a773049edec8b49a51214e05ee9dfe22834cdede67ac7097f8a7be6682c70ca8c5200310c01fa8b05c17cd1c34090113ea02aeb557567769c6653df8634e7b2a65563b4dc259acf7850391788baaaa3598db0d373549c8fadc579eea27507a2d29ebe4f7b939733d570a582a086ad2fc5451063bb471aa22fd0b1f01ceee20a88fa63fe00847a4367e0bbe478eddb752dd013e91fd0904f19e0710ed2659bd7b2d8b4717eb8df0b12ec4c13\"}","templateRepoUrl":"file:///usr/local/monospace/templates/private/_local_import","workstationAccessToken":"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2Nsb3VkLmdvb2dsZS5jb20vd29ya3N0YXRpb25zIiwiYXVkIjoiZmlyZWJhc2Utc2tvbWlkb3JhLWFpb3QtMTc2MzQ4ODQ4MjI0My5jbHVzdGVyLWxyNmR3bGMybHpiY2N0cWhxb3JheDV6bXJvLmNsb3Vkd29ya3N0YXRpb25zLmRldiIsImlhdCI6MTc4MTAxNDY3MSwiZXhwIjoxNzgxMTAxMDcwfQ.RVFW3OkiIFLfekNWJ6TXxvAvv23DEhtUjxwDSt_buFmbiLaOZVjjACYckMILNDJNi1_tcm7GwOLReYhP-fnlJdwDJl4q4CgITzzF3oAFcOQYKp9Dy5fYTRjkHuER2jLdilaw6tgOwxCJT_chcgUKClQm_wRP1FXQK5a-E9CPBXjVoVvuFXkZ-Jxm8WkP8V_BJb4YxcGHsYVtM2qwdhHsdBuR66NMZSgudW4qWphvC0I3Za5sgHHlPdK17sRObFmZFHvW9ZqOpzpsD8GoKetGULkXggbrTE5keTiRu8yQOe5g-mYP70iNJz-nhF2T2xh4ubgN2TSClhXUvjdMGVDv_A","firebaseProjectId":"styleai-footwear"}
+[debug] [2026-06-09T14:17:51.073Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2026-06-09T14:17:51.073Z] > authorizing via signed-in user (valxmachi@gmail.com)
+[debug] [2026-06-09T14:17:51.074Z] [iam] checking project styleai-footwear for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-06-09T14:17:51.074Z] Checked if tokens are valid: true, expires at: 1781018256794
+[debug] [2026-06-09T14:17:51.074Z] Checked if tokens are valid: true, expires at: 1781018256794
+[debug] [2026-06-09T14:17:51.075Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/styleai-footwear:testIamPermissions [none]
+[debug] [2026-06-09T14:17:51.075Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/styleai-footwear:testIamPermissions x-goog-quota-user=projects/styleai-footwear
+[debug] [2026-06-09T14:17:51.075Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/styleai-footwear:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-06-09T14:17:51.120Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/styleai-footwear:testIamPermissions 200
+[debug] [2026-06-09T14:17:51.120Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/styleai-footwear:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-06-09T14:17:51.121Z] Checked if tokens are valid: true, expires at: 1781018256794
+[debug] [2026-06-09T14:17:51.121Z] Checked if tokens are valid: true, expires at: 1781018256794
+[debug] [2026-06-09T14:17:51.121Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/styleai-footwear [none]
+[debug] [2026-06-09T14:17:51.307Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/styleai-footwear 200
+[debug] [2026-06-09T14:17:51.307Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/styleai-footwear {"projectId":"styleai-footwear","projectNumber":"855662411333","displayName":"StyleAI Footwear","name":"projects/styleai-footwear","resources":{"hostingSite":"styleai-footwear","realtimeDatabaseInstance":"styleai-footwear-default-rtdb"},"state":"ACTIVE","etag":"1_5dcd58d3-8bff-45ba-b8aa-8d68ae0b3171"}
+[debug] [2026-06-09T14:17:54.161Z] Checked if tokens are valid: true, expires at: 1781018256794
+[debug] [2026-06-09T14:17:54.161Z] Checked if tokens are valid: true, expires at: 1781018256794
+[debug] [2026-06-09T14:17:54.162Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/styleai-footwear/sites pageToken=&pageSize=10
+[debug] [2026-06-09T14:17:54.752Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/styleai-footwear/sites 200
+[debug] [2026-06-09T14:17:54.753Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/styleai-footwear/sites {"sites":[{"name":"projects/styleai-footwear/sites/sk-styleai-footwear-us-cen1","defaultUrl":"https://sk-styleai-footwear-us-cen1.web.app","appId":"1:855662411333:web:2b62d7a107f247f950ed2c","type":"USER_SITE"},{"name":"projects/styleai-footwear/sites/styleai-footwear","defaultUrl":"https://styleai-footwear.web.app","appId":"1:855662411333:web:657cc6c36c9df53450ed2c","type":"DEFAULT_SITE"}]}
+[debug] [2026-06-09T14:17:54.753Z] Checked if tokens are valid: true, expires at: 1781018256794
+[debug] [2026-06-09T14:17:54.753Z] Checked if tokens are valid: true, expires at: 1781018256794
+[debug] [2026-06-09T14:17:54.754Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/-/webApps/1:855662411333:web:657cc6c36c9df53450ed2c/config [none]
+[debug] [2026-06-09T14:17:54.977Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/-/webApps/1:855662411333:web:657cc6c36c9df53450ed2c/config 200
+[debug] [2026-06-09T14:17:54.977Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/-/webApps/1:855662411333:web:657cc6c36c9df53450ed2c/config {"projectId":"styleai-footwear","appId":"1:855662411333:web:657cc6c36c9df53450ed2c","databaseURL":"https://styleai-footwear-default-rtdb.firebaseio.com","storageBucket":"styleai-footwear.firebasestorage.app","apiKey":"AIzaSyB6TKlJLqnIzJltKM1jHmugZFhoSu-RpCI","authDomain":"styleai-footwear.firebaseapp.com","messagingSenderId":"855662411333","projectNumber":"855662411333","version":"2"}
+[info] 
+   Thank you for trying our early preview of Next.js support on Firebase Hosting.
+   During the preview, support is best-effort and breaking changes can be expected. Proceed with caution.
+   The integration is known to work with Next.js version 12 - 15.0. You may encounter errors.
+
+   Documentation: https://firebase.google.com/docs/hosting/frameworks/nextjs
+   File a bug: https://github.com/firebase/firebase-tools/issues/new?template=bug_report.md
+   Submit a feature request: https://github.com/firebase/firebase-tools/issues/new?template=feature_request.md
+
+   We'd love to learn from you. Express your interest in helping us shape the future of Firebase Hosting: https://goo.gle/41enW5X
+
+[debug] [2026-06-09T14:18:00.753Z] Checked if tokens are valid: true, expires at: 1781018256794
+[debug] [2026-06-09T14:18:00.753Z] Checked if tokens are valid: true, expires at: 1781018256794
+[debug] [2026-06-09T14:18:00.753Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/styleai-footwear/sites/styleai-footwear [none]
+[debug] [2026-06-09T14:18:01.259Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/styleai-footwear/sites/styleai-footwear 200
+[debug] [2026-06-09T14:18:01.259Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/styleai-footwear/sites/styleai-footwear {"name":"projects/styleai-footwear/sites/styleai-footwear","defaultUrl":"https://styleai-footwear.web.app","appId":"1:855662411333:web:657cc6c36c9df53450ed2c","type":"DEFAULT_SITE"}
+[info]    ▲ Next.js 15.5.19
+
+[info]    - Environments: .env.local, .env
+   - Experiments (use with caution):
+     · staleTimes
+     · serverActions
+
+
+[info]    Creating an optimized production build ...
+
+[info]  ⚠ Compiled with warnings in 47s
+
+
+[info] ./node_modules/@opentelemetry/instrumentation/build/esm/platform/node/instrumentation.js
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./node_modules/@opentelemetry/instrumentation/build/esm/platform/node/instrumentation.js
+./node_modules/@opentelemetry/instrumentation/build/esm/platform/node/index.js
+./node_modules/@opentelemetry/instrumentation/build/esm/platform/index.js
+./node_modules/@opentelemetry/instrumentation/build/esm/index.js
+./node_modules/@opentelemetry/sdk-node/build/src/sdk.js
+./node_modules/@opentelemetry/sdk-node/build/src/index.js
+./node_modules/@genkit-ai/core/lib/tracing/node-telemetry-provider.mjs
+./node_modules/@genkit-ai/core/lib/node.mjs
+./node_modules/genkit/lib/common.mjs
+./node_modules/genkit/lib/index.mjs
+./src/app/actions/analyze-style-dna.ts
+./src/app/actions/index.ts
+
+./node_modules/@protobufjs/inquire/index.js
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./node_modules/@protobufjs/inquire/index.js
+./node_modules/protobufjs/src/util/minimal.js
+./node_modules/protobufjs/src/index-minimal.js
+./node_modules/protobufjs/minimal.js
+./node_modules/@google-cloud/text-to-speech/build/protos/protos.js
+./node_modules/@google-cloud/text-to-speech/build/src/index.js
+./src/app/api/user/shoeboxes/route.ts
+
+
+[info]  ✓ Compiled successfully in 53s
+
+[info]    Skipping validation of types
+
+[info]    Skipping linting
+
+[info]    Collecting page data ...
+
+[info] API Route Loaded: /api/eventWeather
+
+[info]    Generating static pages (0/19) ...
+
+[info] API Route Loaded: /api/eventWeather
+
+[info]    Generating static pages (4/19) 
+
+[info]    Generating static pages (9/19) 
+
+[info]    Generating static pages (14/19) 
+ ✓ Generating static pages (19/19)
+
+[info] 
+
+[info] > Build error occurred
+
+[info] [Error [PageNotFoundError]: Cannot find module for page: /_error] {
+  code: 'ENOENT'
+}
+
+[debug] [2026-06-09T14:19:21.259Z] Error: ENOENT: no such file or directory, open '/home/user/skomidora-aiot/.next/export-marker.json'
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-06-09T14:20:53.126Z] ----------------------------------------------------------------------
+[debug] [2026-06-09T14:20:53.128Z] Command:       /nix/store/ws50yvm6vzlzf7jzz6n7xh4szddrack1-nodejs-20.19.1/bin/node /nix/store/gm9mcvzb17vv8cla08khrg29vxn3sq4r-firebase-tools-15.1.0/lib/node_modules/firebase-tools/lib/bin/firebase.js deploy --only hosting,functions --force --non-interactive
+[debug] [2026-06-09T14:20:53.128Z] CLI Version:   15.1.0
+[debug] [2026-06-09T14:20:53.128Z] Platform:      linux
+[debug] [2026-06-09T14:20:53.128Z] Node Version:  v20.19.1
+[debug] [2026-06-09T14:20:53.128Z] Time:          Tue Jun 09 2026 14:20:53 GMT+0000 (Coordinated Universal Time)
+[debug] [2026-06-09T14:20:53.129Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-06-09T14:20:54.651Z] Object "" in "firebase.json" has unknown property: {"additionalProperty":"projects"}
+[debug] [2026-06-09T14:20:54.654Z] Checked if tokens are valid: true, expires at: 1781018256794
+[debug] [2026-06-09T14:20:54.654Z] Checked if tokens are valid: true, expires at: 1781018256794
+[debug] [2026-06-09T14:20:54.657Z] >>> [apiv2][query] GET https://monospace-pa.googleapis.com/v1/workspaces/skomidora-aiot-29612212 [none]
+[debug] [2026-06-09T14:20:55.217Z] <<< [apiv2][status] GET https://monospace-pa.googleapis.com/v1/workspaces/skomidora-aiot-29612212 200
+[debug] [2026-06-09T14:20:55.217Z] <<< [apiv2][body] GET https://monospace-pa.googleapis.com/v1/workspaces/skomidora-aiot-29612212 {"workspaceId":"skomidora-aiot-29612212","name":"SkoMiDora-AIoT","workspaceRedirectUrl":"firebase-skomidora-aiot-1763488482243.cluster-lr6dwlc2lzbcctqhqorax5zmro.cloudworkstations.dev","status":"WORKSPACE_STATUS_RUNNING","lastAccessDatetime":"2026-06-09T14:13:26.198221Z","workspaceTemplate":"WORKSPACE_TEMPLATE_FLUTTER","owner":"SELF","serviceAccountEmail":"msp-7062561622066257727@monospace-per-ws-sa-2.iam.gserviceaccount.com","enableNix":true,"ownerEmail":"ValXMachi@gmail.com","templateArgs":"{\"signedUrl\":\"https://monospace-local-import-bucket-us.storage.googleapis.com/skomidora-aiot-29612212-SkoMiDora-AI-Fashion-Advisor-skomidora.zip?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=monospace-local-import-manager%40monospace-local-import-bucket.iam.gserviceaccount.com%2F20251118%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20251118T175440Z&X-Goog-Expires=3600&X-Goog-SignedHeaders=host&x-goog-signature=651d280a5ed93aba08ccbf7997cf24ed8889226c05c30d0d03b86efe6f587a823d14c5a06096f373879ee995265c5a183b588a7a936c9496289d90a39e54bede5ccd3c0cd61998d215bfb91cbfb20cf3b4b35dcb5a773049edec8b49a51214e05ee9dfe22834cdede67ac7097f8a7be6682c70ca8c5200310c01fa8b05c17cd1c34090113ea02aeb557567769c6653df8634e7b2a65563b4dc259acf7850391788baaaa3598db0d373549c8fadc579eea27507a2d29ebe4f7b939733d570a582a086ad2fc5451063bb471aa22fd0b1f01ceee20a88fa63fe00847a4367e0bbe478eddb752dd013e91fd0904f19e0710ed2659bd7b2d8b4717eb8df0b12ec4c13\"}","templateRepoUrl":"file:///usr/local/monospace/templates/private/_local_import","workstationAccessToken":"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2Nsb3VkLmdvb2dsZS5jb20vd29ya3N0YXRpb25zIiwiYXVkIjoiZmlyZWJhc2Utc2tvbWlkb3JhLWFpb3QtMTc2MzQ4ODQ4MjI0My5jbHVzdGVyLWxyNmR3bGMybHpiY2N0cWhxb3JheDV6bXJvLmNsb3Vkd29ya3N0YXRpb25zLmRldiIsImlhdCI6MTc4MTAxNDg1NSwiZXhwIjoxNzgxMTAxMjU1fQ.g_z06xavz-k3GkCGiCrvNYVs5BCKUhupL72T7fSiqZG6R-tKNNkdOVgl21cob1nrSdhOJNqQuy_9tn7Y7Kxw6F0M-eg3kfoR3p_BjNdk4OPF355FQTIeisvjhZAzUfmGg9QdKMXjCzXLpWAO_XRm27e2gzV9XFPYhC_cfbFIseVdn4ceW3FbzdpNp4hiMFzU6HpdQWLTPfYhFL2zvsNd-vWmnfq_OG7JD_oLS8oJzSgDgjmlNv0Cgf-ZX0SrpfeeAbn9Fi9C4eoOKcczDkcrosQ1MZ_KFtc52dBHZRqhIeZ_y_vT-ikEMyeyPA_wo2AUUCye_201tHCry35aA9okpQ","firebaseProjectId":"styleai-footwear"}
+[debug] [2026-06-09T14:20:55.218Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2026-06-09T14:20:55.219Z] > authorizing via signed-in user (valxmachi@gmail.com)
+[debug] [2026-06-09T14:20:55.219Z] [iam] checking project styleai-footwear for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-06-09T14:20:55.219Z] Checked if tokens are valid: true, expires at: 1781018256794
+[debug] [2026-06-09T14:20:55.219Z] Checked if tokens are valid: true, expires at: 1781018256794
+[debug] [2026-06-09T14:20:55.220Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/styleai-footwear:testIamPermissions [none]
+[debug] [2026-06-09T14:20:55.220Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/styleai-footwear:testIamPermissions x-goog-quota-user=projects/styleai-footwear
+[debug] [2026-06-09T14:20:55.220Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/styleai-footwear:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-06-09T14:20:55.269Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/styleai-footwear:testIamPermissions 200
+[debug] [2026-06-09T14:20:55.270Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/styleai-footwear:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-06-09T14:20:55.270Z] Checked if tokens are valid: true, expires at: 1781018256794
+[debug] [2026-06-09T14:20:55.271Z] Checked if tokens are valid: true, expires at: 1781018256794
+[debug] [2026-06-09T14:20:55.271Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/styleai-footwear [none]
