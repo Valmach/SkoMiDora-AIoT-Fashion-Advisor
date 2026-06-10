@@ -1,3 +1,5 @@
+// app/outfit-recommendations/page.tsx
+
 'use client';
 
 import OutfitCard from '@/components/OutfitCard';
@@ -68,8 +70,6 @@ export default function OutfitRecommendationsPage() {
   }, []);
 
   return (
-    // FIX: Swapped `p-8` for explicit horizontal/bottom padding, and a heavy `pt-28 lg:pt-32` 
-    // to force the content down below the global fixed header.
     <div className="min-h-screen bg-black text-white px-4 pb-8 pt-28 md:px-8 lg:px-16 lg:pb-16 lg:pt-32">
       <div className="max-w-7xl mx-auto">
         
@@ -103,7 +103,6 @@ export default function OutfitRecommendationsPage() {
         {/* CONTENT GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
           {!dataLoaded ? (
-            // FIX: Updated loading skeletons to match the new sharp luxury aesthetic
             [1, 2, 3].map((i) => (
               <div
                 key={i}
@@ -116,20 +115,19 @@ export default function OutfitRecommendationsPage() {
               </div>
             ))
           ) : recommendations.length === 0 ? (
-            // Empty State
             <div className="col-span-full flex flex-col items-center justify-center py-20 text-zinc-500">
               <Sparkles className="h-16 w-16 mb-4 opacity-20" />
               <p className="text-xl font-light">Add items to your closet to see outfits.</p>
             </div>
           ) : (
-            // Cards
             recommendations.map((rec, idx) => (
               <OutfitCard
                 key={idx}
                 outfit={{
                   ...rec,
-                  eventName: `Outfit ${idx + 1}`, 
-                  location: "Curated Style"
+                  // Replaced the hardcoded strings so the real event data passes to OutfitCard
+                  eventName: rec.eventName || `Outfit ${idx + 1}`, 
+                  location: rec.location || "Global Destination" 
                 }}
                 index={idx}
                 analyzedItems={closet}
