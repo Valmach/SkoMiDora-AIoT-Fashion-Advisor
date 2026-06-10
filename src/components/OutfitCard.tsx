@@ -41,8 +41,40 @@ interface OutfitCardProps {
   analyzedItems: any[];
 }
 
-// Universal architectural fallback
-const FALLBACK_CITY_IMG = "https://images.unsplash.com/photo-1473625247510-8ceb1760943f?auto=format&fit=crop&q=80&w=800";
+// MULTI-LANDMARK CITY GALLERIES
+// Each city now has 3 distinct, verified views. The card index determines which one shows.
+const CITY_GALLERIES: Record<string, string[]> = {
+  'oslo': [
+    "https://plus.unsplash.com/premium_photo-1697729974131-40aabc4817c0?q=80&w=831&auto=format&fit=crop", // Your raw sunset
+    "https://images.unsplash.com/photo-1514890547357-a9ee288728e0?auto=format&fit=crop&q=80&w=800",       // Oslo Cityscape
+    "https://images.unsplash.com/photo-1608142172733-1ee2726715f5?auto=format&fit=crop&q=80&w=800"        // Nordic Architecture
+  ],
+  'paris': [
+    "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&q=80&w=800",       // Eiffel/River
+    "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&q=80&w=800",       // Louvre
+    "https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?auto=format&fit=crop&q=80&w=800"        // Montmartre
+  ],
+  'rome': [
+    "https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&q=80&w=800",       // Colosseum
+    "https://images.unsplash.com/photo-1531572753322-ad063cecc140?auto=format&fit=crop&q=80&w=800",       // Trevi / Streets
+    "https://images.unsplash.com/photo-1515542622106-78b28af7815f?auto=format&fit=crop&q=80&w=800"        // Vatican / River
+  ],
+  'london': [
+    "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&q=80&w=800",       // Skyline
+    "https://images.unsplash.com/photo-1520939817895-060bdaf4fe1b?auto=format&fit=crop&q=80&w=800",       // Big Ben
+    "https://images.unsplash.com/photo-1529655683826-aba9b3e77383?auto=format&fit=crop&q=80&w=800"        // Tower Bridge
+  ],
+  'new york': [
+    "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?auto=format&fit=crop&q=80&w=800",       // Manhattan
+    "https://images.unsplash.com/photo-1485871981521-5b1fd3805eee?auto=format&fit=crop&q=80&w=800",       // Street Level
+    "https://images.unsplash.com/photo-1500916434205-0c77489c6cf7?auto=format&fit=crop&q=80&w=800"        // Bridge
+  ],
+  'default': [
+    "https://images.unsplash.com/photo-1473625247510-8ceb1760943f?auto=format&fit=crop&q=80&w=800",
+    "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&q=80&w=800",
+    "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&q=80&w=800"
+  ]
+};
 
 export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardProps) {
   if (!outfit) return null;
@@ -59,38 +91,28 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
     return fuzzy?.imageUrl || null;
   };
 
-  // INTELLIGENT EXTRACTION & VERIFIED LANDMARKS
+  // STRICT EXTRACTION: We intentionally exclude outfit.reasoning so style keywords don't hijack the location
   const getCityData = () => {
-    const textContext = `${outfit.location || ""} ${outfit.outfitIdea || ""} ${outfit.reasoning || ""}`.toLowerCase();
+    const targetContext = `${outfit.location || ""} ${outfit.eventName || ""}`.toLowerCase();
     
-    if (textContext.includes('paris') || textContext.includes('france') || textContext.includes('parisian')) 
-      return { bg: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&q=80&w=800", label: "Paris" };
-    
-    // VERIFIED: Raw Direct Image URL for Oslo Sunset
-    if (textContext.includes('oslo') || textContext.includes('nordic') || textContext.includes('norway') || textContext.includes('scandinavian')) 
-      return { bg: "https://plus.unsplash.com/premium_photo-1697729974131-40aabc4817c0?q=80&w=831&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", label: "Oslo" }; 
-    
-    if (textContext.includes('london') || textContext.includes('uk') || textContext.includes('british')) 
-      return { bg: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&q=80&w=800", label: "London" }; 
-    
-    if (textContext.includes('rome') || textContext.includes('italy') || textContext.includes('mediterranean') || textContext.includes('roman')) 
-      return { bg: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&q=80&w=800", label: "Rome" }; 
-    
-    if (textContext.includes('new york') || textContext.includes('nyc') || textContext.includes('manhattan')) 
-      return { bg: "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?auto=format&fit=crop&q=80&w=800", label: "New York" }; 
-    
-    if (textContext.includes('tokyo') || textContext.includes('japan')) 
-      return { bg: "https://images.unsplash.com/photo-1536098561-6c4ffcb36fb7?auto=format&fit=crop&q=80&w=800", label: "Tokyo" }; 
-    
-    if (textContext.includes('milan') || textContext.includes('milanese')) 
-      return { bg: "https://images.unsplash.com/photo-1534346761502-3c220c32d4af?auto=format&fit=crop&q=80&w=800", label: "Milan" }; 
+    let cityKey = 'default';
+    let label = outfit.location && outfit.location.toLowerCase() !== "curated style" && outfit.location.toLowerCase() !== "global destination" 
+      ? outfit.location.split(',')[0].trim() 
+      : "Destination";
 
-    // Final safety fallback for unmapped cities
-    let fallbackText = "Destination";
-    if (outfit.location && outfit.location.toLowerCase() !== "curated style" && outfit.location.toLowerCase() !== "global destination") {
-      fallbackText = outfit.location.split(',')[0].trim();
-    }
-    return { bg: FALLBACK_CITY_IMG, label: fallbackText }; 
+    if (targetContext.includes('paris') || targetContext.includes('france') || targetContext.includes('parisian')) { cityKey = 'paris'; label = "Paris"; }
+    else if (targetContext.includes('oslo') || targetContext.includes('nordic') || targetContext.includes('norway')) { cityKey = 'oslo'; label = "Oslo"; }
+    else if (targetContext.includes('london') || targetContext.includes('uk') || targetContext.includes('british')) { cityKey = 'london'; label = "London"; }
+    else if (targetContext.includes('rome') || targetContext.includes('italy') || targetContext.includes('roman')) { cityKey = 'rome'; label = "Rome"; }
+    else if (targetContext.includes('new york') || targetContext.includes('nyc') || targetContext.includes('manhattan')) { cityKey = 'new york'; label = "New York"; }
+
+    // Grab the array of 3 images for the chosen city
+    const imageArray = CITY_GALLERIES[cityKey] || CITY_GALLERIES['default'];
+    
+    // Cycle through the 3 images cleanly based on the card index (0, 1, or 2)
+    const bgImage = imageArray[index % imageArray.length];
+
+    return { bg: bgImage, label: label }; 
   };
 
   const getWeatherEffect = () => {
@@ -117,7 +139,6 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
               <span className="truncate max-w-[120px]">{displayLocation.toUpperCase()}</span>
             </div>
             
-            {/* STRICT TRUNCATION FIX: whitespace-nowrap and truncate force a single line */}
             {outfit.weather && (
               <Badge 
                 variant="outline" 
@@ -162,7 +183,8 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
              className="absolute inset-0 w-full h-full object-cover opacity-100 group-hover/city:scale-105 transition-transform duration-1000 ease-in-out"
              loading="lazy"
              onError={(e) => {
-               e.currentTarget.src = FALLBACK_CITY_IMG;
+               // Fallback ensures if an image breaks, it defaults to the first image of the fallback array
+               e.currentTarget.src = CITY_GALLERIES['default'][0];
              }}
            />
            <div className={`absolute inset-0 z-10 ${overlay}`} />
