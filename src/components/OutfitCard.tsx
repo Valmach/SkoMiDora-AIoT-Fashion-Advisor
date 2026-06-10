@@ -49,7 +49,8 @@ const CITY_GALLERIES: Record<string, string[]> = {
     "https://images.pexels.com/photos/19549105/pexels-photo-19549105.jpeg?auto=compress&cs=tinysrgb&w=800"  // Oslo Opera House Night View
   ],
   'paris': [
-    "https://images.pexels.com/photos/16785486/pexels-photo-16785486.jpeg?auto=compress&cs=tinysrgb&w=800", // Pyramid at Louvre
+    // UPDATED: Moody Louvre Architecture
+    "https://images.pexels.com/photos/20170446/pexels-photo-20170446.jpeg?auto=compress&cs=tinysrgb&w=800", 
     "https://images.pexels.com/photos/30297579/pexels-photo-30297579.jpeg?auto=compress&cs=tinysrgb&w=800", // Evening Opera Garnier
     "https://images.pexels.com/photos/33320737/pexels-photo-33320737.jpeg?auto=compress&cs=tinysrgb&w=800"  // Eiffel Tower View
   ],
