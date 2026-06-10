@@ -42,32 +42,31 @@ interface OutfitCardProps {
 }
 
 // MULTI-LANDMARK CITY GALLERIES
-// Each city now has 3 distinct, verified views. The card index determines which one shows.
 const CITY_GALLERIES: Record<string, string[]> = {
   'oslo': [
-    "https://plus.unsplash.com/premium_photo-1697729974131-40aabc4817c0?q=80&w=831&auto=format&fit=crop", // Your raw sunset
-    "https://images.unsplash.com/photo-1514890547357-a9ee288728e0?auto=format&fit=crop&q=80&w=800",       // Oslo Cityscape
-    "https://images.unsplash.com/photo-1608142172733-1ee2726715f5?auto=format&fit=crop&q=80&w=800"        // Nordic Architecture
+    "https://images.unsplash.com/photo-ZCUdMEnkkb8?auto=format&fit=crop&q=80&w=800", // Waterfront Aerial
+    "https://images.unsplash.com/photo-8soI6OrkAZM?auto=format&fit=crop&q=80&w=800", // Street and Cars
+    "https://images.unsplash.com/photo-w0gO7XaDuf4?auto=format&fit=crop&q=80&w=800"  // People on Bridge
   ],
   'paris': [
-    "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&q=80&w=800",       // Eiffel/River
-    "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&q=80&w=800",       // Louvre
-    "https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?auto=format&fit=crop&q=80&w=800"        // Montmartre
+    "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&q=80&w=800",
+    "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&q=80&w=800",
+    "https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?auto=format&fit=crop&q=80&w=800"
   ],
   'rome': [
-    "https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&q=80&w=800",       // Colosseum
-    "https://images.unsplash.com/photo-1531572753322-ad063cecc140?auto=format&fit=crop&q=80&w=800",       // Trevi / Streets
-    "https://images.unsplash.com/photo-1515542622106-78b28af7815f?auto=format&fit=crop&q=80&w=800"        // Vatican / River
+    "https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&q=80&w=800",
+    "https://images.unsplash.com/photo-1531572753322-ad063cecc140?auto=format&fit=crop&q=80&w=800",
+    "https://images.unsplash.com/photo-1515542622106-78b28af7815f?auto=format&fit=crop&q=80&w=800"
   ],
   'london': [
-    "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&q=80&w=800",       // Skyline
-    "https://images.unsplash.com/photo-1520939817895-060bdaf4fe1b?auto=format&fit=crop&q=80&w=800",       // Big Ben
-    "https://images.unsplash.com/photo-1529655683826-aba9b3e77383?auto=format&fit=crop&q=80&w=800"        // Tower Bridge
+    "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&q=80&w=800",
+    "https://images.unsplash.com/photo-1520939817895-060bdaf4fe1b?auto=format&fit=crop&q=80&w=800",
+    "https://images.unsplash.com/photo-1529655683826-aba9b3e77383?auto=format&fit=crop&q=80&w=800"
   ],
   'new york': [
-    "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?auto=format&fit=crop&q=80&w=800",       // Manhattan
-    "https://images.unsplash.com/photo-1485871981521-5b1fd3805eee?auto=format&fit=crop&q=80&w=800",       // Street Level
-    "https://images.unsplash.com/photo-1500916434205-0c77489c6cf7?auto=format&fit=crop&q=80&w=800"        // Bridge
+    "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?auto=format&fit=crop&q=80&w=800",
+    "https://images.unsplash.com/photo-1485871981521-5b1fd3805eee?auto=format&fit=crop&q=80&w=800",
+    "https://images.unsplash.com/photo-1500916434205-0c77489c6cf7?auto=format&fit=crop&q=80&w=800"
   ],
   'default': [
     "https://images.unsplash.com/photo-1473625247510-8ceb1760943f?auto=format&fit=crop&q=80&w=800",
@@ -91,25 +90,41 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
     return fuzzy?.imageUrl || null;
   };
 
-  // STRICT EXTRACTION: We intentionally exclude outfit.reasoning so style keywords don't hijack the location
   const getCityData = () => {
-    const targetContext = `${outfit.location || ""} ${outfit.eventName || ""}`.toLowerCase();
+    // FIX RESTORED: We must read the AI's idea and reasoning, because that is where it actually types the city name.
+    const targetContext = `${outfit.location || ""} ${outfit.eventName || ""} ${outfit.outfitIdea || ""} ${outfit.reasoning || ""}`.toLowerCase();
     
     let cityKey = 'default';
+    
+    // Start with whatever location the parent page provided
     let label = outfit.location && outfit.location.toLowerCase() !== "curated style" && outfit.location.toLowerCase() !== "global destination" 
       ? outfit.location.split(',')[0].trim() 
       : "Destination";
 
-    if (targetContext.includes('paris') || targetContext.includes('france') || targetContext.includes('parisian')) { cityKey = 'paris'; label = "Paris"; }
-    else if (targetContext.includes('oslo') || targetContext.includes('nordic') || targetContext.includes('norway')) { cityKey = 'oslo'; label = "Oslo"; }
-    else if (targetContext.includes('london') || targetContext.includes('uk') || targetContext.includes('british')) { cityKey = 'london'; label = "London"; }
-    else if (targetContext.includes('rome') || targetContext.includes('italy') || targetContext.includes('roman')) { cityKey = 'rome'; label = "Rome"; }
-    else if (targetContext.includes('new york') || targetContext.includes('nyc') || targetContext.includes('manhattan')) { cityKey = 'new york'; label = "New York"; }
+    // Scan the full text context. If we find a city, we force BOTH the image and the text label to update.
+    // Oslo is checked first so "Parisian styling" won't hijack an Oslo event.
+    if (targetContext.includes('oslo') || targetContext.includes('nordic') || targetContext.includes('norway')) { 
+      cityKey = 'oslo'; 
+      label = label === "Destination" ? "Oslo" : label; 
+    }
+    else if (targetContext.includes('paris') || targetContext.includes('france') || targetContext.includes('parisian')) { 
+      cityKey = 'paris'; 
+      label = label === "Destination" ? "Paris" : label; 
+    }
+    else if (targetContext.includes('london') || targetContext.includes('uk') || targetContext.includes('british')) { 
+      cityKey = 'london'; 
+      label = label === "Destination" ? "London" : label; 
+    }
+    else if (targetContext.includes('rome') || targetContext.includes('italy') || targetContext.includes('roman')) { 
+      cityKey = 'rome'; 
+      label = label === "Destination" ? "Rome" : label; 
+    }
+    else if (targetContext.includes('new york') || targetContext.includes('nyc') || targetContext.includes('manhattan')) { 
+      cityKey = 'new york'; 
+      label = label === "Destination" ? "New York" : label; 
+    }
 
-    // Grab the array of 3 images for the chosen city
     const imageArray = CITY_GALLERIES[cityKey] || CITY_GALLERIES['default'];
-    
-    // Cycle through the 3 images cleanly based on the card index (0, 1, or 2)
     const bgImage = imageArray[index % imageArray.length];
 
     return { bg: bgImage, label: label }; 
@@ -183,7 +198,6 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
              className="absolute inset-0 w-full h-full object-cover opacity-100 group-hover/city:scale-105 transition-transform duration-1000 ease-in-out"
              loading="lazy"
              onError={(e) => {
-               // Fallback ensures if an image breaks, it defaults to the first image of the fallback array
                e.currentTarget.src = CITY_GALLERIES['default'][0];
              }}
            />
