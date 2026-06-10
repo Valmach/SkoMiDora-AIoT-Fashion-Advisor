@@ -92,7 +92,9 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
   };
 
   const getCityData = () => {
-    const targetContext = `${outfit.location || ""} ${outfit.eventName || ""} ${outfit.outfitIdea || ""} ${outfit.reasoning || ""}`.toLowerCase();
+    // FIX 1: STRICT EVENT MATCHING ONLY. 
+    // We completely remove the AI's hallucinated paragraphs from this string.
+    const strictContext = `${outfit.location || ""} ${outfit.eventName || ""}`.toLowerCase();
     
     let cityKey = 'default';
     
@@ -100,29 +102,35 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
       ? outfit.location.split(',')[0].trim() 
       : "Destination";
 
-    if (targetContext.includes('oslo') || targetContext.includes('nordic') || targetContext.includes('norway')) { 
+    // Because we only check the event name, "Parisian chic" can no longer hijack Oslo.
+    if (strictContext.includes('oslo') || strictContext.includes('nordic') || strictContext.includes('norway')) { 
       cityKey = 'oslo'; 
       label = label === "Destination" ? "Oslo" : label; 
     }
-    else if (targetContext.includes('paris') || targetContext.includes('france') || targetContext.includes('parisian')) { 
+    else if (strictContext.includes('paris') || strictContext.includes('france')) { 
       cityKey = 'paris'; 
       label = label === "Destination" ? "Paris" : label; 
     }
-    else if (targetContext.includes('london') || targetContext.includes('uk') || targetContext.includes('british')) { 
+    else if (strictContext.includes('london') || strictContext.includes('uk')) { 
       cityKey = 'london'; 
       label = label === "Destination" ? "London" : label; 
     }
-    else if (targetContext.includes('rome') || targetContext.includes('italy') || targetContext.includes('roman')) { 
+    else if (strictContext.includes('rome') || strictContext.includes('italy')) { 
       cityKey = 'rome'; 
       label = label === "Destination" ? "Rome" : label; 
     }
-    else if (targetContext.includes('new york') || targetContext.includes('nyc') || targetContext.includes('manhattan')) { 
+    else if (strictContext.includes('new york') || strictContext.includes('nyc')) { 
       cityKey = 'new york'; 
       label = label === "Destination" ? "New York" : label; 
     }
 
     const imageArray = CITY_GALLERIES[cityKey] || CITY_GALLERIES['default'];
-    const bgImage = imageArray[index % imageArray.length];
+    const baseImage = imageArray[index % imageArray.length];
+    
+    // FIX 2: THE CACHE BUSTER
+    // This "?v=forceUpdate" string tricks your browser into thinking this is a brand new image, 
+    // forcing it to bypass the cached 404 errors and download the real Oslo landmarks.
+    const bgImage = baseImage.includes('?') ? `${baseImage}&v=forceUpdate` : `${baseImage}?v=forceUpdate`;
 
     return { bg: bgImage, label: label }; 
   };
@@ -195,7 +203,6 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
              className="absolute inset-0 w-full h-full object-cover opacity-100 group-hover/city:scale-105 transition-transform duration-1000 ease-in-out"
              loading="lazy"
              onError={(e) => {
-               // This safety net is what triggered when the Unsplash Premium link expired
                e.currentTarget.src = CITY_GALLERIES['default'][0];
              }}
            />
