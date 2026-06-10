@@ -1,3 +1,4 @@
+// app/outfit-recommendations/page.tsx
 
 'use client';
 
@@ -11,17 +12,17 @@ import {
   orderBy,
   Timestamp,
 } from 'firebase/firestore';
-import { Dancing_Script } from 'next/font/google';
+import { Dancing_Script } from 'next/font/google'; 
 
 import { firestore as db } from '@/lib/firebase';
 import { getDailyOutfitsAction } from '@/app/actions/get-daily-outfits';
 
-import { Loader2, Sparkles, RefreshCcw } from 'lucide-react';
+import { Loader2, Sparkles, RefreshCcw, MapPin } from 'lucide-react'; 
 import { Button } from '@/components/ui/button';
 
-const dancingScript = Dancing_Script({
+const dancingScript = Dancing_Script({ 
   subsets: ['latin'],
-  weight: ['400', '700'],
+  weight: ['400', '700'], 
 });
 
 export default function OutfitRecommendationsPage() {
@@ -29,8 +30,16 @@ export default function OutfitRecommendationsPage() {
   const [closet, setCloset] = useState<any[]>([]);
   const [isPending, startTransition] = useTransition();
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [targetEvent, setTargetEvent] = useState<string | null>(null);
 
   useEffect(() => {
+    // 1. Safely grab the URL parameter (the "address") without breaking the Next.js build
+    const params = new URLSearchParams(window.location.search);
+    const eventParam = params.get('event');
+    if (eventParam) {
+      setTargetEvent(eventParam);
+    }
+
     if (!db) return;
 
     const q = query(
@@ -69,11 +78,9 @@ export default function OutfitRecommendationsPage() {
   }, []);
 
   return (
-    // FIX: Swapped `p-8` for explicit horizontal/bottom padding, and a heavy `pt-28 lg:pt-32` 
-    // to force the content down below the global fixed header.
     <div className="min-h-screen bg-black text-white px-4 pb-8 pt-28 md:px-8 lg:px-16 lg:pb-16 lg:pt-32">
       <div className="max-w-7xl mx-auto">
-
+        
         {/* HEADER */}
         <header className="flex flex-col md:flex-row justify-between items-end mb-12 border-b border-zinc-800 pb-8 gap-6">
           <div className="space-y-3">
@@ -87,6 +94,16 @@ export default function OutfitRecommendationsPage() {
             <h1 className={`${dancingScript.className} text-5xl md:text-6xl text-white tracking-wide mt-2`}>
               <span style={{ color: '#DC143C' }}>3 Outfits</span> From Your Closet
             </h1>
+
+            {/* 2. THE NEW CITY HIGHLIGHT BANNER */}
+            {targetEvent && (
+              <div className="mt-6 inline-flex items-center gap-3 bg-[#DC143C]/10 border border-[#DC143C]/30 px-5 py-2.5 rounded-none backdrop-blur-sm animate-in fade-in slide-in-from-left-4 duration-700">
+                <MapPin size={16} className="text-[#DC143C]" />
+                <span className="text-xs uppercase tracking-[0.2em] text-zinc-200 font-bold">
+                  Curating for: <span className="text-white ml-1">{targetEvent}</span>
+                </span>
+              </div>
+            )}
           </div>
 
           <Button
@@ -104,7 +121,6 @@ export default function OutfitRecommendationsPage() {
         {/* CONTENT GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
           {!dataLoaded ? (
-            // FIX: Updated loading skeletons to match the new sharp luxury aesthetic
             [1, 2, 3].map((i) => (
               <div
                 key={i}
@@ -117,20 +133,21 @@ export default function OutfitRecommendationsPage() {
               </div>
             ))
           ) : recommendations.length === 0 ? (
-            // Empty State
             <div className="col-span-full flex flex-col items-center justify-center py-20 text-zinc-500">
               <Sparkles className="h-16 w-16 mb-4 opacity-20" />
               <p className="text-xl font-light">Add items to your closet to see outfits.</p>
             </div>
           ) : (
-            // Cards
             recommendations.map((rec, idx) => (
               <OutfitCard
                 key={idx}
                 outfit={{
                   ...rec,
-                  eventName: `Outfit ${idx + 1}`,
-                  location: "Curated Style"
+                  // 3. THE STRICT DATA OVERRIDE: 
+                  // We forcefully inject the clicked city into the card's location field.
+                  // This completely prevents the VW Bus default and guarantees the correct images show.
+                  location: targetEvent || rec.location || "Global Destination",
+                  eventName: targetEvent || rec.eventName || `Outfit ${idx + 1}`
                 }}
                 index={idx}
                 analyzedItems={closet}

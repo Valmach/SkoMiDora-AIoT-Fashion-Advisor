@@ -1,3 +1,5 @@
+// components/UpcomingEventAdviceCard.tsx
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -177,7 +179,11 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
             ))}
           </div>
 
-          <Link href="/outfit-recommendations" className="mt-4 w-full">
+          {/* FIX: Passing the event name and weather as URL parameters so the next page knows what to load */}
+          <Link 
+            href={`/outfit-recommendations?event=${encodeURIComponent(eventAdvice.eventName)}&weather=${encodeURIComponent(eventAdvice.weatherForecast)}`} 
+            className="mt-4 w-full"
+          >
             <button className="w-full py-3 px-4 bg-zinc-800 hover:bg-[#DC143C] text-white text-xs font-bold uppercase tracking-widest rounded transition-colors flex items-center justify-center gap-2 group">
               View 3 Outfit Options
               <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
