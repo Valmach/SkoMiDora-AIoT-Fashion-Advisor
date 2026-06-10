@@ -41,15 +41,13 @@ interface OutfitCardProps {
   analyzedItems: any[];
 }
 
-// MULTI-LANDMARK CITY GALLERIES (RESTORED WITH VERIFIED RAW URLS)
+// MULTI-LANDMARK CITY GALLERIES
+// Replaced expiring Premium links with stable, permanent free-tier Unsplash UUIDs
 const CITY_GALLERIES: Record<string, string[]> = {
   'oslo': [
-    // 1. Your Verified Premium Sunset
-    "https://plus.unsplash.com/premium_photo-1697729974131-40aabc4817c0?q=80&w=831&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", 
-    // 2. Verified Oslo Cityscape
-    "https://images.unsplash.com/photo-1514890547357-a9ee288728e0?auto=format&fit=crop&q=80&w=800",       
-    // 3. Verified Nordic Architecture
-    "https://images.unsplash.com/photo-1608142172733-1ee2726715f5?auto=format&fit=crop&q=80&w=800"        
+    "https://images.unsplash.com/photo-1514890547357-a9ee288728e0?auto=format&fit=crop&q=80&w=800", // Oslo Harbor/Sunset
+    "https://images.unsplash.com/photo-1608142172733-1ee2726715f5?auto=format&fit=crop&q=80&w=800", // Oslo Nordic Architecture
+    "https://images.unsplash.com/photo-1585016584284-912a70d9ea52?auto=format&fit=crop&q=80&w=800"  // Oslo Opera House
   ],
   'paris': [
     "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&q=80&w=800",
@@ -197,7 +195,7 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
              className="absolute inset-0 w-full h-full object-cover opacity-100 group-hover/city:scale-105 transition-transform duration-1000 ease-in-out"
              loading="lazy"
              onError={(e) => {
-               // This is the safety net that caught my bad links!
+               // This safety net is what triggered when the Unsplash Premium link expired
                e.currentTarget.src = CITY_GALLERIES['default'][0];
              }}
            />

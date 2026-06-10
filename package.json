@@ -7,11 +7,11 @@
   },
   "scripts": {
     "dev": "next dev",
-    "prebuild": "rm -rf .next ~/zi* ~/.npm ~/.cache || true",
+    "prebuild": "bash ./clean.sh || true",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "clean": "rm -rf .next ~/zi* ~/.npm ~/.cache || true",
+    "clean": "bash ./clean.sh",
     "deploy:fast": "firebase deploy --only hosting,functions --force --non-interactive && gcloud run services update ssrstyleaifootwear --memory=1024Mi --region=us-central1 --project=styleai-footwear || echo '⚠️ Deploy finished with warnings.'"
   },
   "dependencies": {
