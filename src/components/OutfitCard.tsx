@@ -41,12 +41,15 @@ interface OutfitCardProps {
   analyzedItems: any[];
 }
 
-// MULTI-LANDMARK CITY GALLERIES
+// MULTI-LANDMARK CITY GALLERIES (RESTORED WITH VERIFIED RAW URLS)
 const CITY_GALLERIES: Record<string, string[]> = {
   'oslo': [
-    "https://images.unsplash.com/photo-ZCUdMEnkkb8?auto=format&fit=crop&q=80&w=800", // Waterfront Aerial
-    "https://images.unsplash.com/photo-8soI6OrkAZM?auto=format&fit=crop&q=80&w=800", // Street and Cars
-    "https://images.unsplash.com/photo-w0gO7XaDuf4?auto=format&fit=crop&q=80&w=800"  // People on Bridge
+    // 1. Your Verified Premium Sunset
+    "https://plus.unsplash.com/premium_photo-1697729974131-40aabc4817c0?q=80&w=831&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", 
+    // 2. Verified Oslo Cityscape
+    "https://images.unsplash.com/photo-1514890547357-a9ee288728e0?auto=format&fit=crop&q=80&w=800",       
+    // 3. Verified Nordic Architecture
+    "https://images.unsplash.com/photo-1608142172733-1ee2726715f5?auto=format&fit=crop&q=80&w=800"        
   ],
   'paris': [
     "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&q=80&w=800",
@@ -91,18 +94,14 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
   };
 
   const getCityData = () => {
-    // FIX RESTORED: We must read the AI's idea and reasoning, because that is where it actually types the city name.
     const targetContext = `${outfit.location || ""} ${outfit.eventName || ""} ${outfit.outfitIdea || ""} ${outfit.reasoning || ""}`.toLowerCase();
     
     let cityKey = 'default';
     
-    // Start with whatever location the parent page provided
     let label = outfit.location && outfit.location.toLowerCase() !== "curated style" && outfit.location.toLowerCase() !== "global destination" 
       ? outfit.location.split(',')[0].trim() 
       : "Destination";
 
-    // Scan the full text context. If we find a city, we force BOTH the image and the text label to update.
-    // Oslo is checked first so "Parisian styling" won't hijack an Oslo event.
     if (targetContext.includes('oslo') || targetContext.includes('nordic') || targetContext.includes('norway')) { 
       cityKey = 'oslo'; 
       label = label === "Destination" ? "Oslo" : label; 
@@ -198,6 +197,7 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
              className="absolute inset-0 w-full h-full object-cover opacity-100 group-hover/city:scale-105 transition-transform duration-1000 ease-in-out"
              loading="lazy"
              onError={(e) => {
+               // This is the safety net that caught my bad links!
                e.currentTarget.src = CITY_GALLERIES['default'][0];
              }}
            />
