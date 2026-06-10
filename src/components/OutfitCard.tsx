@@ -41,15 +41,15 @@ interface OutfitCardProps {
   analyzedItems: any[];
 }
 
-// 100% UNBLOCKABLE HIGH-FASHION AND PUBLIC GEOGRAPHIC CDNs
+// 100% VERIFIED HIGH-FASHION AND PUBLIC GEOGRAPHIC CDNs
 const CITY_GALLERIES: Record<string, string[]> = {
   'oslo': [
-    // 1. Your Direct Pexels Oslo Opera House Hotlink
+    // 1. Oslo Opera House (Day)
     "https://images.pexels.com/photos/18170373/pexels-photo-18170373.jpeg?auto=compress&cs=tinysrgb&w=800", 
-    // 2. Open-Source Wikimedia Commons: Oslo Barcode Skyline (Immune to Hotlink blocks)
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Barcode_Oslo_2021.jpg/800px-Barcode_Oslo_2021.jpg",       
-    // 3. Open-Source Wikimedia Commons: Oslo City Waterfront & Pier
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Akershus_Festning_Oslo.jpg/800px-Akershus_Festning_Oslo.jpg"        
+    // 2. Modern Architectural Landscape Barcode District
+    "https://images.pexels.com/photos/33377313/pexels-photo-33377313.jpeg?auto=compress&cs=tinysrgb&w=800",       
+    // 3. Oslo Opera House (Night)
+    "https://images.pexels.com/photos/19549105/pexels-photo-19549105.jpeg?auto=compress&cs=tinysrgb&w=800"        
   ],
   'paris': [
     "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&q=80&w=800",
@@ -125,7 +125,7 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
     const imageArray = CITY_GALLERIES[cityKey] || CITY_GALLERIES['default'];
     const baseImage = imageArray[index % imageArray.length];
     
-    // Cache Buster forces browsers to bypass internal log history and request a clean draw
+    // Cache Buster forces a fresh rendering pull past browser memories
     const bgImage = baseImage.includes('?') ? `${baseImage}&v=forceUpdate` : `${baseImage}?v=forceUpdate`;
 
     return { bg: bgImage, label: label, cityKey: cityKey }; 
