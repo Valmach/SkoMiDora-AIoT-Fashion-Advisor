@@ -1,4 +1,3 @@
-// app/outfit-recommendations/page.tsx
 
 'use client';
 
@@ -12,7 +11,7 @@ import {
   orderBy,
   Timestamp,
 } from 'firebase/firestore';
-import { Dancing_Script } from 'next/font/google'; 
+import { Dancing_Script } from 'next/font/google';
 
 import { firestore as db } from '@/lib/firebase';
 import { getDailyOutfitsAction } from '@/app/actions/get-daily-outfits';
@@ -20,9 +19,9 @@ import { getDailyOutfitsAction } from '@/app/actions/get-daily-outfits';
 import { Loader2, Sparkles, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-const dancingScript = Dancing_Script({ 
+const dancingScript = Dancing_Script({
   subsets: ['latin'],
-  weight: ['400', '700'], 
+  weight: ['400', '700'],
 });
 
 export default function OutfitRecommendationsPage() {
@@ -70,9 +69,11 @@ export default function OutfitRecommendationsPage() {
   }, []);
 
   return (
+    // FIX: Swapped `p-8` for explicit horizontal/bottom padding, and a heavy `pt-28 lg:pt-32` 
+    // to force the content down below the global fixed header.
     <div className="min-h-screen bg-black text-white px-4 pb-8 pt-28 md:px-8 lg:px-16 lg:pb-16 lg:pt-32">
       <div className="max-w-7xl mx-auto">
-        
+
         {/* HEADER */}
         <header className="flex flex-col md:flex-row justify-between items-end mb-12 border-b border-zinc-800 pb-8 gap-6">
           <div className="space-y-3">
@@ -103,6 +104,7 @@ export default function OutfitRecommendationsPage() {
         {/* CONTENT GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
           {!dataLoaded ? (
+            // FIX: Updated loading skeletons to match the new sharp luxury aesthetic
             [1, 2, 3].map((i) => (
               <div
                 key={i}
@@ -115,19 +117,20 @@ export default function OutfitRecommendationsPage() {
               </div>
             ))
           ) : recommendations.length === 0 ? (
+            // Empty State
             <div className="col-span-full flex flex-col items-center justify-center py-20 text-zinc-500">
               <Sparkles className="h-16 w-16 mb-4 opacity-20" />
               <p className="text-xl font-light">Add items to your closet to see outfits.</p>
             </div>
           ) : (
+            // Cards
             recommendations.map((rec, idx) => (
               <OutfitCard
                 key={idx}
                 outfit={{
                   ...rec,
-                  // Replaced the hardcoded strings so the real event data passes to OutfitCard
-                  eventName: rec.eventName || `Outfit ${idx + 1}`, 
-                  location: rec.location || "Global Destination" 
+                  eventName: `Outfit ${idx + 1}`,
+                  location: "Curated Style"
                 }}
                 index={idx}
                 analyzedItems={closet}
