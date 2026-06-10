@@ -41,13 +41,11 @@ interface OutfitCardProps {
   analyzedItems: any[];
 }
 
-// MULTI-LANDMARK CITY GALLERIES
-// Replaced expiring Premium links with stable, permanent free-tier Unsplash UUIDs
 const CITY_GALLERIES: Record<string, string[]> = {
   'oslo': [
-    "https://images.unsplash.com/photo-1514890547357-a9ee288728e0?auto=format&fit=crop&q=80&w=800", // Oslo Harbor/Sunset
-    "https://images.unsplash.com/photo-1608142172733-1ee2726715f5?auto=format&fit=crop&q=80&w=800", // Oslo Nordic Architecture
-    "https://images.unsplash.com/photo-1585016584284-912a70d9ea52?auto=format&fit=crop&q=80&w=800"  // Oslo Opera House
+    "https://images.unsplash.com/photo-1514890547357-a9ee288728e0?auto=format&fit=crop&q=80&w=800",
+    "https://images.unsplash.com/photo-1608142172733-1ee2726715f5?auto=format&fit=crop&q=80&w=800",
+    "https://images.unsplash.com/photo-1585016584284-912a70d9ea52?auto=format&fit=crop&q=80&w=800"
   ],
   'paris': [
     "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&q=80&w=800",
@@ -92,8 +90,7 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
   };
 
   const getCityData = () => {
-    // FIX 1: STRICT EVENT MATCHING ONLY. 
-    // We completely remove the AI's hallucinated paragraphs from this string.
+    // STRICT Context check: Only reading Event Name and Location.
     const strictContext = `${outfit.location || ""} ${outfit.eventName || ""}`.toLowerCase();
     
     let cityKey = 'default';
@@ -102,7 +99,6 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
       ? outfit.location.split(',')[0].trim() 
       : "Destination";
 
-    // Because we only check the event name, "Parisian chic" can no longer hijack Oslo.
     if (strictContext.includes('oslo') || strictContext.includes('nordic') || strictContext.includes('norway')) { 
       cityKey = 'oslo'; 
       label = label === "Destination" ? "Oslo" : label; 
@@ -127,12 +123,19 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
     const imageArray = CITY_GALLERIES[cityKey] || CITY_GALLERIES['default'];
     const baseImage = imageArray[index % imageArray.length];
     
-    // FIX 2: THE CACHE BUSTER
-    // This "?v=forceUpdate" string tricks your browser into thinking this is a brand new image, 
-    // forcing it to bypass the cached 404 errors and download the real Oslo landmarks.
+    // Cache Buster
     const bgImage = baseImage.includes('?') ? `${baseImage}&v=forceUpdate` : `${baseImage}?v=forceUpdate`;
 
-    return { bg: bgImage, label: label }; 
+    // 🔴 DEBUG LOG: Spitting the truth to the console.
+    console.log(`[OutfitCard ${index}] Data Pipeline Check:`, {
+      incomingLocation: outfit.location,
+      incomingEventName: outfit.eventName,
+      detectedCityKey: cityKey,
+      finalLabel: label,
+      assignedImage: bgImage
+    });
+
+    return { bg: bgImage, label: label, cityKey: cityKey }; 
   };
 
   const getWeatherEffect = () => {
@@ -143,7 +146,7 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
     return { overlay: "bg-transparent", icon: <MapPin size={12} className="text-zinc-200" /> };
   };
 
-  const { bg: bgImage, label: displayLocation } = getCityData();
+  const { bg: bgImage, label: displayLocation, cityKey } = getCityData();
   const { overlay, icon } = getWeatherEffect();
 
   return (
@@ -203,6 +206,8 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
              className="absolute inset-0 w-full h-full object-cover opacity-100 group-hover/city:scale-105 transition-transform duration-1000 ease-in-out"
              loading="lazy"
              onError={(e) => {
+               // 🔴 DEBUG LOG: Catching silent image failures.
+               console.error(`🚨 Image Load Failed! Card Index: ${index} | CityKey: ${cityKey} | URL: ${bgImage}`);
                e.currentTarget.src = CITY_GALLERIES['default'][0];
              }}
            />
