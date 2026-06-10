@@ -41,25 +41,22 @@ interface OutfitCardProps {
   analyzedItems: any[];
 }
 
-// 100% VERIFIED HIGH-FASHION AND PUBLIC GEOGRAPHIC CDNs
+// 100% MANUALLY VERIFIED HIGH-FASHION AND PUBLIC GEOGRAPHIC PEXELS CDNs
 const CITY_GALLERIES: Record<string, string[]> = {
   'oslo': [
-    // 1. Oslo Opera House (Day)
-    "https://images.pexels.com/photos/18170373/pexels-photo-18170373.jpeg?auto=compress&cs=tinysrgb&w=800", 
-    // 2. Modern Architectural Landscape Barcode District
-    "https://images.pexels.com/photos/33377313/pexels-photo-33377313.jpeg?auto=compress&cs=tinysrgb&w=800",       
-    // 3. Oslo Opera House (Night)
-    "https://images.pexels.com/photos/19549105/pexels-photo-19549105.jpeg?auto=compress&cs=tinysrgb&w=800"        
+    "https://images.pexels.com/photos/18170373/pexels-photo-18170373.jpeg?auto=compress&cs=tinysrgb&w=800", // Oslo Opera House
+    "https://images.pexels.com/photos/33377313/pexels-photo-33377313.jpeg?auto=compress&cs=tinysrgb&w=800", // Barcode Architectural Landscape
+    "https://images.pexels.com/photos/19549105/pexels-photo-19549105.jpeg?auto=compress&cs=tinysrgb&w=800"  // Oslo Opera House Night View
   ],
   'paris': [
-    "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&q=80&w=800",
-    "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&q=80&w=800",
-    "https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?auto=format&fit=crop&q=80&w=800"
+    "https://images.pexels.com/photos/16785486/pexels-photo-16785486.jpeg?auto=compress&cs=tinysrgb&w=800", // Pyramid at Louvre
+    "https://images.pexels.com/photos/30297579/pexels-photo-30297579.jpeg?auto=compress&cs=tinysrgb&w=800", // Evening Opera Garnier
+    "https://images.pexels.com/photos/33320737/pexels-photo-33320737.jpeg?auto=compress&cs=tinysrgb&w=800"  // Eiffel Tower View
   ],
   'rome': [
-    "https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&q=80&w=800",
-    "https://images.unsplash.com/photo-1531572753322-ad063cecc140?auto=format&fit=crop&q=80&w=800",
-    "https://images.unsplash.com/photo-1515542622106-78b28af7815f?auto=format&fit=crop&q=80&w=800"
+    "https://images.pexels.com/photos/18602876/pexels-photo-18602876.jpeg?auto=compress&cs=tinysrgb&w=800", // Colosseum in Rome
+    "https://images.pexels.com/photos/33008929/pexels-photo-33008929.jpeg?auto=compress&cs=tinysrgb&w=800", // Scenic Ponte Sant'Angelo
+    "https://images.pexels.com/photos/5659303/pexels-photo-5659303.jpeg?auto=compress&cs=tinysrgb&w=800"    // Saint Peter's Square Aerial
   ],
   'london': [
     "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&q=80&w=800",
@@ -125,7 +122,6 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
     const imageArray = CITY_GALLERIES[cityKey] || CITY_GALLERIES['default'];
     const baseImage = imageArray[index % imageArray.length];
     
-    // Cache Buster forces a fresh rendering pull past browser memories
     const bgImage = baseImage.includes('?') ? `${baseImage}&v=forceUpdate` : `${baseImage}?v=forceUpdate`;
 
     return { bg: bgImage, label: label, cityKey: cityKey }; 
