@@ -230,102 +230,102 @@ export default function ClosetPage() {
             return (
               <div key={item.id} className="group relative bg-[#050505] border border-zinc-900 shadow-2xl hover:border-[#9A1B22]/50 transition-all duration-500 overflow-hidden flex flex-col justify-start">
                 
-                {/* FIX 1: Shifted aspect-square to aspect-[4/3] and reduced layout padding to collapse dead space */}
-                <div className="relative aspect-[4/3] w-full bg-black flex items-center justify-center overflow-hidden p-4 border-b border-zinc-900 shrink-0">
+                {/* FIX 1: Shifted aspect ratio from square to a landscape 3/2 to match the natural boundaries of product imagery */}
+                <div className="relative aspect-[3/2] w-full bg-black flex items-center justify-center overflow-hidden p-3 border-b border-zinc-900 shrink-0">
                   {!url || isBroken ? (
                     <div className="flex flex-col items-center justify-center text-zinc-800">
-                      <ImageOff className="h-8 w-8 mb-3 opacity-50" />
+                      <ImageOff className="h-6 w-6 mb-2 opacity-50" />
                       <span className="text-[10px] uppercase tracking-widest">Unavailable</span>
                     </div>
                   ) : (
                     <img
                       src={url}
                       alt={item.itemName ?? "Closet item"}
-                      className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105 drop-shadow-2xl"
+                      className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-103 drop-shadow-2xl"
                     />
                   )}
-                  <button onClick={() => handleDelete(item)} className="absolute top-4 right-4 p-2.5 bg-black/90 text-[#9A1B22] rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-lg border border-zinc-800 hover:bg-[#9A1B22] hover:text-white" title="Remove Item">
-                    <Trash2 className="h-4 w-4" />
+                  <button onClick={() => handleDelete(item)} className="absolute top-3 right-3 p-2 bg-black/90 text-[#9A1B22] rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-lg border border-zinc-800 hover:bg-[#9A1B22] hover:text-white" title="Remove Item">
+                    <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
 
-                {/* FIX 2: Swapped overall padding from p-8 to pt-5 px-6 pb-6 to bring textual layouts flush against the border */}
-                <div className="pt-5 px-6 pb-6 flex flex-col flex-grow">
+                {/* FIX 2: Tightened container margins from p-8 down to pt-4 px-5 pb-5 to instantly seal the white-space gap */}
+                <div className="pt-4 px-5 pb-5 flex flex-col flex-grow">
                   
                   {/* DESIGNER / ORIGIN ROW */}
                   {(item.designer || item.originCountry) && (
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between mb-2">
                       {item.designer && (
-                        <div className="flex items-center gap-2">
-                          <Tag className="h-3 w-3 text-[#9A1B22]" />
-                          <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest">{item.designer}</span>
+                        <div className="flex items-center gap-1.5">
+                          <Tag className="h-2.5 w-2.5 text-[#9A1B22]" />
+                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">{item.designer}</span>
                         </div>
                       )}
                       {item.originCountry && (
-                        <div className="flex items-center gap-2">
-                          <Globe className="h-3 w-3 text-[#9A1B22]" />
-                          <span className="text-[10px] text-zinc-400 uppercase tracking-widest">{item.originCountry}</span>
+                        <div className="flex items-center gap-1.5">
+                          <Globe className="h-2.5 w-2.5 text-[#9A1B22]" />
+                          <span className="text-[9px] text-zinc-500 uppercase tracking-widest">{item.originCountry}</span>
                         </div>
                       )}
                     </div>
                   )}
 
                   {/* LUXURY SERIF TITLE */}
-                  <h2 className={`${playfair.className} text-xl font-bold tracking-wide mb-4 text-white leading-tight line-clamp-2 min-h-[3.5rem]`}>
+                  <h2 className={`${playfair.className} text-xl font-bold tracking-wide mb-3 text-white leading-tight line-clamp-2 min-h-[2.75rem]`}>
                     {item.itemName ?? "Untitled Item"}
                   </h2>
 
-                  <div className="grid grid-cols-2 gap-4 pb-4 border-b border-zinc-900 mb-4 text-left">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">Type</span>
-                      <span className="text-xs font-medium text-white capitalize truncate">{item.itemType || "Uncategorized"}</span>
+                  <div className="grid grid-cols-2 gap-3 pb-3 border-b border-zinc-900/50 mb-3 text-left">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">Type</span>
+                      <span className="text-xs font-medium text-zinc-300 capitalize truncate">{item.itemType || "Uncategorized"}</span>
                     </div>
                     {item.color && (
-                      <div className="flex flex-col gap-1 items-end text-right">
-                        <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">Color</span>
-                        <span className="text-xs font-medium text-white capitalize truncate">{item.color}</span>
+                      <div className="flex flex-col gap-0.5 items-end text-right">
+                        <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">Color</span>
+                        <span className="text-xs font-medium text-zinc-300 capitalize truncate">{item.color}</span>
                       </div>
                     )}
                   </div>
 
-                  {/* EXACT FIRESTORE METADATA MAPPING */}
+                  {/* METADATA SPECIFICATIONS */}
                   {(item.generalMaterial || item.detailedSpecifications) && (
-                    <div className="flex flex-col gap-4 mb-4">
+                    <div className="flex flex-col gap-3 mb-3">
                       {item.generalMaterial && (
                         <div>
-                          <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">Material</span>
-                          <span className="text-xs text-white font-medium">{item.generalMaterial}</span>
+                          <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest block mb-0.5">Material</span>
+                          <span className="text-xs text-zinc-300 font-medium">{item.generalMaterial}</span>
                         </div>
                       )}
                       {item.detailedSpecifications && (
                         <div>
-                          <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest block mb-1">Specifications</span>
-                          <span className="text-xs text-zinc-400 leading-relaxed line-clamp-3" title={item.detailedSpecifications}>{item.detailedSpecifications}</span>
+                          <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest block mb-0.5">Specifications</span>
+                          <span className="text-xs text-zinc-400 leading-relaxed line-clamp-2" title={item.detailedSpecifications}>{item.detailedSpecifications}</span>
                         </div>
                       )}
                     </div>
                   )}
 
-                  {/* DESCRIPTION TEXT */}
+                  {/* DESCRIPTION NOTES */}
                   {item.narrativeDescription && (
-                    <div className="flex flex-col mt-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <FileText className="h-3 w-3 text-[#9A1B22] flex-shrink-0" />
-                        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500">Editorial Note</span>
+                    <div className="flex flex-col mt-0.5">
+                      <div className="flex items-center space-x-1.5 mb-1.5">
+                        <FileText className="h-3 w-3 text-[#9A1B22]" />
+                        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-600">Editorial Note</span>
                       </div>
-                      <p className="text-xs text-zinc-300 leading-relaxed font-normal line-clamp-4">{item.narrativeDescription}</p>
+                      <p className="text-xs text-zinc-400 leading-relaxed font-normal line-clamp-3">{item.narrativeDescription}</p>
                     </div>
                   )}
 
                   {item.styleKeywords && item.styleKeywords.length > 0 && (
-                    <div className="flex flex-col mt-auto pt-4 border-t border-zinc-900">
-                      <div className="flex items-center space-x-2 mb-3">
-                        <Sparkles className="h-3 w-3 text-[#9A1B22] flex-shrink-0" />
-                        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500">Aesthetics</span>
+                    <div className="flex flex-col mt-auto pt-3 border-t border-zinc-900">
+                      <div className="flex items-center space-x-1.5 mb-2">
+                        <Sparkles className="h-3 w-3 text-[#9A1B22]" />
+                        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-600">Aesthetics</span>
                       </div>
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-1">
                         {item.styleKeywords.map((keyword, i) => (
-                          <span key={`${item.id}-kw-${i}`} className="bg-zinc-900 text-zinc-300 border border-zinc-800 text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-sm">
+                          <span key={`${item.id}-kw-${i}`} className="bg-zinc-900 text-zinc-400 border border-zinc-800 text-[8px] uppercase tracking-widest px-2 py-0.5 rounded-sm">
                             {keyword}
                           </span>
                         ))}
