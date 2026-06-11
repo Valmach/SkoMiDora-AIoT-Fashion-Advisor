@@ -1,3 +1,4 @@
+// app/actions/get-daily-outfits.ts
 'use server';
 
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
@@ -67,7 +68,6 @@ function isClothing(item: any): boolean {
 function resolveImage(item: any): string | null {
   const primaryUrl = item?.imageUrl || item?.image || item?.url;
   
-  // If no URL exists, or if the item is explicitly flagged as missing an image, return a placeholder
   if (!primaryUrl || item?.imageStatus === "missing" || item?.imageError) {
     return "https://placehold.co/600x800/eeeeee/999999?text=Image+Unavailable"; 
   }
@@ -138,19 +138,19 @@ function pickOneOfEach(resolvedNames: string[], closetItems: any[]) {
 
 const CITY_CONFIG = [
   { 
-    city: 'Paris',  
+    city: 'Paris',   
     weatherHint: 'Warm, sunny summer. Breathable chic layers. Polished yet comfortable footwear.',
-    bgUrl: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1200&h=800&q=80'
+    bgUrl: 'https://images.pexels.com/photos/4184571/pexels-photo-4184571.jpeg?auto=compress&cs=tinysrgb&w=800'
   },
   { 
-    city: 'Rome',   
+    city: 'Rome',    
     weatherHint: 'Hot Mediterranean summer. Lightweight linen, breathable fabrics, and refined sandals.',
-    bgUrl: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=1200&h=800&q=80'
+    bgUrl: 'https://images.pexels.com/photos/18602876/pexels-photo-18602876.jpeg?auto=compress&cs=tinysrgb&w=800'
   },
   { 
-    city: 'Oslo',   
+    city: 'Oslo',    
     weatherHint: 'Pleasant, bright Nordic summer. Crisp tailoring with a very light evening layer.',
-    bgUrl: 'https://images.unsplash.com/photo-1513735492246-483525079686?auto=format&fit=crop&w=1200&h=800&q=80'
+    bgUrl: 'https://images.pexels.com/photos/18170373/pexels-photo-18170373.jpeg?auto=compress&cs=tinysrgb&w=800'
   },
 ];
 
@@ -179,49 +179,61 @@ export async function getDailyOutfitsAction(closetItems: any[]) {
     }];
   }
 
-  // Inject dynamic contextual date
   const options: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
   const dateString = new Date().toLocaleDateString('en-US', options);
-  const uniqueRequestID = Date.now(); // Cache buster
+  const uniqueRequestID = Date.now(); 
 
-  // SHUFFLE the items so the AI evaluates different pieces first every time
   const shuffledCloset = shuffleArray(closetItems);
 
+  // OPTIMIZATION 1: Pass descriptive metadata text strings to hand semantic leverage to the curation engine
   const closetText = shuffledCloset
-    .map((item) => `- ${item.itemName} (type: ${item.itemType || 'unknown'}, color: ${item.color || 'unknown'})`)
+    .map((item) => {
+      const details = [
+        item.itemType ? `Type: ${item.itemType}` : null,
+        item.color || item.colorPalette ? `Color: ${item.color || item.colorPalette}` : null,
+        item.material ? `Material: ${item.material}` : null,
+        item.brand ? `Brand: ${item.brand}` : null,
+        item.aiDescription ? `Visual Notes: ${item.aiDescription}` : null
+      ].filter(Boolean).join(', ');
+
+      return `- "${item.itemName}" [${details}]`;
+    })
     .join('\n');
 
   const cityWeatherBlock = CITY_CONFIG
     .map((c, idx) => `${idx + 1}. ${c.city}: ${c.weatherHint}`)
     .join('\n');
 
+  // OPTIMIZATION 2: Implemented strict structural limits, zero repetition bounds, and explicit archetype prompts
   const prompt = `
-You are a luxury personal stylist.
+You are an avant-garde luxury personal fashion stylist for the high-end SkoMiDora styling app. Your objective is to curate 3 distinct outfit collections from the wardrobe inventory array.
 
-CURRENT CONTEXT:
-Today is ${dateString}. The season is Summer.
-Request ID: ${uniqueRequestID} (Ensure diverse and highly varied selections from previous outputs).
+CURRENT TIME CONTEXT:
+Today is ${dateString}. The season context is Summer.
+System Reference Code: ${uniqueRequestID}
 
-You must create EXACTLY 3 outfit recommendations, one for each city below, and you must respect the Summer weather hints.
-
-CITY + WEATHER HINTS:
+RECOMMENDATION REQUIREMENTS:
+You must return EXACTLY 3 recommendations—one for each target city.
 ${cityWeatherBlock}
 
-CRITICAL RULES:
-- PRIORITIZE VARIETY: Select unique, lesser-used items from the inventory. Do not pick the most obvious items.
-- Each recommendation MUST include exactly:
-  - one footwear item
-  - one clothing item
-- You must use the EXACT item names from the wardrobe inventory. Do not paraphrase.
-- Do not invent items.
+CRITICAL ANTI-LAZY SELECTION DIRECTIVES:
+1. DEEP CLOSET SELECTION: Look past the first few obvious choices in the array. Actively hunt for unique statement pieces, contrasting textures, layered colors, and less-frequently selected items deep inside the array.
+2. COMPULSORY REPETITION BAN: A wardrobe inventory element can ONLY appear in ONE look. Once an item name is used in an outfit list, it is strictly banned from being selected in the other remaining outfits. You must use a minimum of 6 completely distinct items across the whole response payload.
+3. THREE DISTINCT DESIGN ARCHETYPES REQUIRED:
+   - Recommendation 1 (City 1): Must emphasize "Architectural Tailoring & Structured Minimalist Shapes".
+   - Recommendation 2 (City 2): Must emphasize "Fluid Textures, Asymmetrical Silhouettes & High-Contrast Visuals".
+   - Recommendation 3 (City 3): Must emphasize "Progressive Multi-Layering, Sculpted Footwear & Avant-Garde Avant-Chic Styling".
+4. Each look object MUST reference exactly:
+   - one footwear item name
+   - one clothing item name
+5. Use the exact text literal for item names from the input matrix. Do not alter capitalization or paraphrase. Do not invent items.
 
 WARDROBE INVENTORY:
 ${closetText}
 
-Return exactly 3 recommendations.
+Assemble exactly 3 highly-differentiated luxury looks matching these rules.
 `;
 
-  // 🔥 DIAGNOSTIC TRAP: Print the keys visible to the server right before the call
   console.log("\n==================================================");
   console.log("🔍 API KEY DIAGNOSTIC CHECK");
   console.log("GEMINI_API_KEY seen:", process.env.GEMINI_API_KEY ? `${process.env.GEMINI_API_KEY.substring(0, 15)}...` : "UNDEFINED");
@@ -232,7 +244,7 @@ Return exactly 3 recommendations.
     model: google('gemini-2.5-flash'),
     schema,
     prompt,
-    temperature: 0.85, 
+    temperature: 0.88, // Injected high temperature bounds to increase output probability mapping variety
   });
 
   const fixedNames = result.object.recommendations.map(rec => ({
@@ -264,4 +276,3 @@ Return exactly 3 recommendations.
 
   return enriched;
 }
-// Triggering fresh build for Version 6 API key rollout
