@@ -5,7 +5,6 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 
-// 🔥 Bulletproof API Key Fallback Initialization
 const google = createGoogleGenerativeAI({
   apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY,
 });
@@ -30,7 +29,7 @@ const schema = z.object({
 });
 
 /* ======================================================
-   TYPE CLASSIFICATION (Firestore metadata is truth)
+   TYPE CLASSIFICATION
 ====================================================== */
 
 const FOOTWEAR_TYPES = new Set([
@@ -41,7 +40,7 @@ const FOOTWEAR_TYPES = new Set([
 const CLOTHING_TYPES = new Set([
   'dress', 'coat', 'jacket', 'blazer', 'top', 'shirt', 'blouse',
   'pant', 'pants', 'trouser', 'trousers', 'skirt', 'suit', 'jumpsuit',
-  'sweater', 'cardigan', 'outerwear' // FIX 1: Explicitly added Outerwear to support blazers/jackets
+  'sweater', 'cardigan', 'outerwear', 'shorts' // ✅ Added shorts category bounds
 ]);
 
 function normalizeType(t: any): string {
@@ -61,7 +60,8 @@ function isClothing(item: any): boolean {
   if (CLOTHING_TYPES.has(t)) return true;
 
   const n = String(item?.itemName || '').toLowerCase();
-  return /(dress|coat|jacket|blazer|top|shirt|blouse|pant|trouser|skirt|suit|jumpsuit|sweater|cardigan|outerwear)/.test(n);
+  // ✅ Expanded evaluation regex bounds to catch custom shorts items dynamically
+  return /(dress|coat|jacket|blazer|top|shirt|blouse|pant|trouser|skirt|suit|jumpsuit|sweater|cardigan|outerwear|shorts)/.test(n);
 }
 
 function resolveImage(item: any): string | null {
@@ -138,17 +138,17 @@ function pickOneOfEach(resolvedNames: string[], closetItems: any[]) {
 const CITY_CONFIG = [
   { 
     city: 'Paris',   
-    weatherHint: 'Warm, sunny summer. Breathable chic layers. Polished yet comfortable footwear.',
+    weatherHint: 'Warm, sunny summer. Breathable chic layers featuring luxury tailoring, shorts, or light dresses.',
     bgUrl: 'https://images.pexels.com/photos/4184571/pexels-photo-4184571.jpeg?auto=compress&cs=tinysrgb&w=800'
   },
   { 
     city: 'Rome',    
-    weatherHint: 'Hot Mediterranean summer. Lightweight linen, breathable fabrics, and refined sandals.',
+    weatherHint: 'Hot Mediterranean summer. Lightweight linen components, high-end shorts, breathable fabrics, and refined sandals.',
     bgUrl: 'https://images.pexels.com/photos/18602876/pexels-photo-18602876.jpeg?auto=compress&cs=tinysrgb&w=800'
   },
   { 
     city: 'Oslo',    
-    weatherHint: 'Pleasant, bright Nordic summer. Crisp tailoring with a very light evening layer.',
+    weatherHint: 'Pleasant, bright Nordic summer. Crisp transitional tailoring, luxury shorts, or trousers paired with a light layer.',
     bgUrl: 'https://images.pexels.com/photos/18170373/pexels-photo-18170373.jpeg?auto=compress&cs=tinysrgb&w=800'
   },
 ];
@@ -184,7 +184,6 @@ export async function getDailyOutfitsAction(closetItems: any[]) {
 
   const shuffledCloset = shuffleArray(closetItems);
 
-  // FIX 2: Realigned mapping parameters to match explicit database keys present in Firestore
   const closetText = shuffledCloset
     .map((item) => {
       const details = [
@@ -217,12 +216,12 @@ You must return EXACTLY 3 recommendations—one for each target city.
 ${cityWeatherBlock}
 
 CRITICAL INVENTORY EXPLORATION DIRECTIVES:
-1. MAXIMIZE CLOSET DEPTH: You must explore the full breadth of the inventory. Avoid repeatedly relying on simple base layer items. Target high-contrast statement pairings by building ensembles using separate pieces (e.g., combining a piece of "Outerwear" like a blazer/jacket with a "Top", or matching distinctive knits).
+1. MAXIMIZE CLOSET DEPTH: You must explore the full breadth of the inventory. Openly pull seasonal items such as high-fashion shorts, lightweight tops, tailored layers, and fine knits to build sophisticated warm-weather combinations.
 2. COMPULSORY REPETITION BAN: A wardrobe inventory element can ONLY appear in ONE look. Once an item name is used in an outfit list, it is strictly banned from being selected in the other remaining outfits. You must use a minimum of 6 completely distinct items across the whole response payload.
 3. THREE DISTINCT DESIGN ARCHETYPES REQUIRED:
-   - Recommendation 1 (City 1): Must emphasize "Architectural Tailoring & Structured Minimalist Shapes" (e.g., styled blazers, crisp structured cuts).
-   - Recommendation 2 (City 2): Must emphasize "Fluid Summer Textures, Vibrant Elements & High-Contrast Visuals" (e.g., bold colors, lightweight statement pieces, refined open aesthetics).
-   - Recommendation 3 (City 3): Must emphasize "Progressive Multi-Layering, Sculpted Silhouettes & Contemporary Avant-Chic Styling" (e.g., fine knits, tailored transitional outerwear layers).
+   - Recommendation 1 (City 1): Must emphasize "Architectural Tailoring & Structured Minimalist Shapes".
+   - Recommendation 2 (City 2): Must emphasize "Fluid Summer Textures, Vibrant Elements & High-Contrast Visuals".
+   - Recommendation 3 (City 3): Must emphasize "Progressive Multi-Layering, Sculpted Silhouettes & Contemporary Avant-Chic Styling".
 4. Each look object MUST reference exactly:
    - one footwear item name
    - one clothing item name
@@ -234,17 +233,11 @@ ${closetText}
 Assemble exactly 3 highly-differentiated luxury looks matching these rules.
 `;
 
-  console.log("\n==================================================");
-  console.log("🔍 API KEY DIAGNOSTIC CHECK");
-  console.log("GEMINI_API_KEY seen:", process.env.GEMINI_API_KEY ? `${process.env.GEMINI_API_KEY.substring(0, 15)}...` : "UNDEFINED");
-  console.log("GOOGLE_GEN_AI_KEY seen:", process.env.GOOGLE_GENERATIVE_AI_API_KEY ? `${process.env.GOOGLE_GENERATIVE_AI_API_KEY.substring(0, 15)}...` : "UNDEFINED");
-  console.log("==================================================\n");
-
   const result = await generateObject({
     model: google('gemini-2.5-flash'),
     schema,
     prompt,
-    temperature: 0.9, // Kept high to ensure creative, deep-closet path exploration
+    temperature: 0.9, 
   });
 
   const fixedNames = result.object.recommendations.map(rec => ({

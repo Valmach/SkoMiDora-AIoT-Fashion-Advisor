@@ -4,8 +4,15 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, CloudRain, Snowflake, Sun } from "lucide-react";
+// ✅ Pulled in the Gelasio Serif layout parameters directly from Google Next Google Fonts
+import { Gelasio } from 'next/font/google';
 
-// Bypasses Next.js domain restrictions and handles broken DB links gracefully
+const gelasio = Gelasio({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  style: ['normal', 'italic']
+});
+
 const SafeImage = ({ src, alt }: { src: string, alt: string }) => {
   const [hasError, setHasError] = useState(false);
 
@@ -41,23 +48,21 @@ interface OutfitCardProps {
   analyzedItems: any[];
 }
 
-// 100% MANUALLY VERIFIED HIGH-FASHION AND PUBLIC GEOGRAPHIC PEXELS CDNs
 const CITY_GALLERIES: Record<string, string[]> = {
   'oslo': [
-    "https://images.pexels.com/photos/18170373/pexels-photo-18170373.jpeg?auto=compress&cs=tinysrgb&w=800", // Oslo Opera House
-    "https://images.pexels.com/photos/33377313/pexels-photo-33377313.jpeg?auto=compress&cs=tinysrgb&w=800", // Barcode Architectural Landscape
-    "https://images.pexels.com/photos/19549105/pexels-photo-19549105.jpeg?auto=compress&cs=tinysrgb&w=800"  // Oslo Opera House Night View
+    "https://images.pexels.com/photos/18170373/pexels-photo-18170373.jpeg?auto=compress&cs=tinysrgb&w=800", 
+    "https://images.pexels.com/photos/33377313/pexels-photo-33377313.jpeg?auto=compress&cs=tinysrgb&w=800", 
+    "https://images.pexels.com/photos/19549105/pexels-photo-19549105.jpeg?auto=compress&cs=tinysrgb&w=800"  
   ],
   'paris': [
-    // UPDATED: Paris City Skyline at Night
     "https://images.pexels.com/photos/4184571/pexels-photo-4184571.jpeg?auto=compress&cs=tinysrgb&w=800", 
-    "https://images.pexels.com/photos/30297579/pexels-photo-30297579.jpeg?auto=compress&cs=tinysrgb&w=800", // Evening Opera Garnier
-    "https://images.pexels.com/photos/33320737/pexels-photo-33320737.jpeg?auto=compress&cs=tinysrgb&w=800"  // Eiffel Tower View
+    "https://images.pexels.com/photos/30297579/pexels-photo-30297579.jpeg?auto=compress&cs=tinysrgb&w=800", 
+    "https://images.pexels.com/photos/33320737/pexels-photo-33320737.jpeg?auto=compress&cs=tinysrgb&w=800"  
   ],
   'rome': [
-    "https://images.pexels.com/photos/18602876/pexels-photo-18602876.jpeg?auto=compress&cs=tinysrgb&w=800", // Colosseum in Rome
-    "https://images.pexels.com/photos/33008929/pexels-photo-33008929.jpeg?auto=compress&cs=tinysrgb&w=800", // Scenic Ponte Sant'Angelo
-    "https://images.pexels.com/photos/5659303/pexels-photo-5659303.jpeg?auto=compress&cs=tinysrgb&w=800"    // Saint Peter's Square Aerial
+    "https://images.pexels.com/photos/18602876/pexels-photo-18602876.jpeg?auto=compress&cs=tinysrgb&w=800", 
+    "https://images.pexels.com/photos/33008929/pexels-photo-33008929.jpeg?auto=compress&cs=tinysrgb&w=800", 
+    "https://images.pexels.com/photos/5659303/pexels-photo-5659303.jpeg?auto=compress&cs=tinysrgb&w=800"    
   ],
   'london': [
     "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&q=80&w=800",
@@ -146,10 +151,11 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
         <div className="flex flex-col gap-3 relative z-10 w-full">
           
           <div className="flex items-start justify-between gap-3 w-full">
-            <div className="flex items-center gap-2 text-[9px] font-bold text-zinc-400 uppercase tracking-[0.2em] shrink-0 mt-1">
-              <span className="text-[#9A1B22]">0{index + 1}</span>
-              <span className="text-zinc-700">•</span>
-              <span className="truncate max-w-[120px]">{displayLocation.toUpperCase()}</span>
+            {/* ✅ Applied Gelasio font directly here to transform the event card subtitle headers */}
+            <div className={`${gelasio.className} flex items-center gap-2 text-[11px] text-zinc-300 uppercase tracking-[0.15em] shrink-0 mt-1`}>
+              <span className="text-[#9A1B22] font-bold">0{index + 1}</span>
+              <span className="text-zinc-700 font-sans">•</span>
+              <span className="truncate max-w-[160px] font-medium">{displayLocation}</span>
             </div>
             
             {outfit.weather && (
@@ -202,9 +208,10 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
            <div className={`absolute inset-0 z-10 ${overlay}`} />
            <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/50 to-transparent z-10" />
            
-           <div className="absolute bottom-3 right-3 z-20 flex items-center gap-2 opacity-100 backdrop-blur-sm bg-black/30 px-3 py-1.5 border border-zinc-800/50 max-w-[80%]">
+           {/* ✅ Applied Gelasio font directly here to style the city overlay subtitles */}
+           <div className={`${gelasio.className} absolute bottom-3 right-3 z-20 flex items-center gap-2 opacity-100 backdrop-blur-sm bg-black/30 px-3 py-1.5 border border-zinc-800/50 max-w-[80%]`}>
               {icon}
-              <span className="text-[9px] uppercase tracking-[0.2em] text-zinc-100 font-bold drop-shadow-md truncate">
+              <span className="text-[10px] uppercase tracking-[0.1em] text-zinc-100 font-medium drop-shadow-md truncate">
                 {displayLocation}
               </span>
            </div>
