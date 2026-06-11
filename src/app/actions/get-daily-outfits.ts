@@ -41,7 +41,7 @@ const FOOTWEAR_TYPES = new Set([
 const CLOTHING_TYPES = new Set([
   'dress', 'coat', 'jacket', 'blazer', 'top', 'shirt', 'blouse',
   'pant', 'pants', 'trouser', 'trousers', 'skirt', 'suit', 'jumpsuit',
-  'sweater', 'cardigan'
+  'sweater', 'cardigan', 'outerwear' // FIX 1: Explicitly added Outerwear to support blazers/jackets
 ]);
 
 function normalizeType(t: any): string {
@@ -61,10 +61,9 @@ function isClothing(item: any): boolean {
   if (CLOTHING_TYPES.has(t)) return true;
 
   const n = String(item?.itemName || '').toLowerCase();
-  return /(dress|coat|jacket|blazer|top|shirt|blouse|pant|trouser|skirt|suit|jumpsuit|sweater|cardigan)/.test(n);
+  return /(dress|coat|jacket|blazer|top|shirt|blouse|pant|trouser|skirt|suit|jumpsuit|sweater|cardigan|outerwear)/.test(n);
 }
 
-// 🔥 Defensive Fallback for Missing Images
 function resolveImage(item: any): string | null {
   const primaryUrl = item?.imageUrl || item?.image || item?.url;
   
@@ -76,7 +75,7 @@ function resolveImage(item: any): string | null {
 }
 
 /* ======================================================
-   ARRAY SHUFFLER (Breaks the 1% Repetition Loop)
+   ARRAY SHUFFLER
 ====================================================== */
 function shuffleArray(array: any[]) {
   const shuffled = [...array];
@@ -88,7 +87,7 @@ function shuffleArray(array: any[]) {
 }
 
 /* ======================================================
-   NAME CORRECTION (AI hallucination -> real DB names)
+   NAME CORRECTION
 ====================================================== */
 
 function correctItemNames(generatedItems: string[], realCloset: any[]) {
@@ -110,7 +109,7 @@ function correctItemNames(generatedItems: string[], realCloset: any[]) {
 }
 
 /* ======================================================
-   PICK EXACTLY ONE FOOTWEAR + ONE CLOTHING (guaranteed)
+   PICK EXACTLY ONE FOOTWEAR + ONE CLOTHING
 ====================================================== */
 
 function pickOneOfEach(resolvedNames: string[], closetItems: any[]) {
@@ -133,7 +132,7 @@ function pickOneOfEach(resolvedNames: string[], closetItems: any[]) {
 }
 
 /* ======================================================
-   WEATHER WEIGHTING PER CITY (Updated for Summer Context & Stable Images)
+   WEATHER CONFIGURATION
 ====================================================== */
 
 const CITY_CONFIG = [
@@ -185,15 +184,17 @@ export async function getDailyOutfitsAction(closetItems: any[]) {
 
   const shuffledCloset = shuffleArray(closetItems);
 
-  // OPTIMIZATION 1: Pass descriptive metadata text strings to hand semantic leverage to the curation engine
+  // FIX 2: Realigned mapping parameters to match explicit database keys present in Firestore
   const closetText = shuffledCloset
     .map((item) => {
       const details = [
         item.itemType ? `Type: ${item.itemType}` : null,
-        item.color || item.colorPalette ? `Color: ${item.color || item.colorPalette}` : null,
-        item.material ? `Material: ${item.material}` : null,
-        item.brand ? `Brand: ${item.brand}` : null,
-        item.aiDescription ? `Visual Notes: ${item.aiDescription}` : null
+        item.color ? `Color: ${item.color}` : null,
+        item.generalMaterial ? `Material: ${item.generalMaterial}` : null,
+        item.designer ? `Designer: ${item.designer}` : null,
+        item.detailedSpecifications ? `Specs: ${item.detailedSpecifications}` : null,
+        item.narrativeDescription ? `Editorial Note: ${item.narrativeDescription}` : null,
+        item.styleKeywords && item.styleKeywords.length > 0 ? `Aesthetics: ${item.styleKeywords.join(', ')}` : null
       ].filter(Boolean).join(', ');
 
       return `- "${item.itemName}" [${details}]`;
@@ -204,25 +205,24 @@ export async function getDailyOutfitsAction(closetItems: any[]) {
     .map((c, idx) => `${idx + 1}. ${c.city}: ${c.weatherHint}`)
     .join('\n');
 
-  // OPTIMIZATION 2: Implemented strict structural limits, zero repetition bounds, and explicit archetype prompts
   const prompt = `
-You are an avant-garde luxury personal fashion stylist for the high-end SkoMiDora styling app. Your objective is to curate 3 distinct outfit collections from the wardrobe inventory array.
+You are an avant-garde luxury personal fashion stylist for the high-end SkoMiDora styling app. Your objective is to curate 3 completely distinct outfit collections utilizing the wardrobe inventory list.
 
 CURRENT TIME CONTEXT:
 Today is ${dateString}. The season context is Summer.
 System Reference Code: ${uniqueRequestID}
 
-RECOMMENDATION REQUIREMENTS:
+RECOMMENDATION PARAMETERS:
 You must return EXACTLY 3 recommendations—one for each target city.
 ${cityWeatherBlock}
 
-CRITICAL ANTI-LAZY SELECTION DIRECTIVES:
-1. DEEP CLOSET SELECTION: Look past the first few obvious choices in the array. Actively hunt for unique statement pieces, contrasting textures, layered colors, and less-frequently selected items deep inside the array.
+CRITICAL INVENTORY EXPLORATION DIRECTIVES:
+1. MAXIMIZE CLOSET DEPTH: You must explore the full breadth of the inventory. Avoid repeatedly relying on simple base layer items. Target high-contrast statement pairings by building ensembles using separate pieces (e.g., combining a piece of "Outerwear" like a blazer/jacket with a "Top", or matching distinctive knits).
 2. COMPULSORY REPETITION BAN: A wardrobe inventory element can ONLY appear in ONE look. Once an item name is used in an outfit list, it is strictly banned from being selected in the other remaining outfits. You must use a minimum of 6 completely distinct items across the whole response payload.
 3. THREE DISTINCT DESIGN ARCHETYPES REQUIRED:
-   - Recommendation 1 (City 1): Must emphasize "Architectural Tailoring & Structured Minimalist Shapes".
-   - Recommendation 2 (City 2): Must emphasize "Fluid Textures, Asymmetrical Silhouettes & High-Contrast Visuals".
-   - Recommendation 3 (City 3): Must emphasize "Progressive Multi-Layering, Sculpted Footwear & Avant-Garde Avant-Chic Styling".
+   - Recommendation 1 (City 1): Must emphasize "Architectural Tailoring & Structured Minimalist Shapes" (e.g., styled blazers, crisp structured cuts).
+   - Recommendation 2 (City 2): Must emphasize "Fluid Summer Textures, Vibrant Elements & High-Contrast Visuals" (e.g., bold colors, lightweight statement pieces, refined open aesthetics).
+   - Recommendation 3 (City 3): Must emphasize "Progressive Multi-Layering, Sculpted Silhouettes & Contemporary Avant-Chic Styling" (e.g., fine knits, tailored transitional outerwear layers).
 4. Each look object MUST reference exactly:
    - one footwear item name
    - one clothing item name
@@ -244,7 +244,7 @@ Assemble exactly 3 highly-differentiated luxury looks matching these rules.
     model: google('gemini-2.5-flash'),
     schema,
     prompt,
-    temperature: 0.88, // Injected high temperature bounds to increase output probability mapping variety
+    temperature: 0.9, // Kept high to ensure creative, deep-closet path exploration
   });
 
   const fixedNames = result.object.recommendations.map(rec => ({
