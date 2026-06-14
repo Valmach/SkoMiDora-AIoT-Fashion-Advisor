@@ -40,7 +40,7 @@ const FOOTWEAR_TYPES = new Set([
 const CLOTHING_TYPES = new Set([
   'dress', 'coat', 'jacket', 'blazer', 'top', 'shirt', 'blouse',
   'pant', 'pants', 'trouser', 'trousers', 'skirt', 'suit', 'jumpsuit',
-  'sweater', 'cardigan', 'outerwear', 'shorts' // ✅ Added shorts category bounds
+  'sweater', 'cardigan', 'outerwear', 'shorts', 'swim', 'swimwear', 'swimsuit', 'bikini' // ✅ Swimwear integrated
 ]);
 
 function normalizeType(t: any): string {
@@ -60,8 +60,8 @@ function isClothing(item: any): boolean {
   if (CLOTHING_TYPES.has(t)) return true;
 
   const n = String(item?.itemName || '').toLowerCase();
-  // ✅ Expanded evaluation regex bounds to catch custom shorts items dynamically
-  return /(dress|coat|jacket|blazer|top|shirt|blouse|pant|trouser|skirt|suit|jumpsuit|sweater|cardigan|outerwear|shorts)/.test(n);
+  // ✅ Evaluation regex expanded to catch swimwear strings dynamically
+  return /(dress|coat|jacket|blazer|top|shirt|blouse|pant|trouser|skirt|suit|jumpsuit|sweater|cardigan|outerwear|shorts|swim|swimwear|swimsuit|bikini)/.test(n);
 }
 
 function resolveImage(item: any): string | null {
@@ -143,7 +143,7 @@ const CITY_CONFIG = [
   },
   { 
     city: 'Rome',    
-    weatherHint: 'Hot Mediterranean summer. Lightweight linen components, high-end shorts, breathable fabrics, and refined sandals.',
+    weatherHint: 'Hot Mediterranean summer. Lightweight linen components, swimwear/resort layers, high-end shorts, breathable fabrics, and refined sandals.',
     bgUrl: 'https://images.pexels.com/photos/18602876/pexels-photo-18602876.jpeg?auto=compress&cs=tinysrgb&w=800'
   },
   { 
@@ -158,14 +158,22 @@ const CITY_CONFIG = [
 ====================================================== */
 
 export async function getDailyOutfitsAction(closetItems: any[]) {
-  if (!closetItems || closetItems.length === 0) {
+  // ✅ Prevent handbags from entering the AI context window completely
+  const validApparel = closetItems.filter(item => {
+    const type = (item.itemType || '').toLowerCase();
+    const name = (item.itemName || '').toLowerCase();
+    const isBag = type.includes('bag') || type.includes('purse') || name.includes('bag') || name.includes('purse');
+    return !isBag;
+  });
+
+  if (!validApparel || validApparel.length === 0) {
     return [{
       eventName: "Closet Empty",
       eventTime: "Now",
       location: "Home",
       weather: "N/A",
       outfitIdea: "Add Items First",
-      reasoning: "Please add items to your closet to get real AI suggestions.",
+      reasoning: "Please add valid apparel items to your closet to get real AI suggestions.",
       items: ["No items found"],
       colorPalette: "Gray",
       clothingName: "None",
@@ -182,7 +190,7 @@ export async function getDailyOutfitsAction(closetItems: any[]) {
   const dateString = new Date().toLocaleDateString('en-US', options);
   const uniqueRequestID = Date.now(); 
 
-  const shuffledCloset = shuffleArray(closetItems);
+  const shuffledCloset = shuffleArray(validApparel);
 
   const closetText = shuffledCloset
     .map((item) => {
@@ -216,7 +224,7 @@ You must return EXACTLY 3 recommendations—one for each target city.
 ${cityWeatherBlock}
 
 CRITICAL INVENTORY EXPLORATION DIRECTIVES:
-1. MAXIMIZE CLOSET DEPTH: You must explore the full breadth of the inventory. Openly pull seasonal items such as high-fashion shorts, lightweight tops, tailored layers, and fine knits to build sophisticated warm-weather combinations.
+1. MAXIMIZE CLOSET DEPTH: You must explore the full breadth of the inventory. Openly pull seasonal items such as high-fashion shorts, swimwear, resort wear, tailored layers, and fine knits to build sophisticated warm-weather combinations.
 2. COMPULSORY REPETITION BAN: A wardrobe inventory element can ONLY appear in ONE look. Once an item name is used in an outfit list, it is strictly banned from being selected in the other remaining outfits. You must use a minimum of 6 completely distinct items across the whole response payload.
 3. THREE DISTINCT DESIGN ARCHETYPES REQUIRED:
    - Recommendation 1 (City 1): Must emphasize "Architectural Tailoring & Structured Minimalist Shapes".
@@ -242,13 +250,13 @@ Assemble exactly 3 highly-differentiated luxury looks matching these rules.
 
   const fixedNames = result.object.recommendations.map(rec => ({
     ...rec,
-    items: correctItemNames(rec.items, closetItems),
+    items: correctItemNames(rec.items, validApparel),
   }));
 
   const enriched = fixedNames.map((rec, index) => {
     const cfg = CITY_CONFIG[index] || CITY_CONFIG[0];
 
-    const { footwear, clothing } = pickOneOfEach(rec.items, closetItems);
+    const { footwear, clothing } = pickOneOfEach(rec.items, validApparel);
 
     return {
       ...rec,

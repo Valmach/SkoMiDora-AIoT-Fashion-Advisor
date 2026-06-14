@@ -13,7 +13,7 @@ import { Inter, Great_Vibes } from 'next/font/google';
 const inter = Inter({ subsets: ['latin'], weight: ['300', '400', '500', '600'] });
 const greatVibes = Great_Vibes({ subsets: ['latin'], weight: ['400'] });
 
-// UPGRADED TAXONOMY: Merging original granular pieces with the new detailed categories
+// UPGRADED TAXONOMY: Removed Handbags, added Shorts and Swimwear/Resort
 const CATEGORIES = [
   "Any Missing Piece", 
   "Shirts & Blouses", 
@@ -21,13 +21,14 @@ const CATEGORIES = [
   "Tank Tops",
   "Sweaters & Cardigans",
   "Jackets & Outerwear", 
-  "Trousers", 
+  "Trousers",
+  "Shorts",               // ✅ Shorts Integrated
   "Jeans",
   "Skirts", 
   "Dresses", 
+  "Swimwear & Resort",    // ✅ Swimwear Integrated
   "Innerwear & Underwear",
   "Shoes", 
-  "Handbags", 
   "Jewelry",
   "Accessories"
 ];
