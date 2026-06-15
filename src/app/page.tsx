@@ -30,7 +30,7 @@ const bonheur = Bonheur_Royale({
 
 const corinthia = Corinthia({
   subsets: ["latin"],
-  weight: ["700"], // Using bold for better button legibility
+  weight: ["700"], 
 });
 
 const STYLE_DNA_LOCAL_STORAGE_KEY = "skomidoraStyleDNA";
@@ -98,14 +98,14 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="container mx-auto space-y-8 pt-8">
+    <div className="container mx-auto space-y-8 pt-8 px-4 md:px-8">
       <Card className="shadow-2xl border-zinc-900 bg-[#050505]">
         <CardHeader className="pb-8">
-          <CardTitle className={`${bonheur.className} text-7xl md:text-8xl font-normal pb-2 tracking-wide`}>
+          <CardTitle className={`${bonheur.className} text-5xl md:text-8xl font-normal pb-2 tracking-wide`}>
             <span className="text-white">Welcome to </span>
             <span className="text-[#9A1B22]">SkoMiDora</span>
           </CardTitle>
-          <CardDescription className="text-zinc-400 font-sans text-base tracking-wide font-light">
+          <CardDescription className="text-zinc-400 font-sans text-sm md:text-base tracking-wide font-light">
             Your personal AIoT Powered stylist for footwear and fashion. Lets get you dressed.
           </CardDescription>
         </CardHeader>
@@ -118,14 +118,14 @@ export default function DashboardPage() {
             </div>
           )}
 
-          <div className="flex flex-col sm:flex-row gap-5">
+          <div className="flex flex-col sm:flex-row gap-4 md:gap-5">
             {/* My Digital Closet Button */}
             <Button
               asChild
-              className={`flex-1 ${corinthia.className} text-3xl md:text-4xl py-8 bg-[#9A1B22] hover:bg-[#7A151B] text-white rounded-none transition-all shadow-lg hover:shadow-[#9A1B22]/20`}
+              className={`flex-1 ${corinthia.className} text-3xl md:text-4xl py-4 md:py-8 bg-[#9A1B22] hover:bg-[#7A151B] text-white rounded-none transition-all shadow-lg hover:shadow-[#9A1B22]/20`}
             >
               <Link href="/closet" className="flex items-center justify-center">
-                <Archive className="mr-3 h-5 w-5" /> My Digital Closet
+                <Archive className="mr-3 h-5 w-5 md:h-6 md:w-6" /> My Digital Closet
               </Link>
             </Button>
             
@@ -133,12 +133,12 @@ export default function DashboardPage() {
             <Button
               onClick={handleAnalyzeDNA}
               disabled={isAnalyzing || isDataLoading}
-              className={`flex-1 ${corinthia.className} text-3xl md:text-4xl py-8 bg-black hover:bg-zinc-900 border border-zinc-800 hover:border-[#9A1B22] text-white rounded-none transition-all shadow-lg`}
+              className={`flex-1 ${corinthia.className} text-3xl md:text-4xl py-4 md:py-8 bg-black hover:bg-zinc-900 border border-zinc-800 hover:border-[#9A1B22] text-white rounded-none transition-all shadow-lg`}
             >
               {isAnalyzing ? (
-                <Loader2 className="mr-3 h-5 w-5 animate-spin text-[#9A1B22]" />
+                <Loader2 className="mr-3 h-5 w-5 md:h-6 md:w-6 animate-spin text-[#9A1B22]" />
               ) : (
-                <Brain className="mr-3 h-5 w-5 text-[#9A1B22]" />
+                <Brain className="mr-3 h-5 w-5 md:h-6 md:w-6 text-[#9A1B22]" />
               )}
               {isAnalyzing ? "Analyzing..." : "Analyse My Style."}
             </Button>
