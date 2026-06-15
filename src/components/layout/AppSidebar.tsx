@@ -20,13 +20,13 @@ const bonheur = Bonheur_Royale({
   weight: ['400'],
 });
 
-// ✅ REORDERED NAVIGATION: Dashboard -> Closet -> Events -> Outfits -> AI Stylist -> Inbox
+// ✅ REORDERED & RESTORED: Links match your working file structure
 const MENU_ITEMS = [
   { name: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-  { name: "Closet", icon: Archive, href: "/closet" },
   { name: "Events", icon: CalendarDays, href: "/events" },
+  { name: "Closet", icon: Archive, href: "/closet" },
   { name: "Outfits", icon: Sparkles, href: "/outfits" }, 
-  { name: "AI Stylist", icon: Sparkles, href: "/ai-stylist" },
+  { name: "AI Stylist", icon: Sparkles, href: "/ai-stylist" }, 
   { name: "Inbox", icon: Mail, href: "/inbox" },
 ];
 
