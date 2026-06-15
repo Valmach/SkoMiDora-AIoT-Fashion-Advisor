@@ -20,13 +20,13 @@ const bonheur = Bonheur_Royale({
   weight: ['400'],
 });
 
-// ✅ REORDERED & RESTORED: Links match your working file structure
+// ✅ ROUTES PERFECTLY MAPPED TO YOUR src/app DIRECTORY
 const MENU_ITEMS = [
-  { name: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-  { name: "Events", icon: CalendarDays, href: "/events" },
+  { name: "Dashboard", icon: LayoutDashboard, href: "/" }, // Root page.tsx
   { name: "Closet", icon: Archive, href: "/closet" },
-  { name: "Outfits", icon: Sparkles, href: "/outfits" }, 
-  { name: "AI Stylist", icon: Sparkles, href: "/ai-stylist" }, 
+  { name: "Events", icon: CalendarDays, href: "/upcoming-events" }, // Maps to src/app/upcoming-events
+  { name: "Outfits", icon: Sparkles, href: "/outfit-recommendations" }, // Maps to src/app/outfit-recommendations
+  { name: "AI Stylist", icon: Sparkles, href: "/stylist" }, // Maps to src/app/stylist
   { name: "Inbox", icon: Mail, href: "/inbox" },
 ];
 
