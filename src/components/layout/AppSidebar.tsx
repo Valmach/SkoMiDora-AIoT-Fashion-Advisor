@@ -1,185 +1,157 @@
 "use client";
 
-import Link from "next/link";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
-import {
-  Sidebar,
-  SidebarHeader,
-  SidebarContent,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarFooter,
-  useSidebar,
-} from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import {
-  LayoutDashboard,
-  Lightbulb,
-  Archive,
-  Settings as SettingsIcon,
-  PanelLeftClose,
-  PanelLeftOpen,
-  CalendarDays,
-  Sparkles,
-  Mail,
+import Link from "next/link";
+import { Bonheur_Royale } from 'next/font/google';
+import { 
+  LayoutDashboard, 
+  CalendarDays, 
+  Archive, 
+  Sparkles, 
+  Mail, 
+  Settings, 
+  ChevronUp, 
+  PanelLeftClose
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
-// SkoMiDora Logo with currentColor for theming
-const SkoMiDoraLogoSmall = () => (
-  <svg
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor" // Uses text color from parent
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-6 w-6 text-sidebar-primary"
-  >
-    <circle cx="12" cy="12" r="10" />
-    <path d="M15 9C15 7.34315 13.6569 6 12 6C10.3431 6 9 7.34315 9 9V15C9 16.6569 10.3431 18 12 18C13.6569 18 15 16.6569 15 15" />
-    <line x1="9" y1="12" x2="15" y2="12" />
-  </svg>
-);
+const bonheur = Bonheur_Royale({ 
+  subsets: ['latin'], 
+  weight: ['400'],
+});
 
-export default function AppSidebar() {
+const MENU_ITEMS = [
+  { name: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+  { name: "Events", icon: CalendarDays, href: "/events" },
+  { name: "Closet", icon: Archive, href: "/closet" },
+  { name: "Outfits", icon: Sparkles, href: "/outfits" }, // Assuming outfits uses the AI engine logic
+  { name: "AI Stylist", icon: Sparkles, href: "/ai-stylist" },
+  { name: "Inbox", icon: Mail, href: "/inbox" },
+];
+
+export default function Sidebar() {
   const pathname = usePathname();
-  const { state, isMobile, toggleSidebar, closeSidebar } = useSidebar();
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const menuItems = [
-    {
-      href: "/",
-      label: "Dashboard",
-      icon: LayoutDashboard,
-      color: "text-blue-400",
-    },
-    {
-      href: "/upcoming-events",
-      label: "Events",
-      icon: CalendarDays,
-      color: "text-green-400",
-    },
-    {
-      href: "/closet",
-      label: "Closet",
-      icon: Archive,
-      color: "text-amber-500",
-    },
-    {
-      href: "/outfit-recommendations", 
-      label: "Outfits",
-      icon: Lightbulb,
-      color: "text-yellow-400",
-    },
-    {
-      href: "/stylist",
-      label: "AI Stylist",
-      icon: Sparkles,
-      color: "text-[#E1AD01]",
-    },
-    {
-      href: "/inbox",
-      label: "Inbox",
-      icon: Mail,
-      color: "text-indigo-400",
-    },
-    {
-      href: "/settings",
-      label: "Settings",
-      icon: SettingsIcon,
-      color: "text-gray-400",
-    },
-  ];
-
-  const handleLinkClick = () => {
-    if (isMobile) {
-      closeSidebar();
-    }
+  // The Editorial "Elevator" Scroll
+  const scrollToTop = () => {
+    // Finds the main scrollable container (assuming your main layout has an id of 'main-scroll-area')
+    // If you are just scrolling the whole window, window.scrollTo works perfectly.
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
-    <Sidebar>
-      <SidebarHeader className="p-3">
-        <div
-          className={cn(
-            "flex items-center gap-2",
-            state === "collapsed" && "justify-center",
-          )}
-        >
-          <div
-            className={cn(
-              "p-1.5 rounded-md bg-sidebar-primary/20",
-              state === "collapsed" && "bg-transparent",
-            )}
-          >
-            <SkoMiDoraLogoSmall />
+    <aside 
+      className={`h-screen bg-[#050505] border-r border-zinc-900/80 flex flex-col transition-all duration-500 ease-in-out shrink-0 z-50 relative
+        ${isCollapsed ? "w-[80px]" : "w-[240px]"}
+      `}
+    >
+      {/* BRAND HEADER */}
+      <div className="h-[100px] flex items-center justify-center border-b border-zinc-900/50 shrink-0">
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="h-8 w-8 rounded-full border border-zinc-700 flex items-center justify-center group-hover:border-[#9A1B22] transition-colors duration-500">
+            <span className={`${bonheur.className} text-xl text-zinc-300 group-hover:text-white`}>S</span>
           </div>
-          {state === "expanded" && (
-            <span className="text-lg font-semibold text-sidebar-foreground">
+          {!isCollapsed && (
+            <span className="text-zinc-200 font-bold tracking-widest text-sm uppercase">
               SkoMiDora
             </span>
           )}
-        </div>
-      </SidebarHeader>
-      <SidebarContent className="flex-grow p-2">
-        <SidebarMenu>
-          {menuItems.map((item) => (
-            <SidebarMenuItem key={item.href} className="relative">
-              <Link
-                href={item.href}
-                className="w-full"
-                onClick={handleLinkClick}
-              >
-                <SidebarMenuButton
-                  isActive={pathname === item.href}
-                  className={cn(
-                    "w-full justify-start h-auto py-2",
-                    state === "collapsed" ? "flex-col items-center h-14" : "",
-                  )}
-                  aria-label={item.label}
+        </Link>
+      </div>
+
+      {/* NAVIGATION ARCHITECTURE */}
+      <nav className="flex-1 overflow-y-auto py-8 scrollbar-hide flex flex-col gap-2 px-3">
+        {MENU_ITEMS.map((item) => {
+          const isActive = pathname === item.href;
+
+          return (
+            <Link 
+              key={item.name} 
+              href={item.href}
+              className={`group relative flex items-center h-12 rounded-sm transition-all duration-300 overflow-hidden
+                ${isActive ? "bg-zinc-900/40" : "hover:bg-zinc-900/20"}
+                ${isCollapsed ? "justify-center" : "px-5"}
+              `}
+            >
+              {/* The "Rollover Door" Magnetic Line Reveal */}
+              <div 
+                className={`absolute left-0 top-0 h-full w-[3px] bg-[#9A1B22] transition-transform duration-500 ease-[cubic-bezier(0.19,1,0.22,1)]
+                  ${isActive ? "translate-y-0" : "-translate-y-full group-hover:translate-y-0"}
+                `} 
+              />
+
+              <item.icon 
+                className={`h-4 w-4 shrink-0 transition-all duration-500 ease-out
+                  ${isActive ? "text-[#9A1B22]" : "text-zinc-600 group-hover:text-[#9A1B22]"}
+                  ${!isCollapsed && "group-hover:translate-x-1"}
+                `} 
+              />
+              
+              {!isCollapsed && (
+                <span 
+                  className={`ml-4 text-[10px] uppercase tracking-[0.2em] font-semibold transition-colors duration-300
+                    ${isActive ? "text-zinc-100" : "text-zinc-500 group-hover:text-zinc-200"}
+                  `}
                 >
-                  <item.icon className={cn("h-5 w-5 shrink-0", item.color)} />
-                  <span
-                    className={cn(
-                      "text-sm font-medium",
-                      state === "expanded" ? "ml-2" : "text-[10px] mt-1",
-                    )}
-                  >
-                    {item.label}
-                  </span>
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
-      </SidebarContent>
-      <SidebarFooter className="p-3 border-t">
-        {!isMobile && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="w-full justify-start data-[state=expanded]:sm:justify-start data-[state=collapsed]:sm:justify-center"
-            onClick={toggleSidebar}
-            aria-label={
-              state === "expanded" ? "Collapse sidebar" : "Expand sidebar"
-            }
-            data-state={state}
-          >
-            {state === "expanded" ? (
-              <PanelLeftClose className="h-6 w-6" />
-            ) : (
-              <PanelLeftOpen className="h-6 w-6" />
-            )}
-            {state === "expanded" && (
-              <span className="ml-2 text-sm">Collapse</span>
-            )}
-          </Button>
-        )}
-      </SidebarFooter>
-    </Sidebar>
+                  {item.name}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* UTILITY FOOTER */}
+      <div className="p-4 border-t border-zinc-900/50 flex flex-col gap-2 shrink-0">
+        
+        {/* Settings */}
+        <Link 
+          href="/settings"
+          className={`group flex items-center h-12 rounded-sm transition-all duration-300 hover:bg-zinc-900/20
+            ${isCollapsed ? "justify-center" : "px-5"}
+          `}
+        >
+          <Settings className="h-4 w-4 shrink-0 text-zinc-600 group-hover:text-zinc-300 transition-all duration-500 group-hover:rotate-90" />
+          {!isCollapsed && (
+            <span className="ml-4 text-[10px] uppercase tracking-[0.2em] font-semibold text-zinc-500 group-hover:text-zinc-300 transition-colors">
+              Settings
+            </span>
+          )}
+        </Link>
+
+        {/* Scroll To Top Elevator */}
+        <button 
+          onClick={scrollToTop}
+          className={`group flex items-center h-12 rounded-sm transition-all duration-300 hover:bg-[#9A1B22]/10
+            ${isCollapsed ? "justify-center" : "px-5"}
+          `}
+          title="Return to Top"
+        >
+          <ChevronUp className="h-4 w-4 shrink-0 text-zinc-600 group-hover:text-[#9A1B22] transition-all duration-500 group-hover:-translate-y-1" />
+          {!isCollapsed && (
+            <span className="ml-4 text-[10px] uppercase tracking-[0.2em] font-semibold text-zinc-500 group-hover:text-[#9A1B22] transition-colors">
+              Scroll Top
+            </span>
+          )}
+        </button>
+
+        {/* Collapse Toggle */}
+        <button 
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className={`group flex items-center h-12 rounded-sm transition-all duration-300 hover:bg-zinc-900/20 mt-2 border-t border-zinc-900/50
+            ${isCollapsed ? "justify-center" : "px-5"}
+          `}
+        >
+          <PanelLeftClose className={`h-4 w-4 shrink-0 text-zinc-700 group-hover:text-zinc-400 transition-transform duration-500 ${isCollapsed && "rotate-180"}`} />
+          {!isCollapsed && (
+            <span className="ml-4 text-[9px] uppercase tracking-[0.25em] font-bold text-zinc-700 group-hover:text-zinc-400 transition-colors">
+              Collapse
+            </span>
+          )}
+        </button>
+
+      </div>
+    </aside>
   );
 }
