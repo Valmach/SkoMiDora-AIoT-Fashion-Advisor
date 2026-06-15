@@ -20,11 +20,12 @@ const bonheur = Bonheur_Royale({
   weight: ['400'],
 });
 
+// ✅ REORDERED NAVIGATION: Dashboard -> Closet -> Events -> Outfits -> AI Stylist -> Inbox
 const MENU_ITEMS = [
   { name: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-  { name: "Events", icon: CalendarDays, href: "/events" },
   { name: "Closet", icon: Archive, href: "/closet" },
-  { name: "Outfits", icon: Sparkles, href: "/outfits" }, // Assuming outfits uses the AI engine logic
+  { name: "Events", icon: CalendarDays, href: "/events" },
+  { name: "Outfits", icon: Sparkles, href: "/outfits" }, 
   { name: "AI Stylist", icon: Sparkles, href: "/ai-stylist" },
   { name: "Inbox", icon: Mail, href: "/inbox" },
 ];
@@ -33,10 +34,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // The Editorial "Elevator" Scroll
   const scrollToTop = () => {
-    // Finds the main scrollable container (assuming your main layout has an id of 'main-scroll-area')
-    // If you are just scrolling the whole window, window.scrollTo works perfectly.
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -74,7 +72,7 @@ export default function Sidebar() {
                 ${isCollapsed ? "justify-center" : "px-5"}
               `}
             >
-              {/* The "Rollover Door" Magnetic Line Reveal */}
+              {/* Magnetic Line Reveal */}
               <div 
                 className={`absolute left-0 top-0 h-full w-[3px] bg-[#9A1B22] transition-transform duration-500 ease-[cubic-bezier(0.19,1,0.22,1)]
                   ${isActive ? "translate-y-0" : "-translate-y-full group-hover:translate-y-0"}
@@ -105,7 +103,7 @@ export default function Sidebar() {
       {/* UTILITY FOOTER */}
       <div className="p-4 border-t border-zinc-900/50 flex flex-col gap-2 shrink-0">
         
-        {/* Settings */}
+        {/* Settings - Anchored at the bottom of the list */}
         <Link 
           href="/settings"
           className={`group flex items-center h-12 rounded-sm transition-all duration-300 hover:bg-zinc-900/20
