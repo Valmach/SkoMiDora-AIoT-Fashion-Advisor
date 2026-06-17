@@ -1,28 +1,39 @@
-import { initializeApp, getApps } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-import { getAuth } from 'firebase-admin/auth';
+import * as admin from 'firebase-admin';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export function getFirebaseAdmin() {
-  const apps = getApps();
-  const defaultApp = apps.find(app => app.name === '[DEFAULT]');
-
-  let app;
-  if (!defaultApp) {
-    console.log("[Firebase Admin] Bootstrapping [DEFAULT] instance...");
-    
-    // We removed the strict 'credential' requirement. 
-    // Firebase will now automatically and safely discover Cloud Run credentials 
-    // without crashing if it runs locally or during the Next.js build.
-    app = initializeApp({
-      projectId: 'styleai-footwear', 
-    });
-  } else {
-    console.log("[Firebase Admin] Utilizing existing [DEFAULT] instance...");
-    app = defaultApp;
+  if (!admin.apps.length) {
+    try {
+      // Step 1: Check if we are running locally and the key file exists
+      const keyPath = path.resolve(process.cwd(), 'firebase-admin-key.json');
+      
+      if (fs.existsSync(keyPath)) {
+        // LOCAL ENVIRONMENT: Use the physical JSON key
+        console.log("Initializing Firebase Admin with local key file.");
+        const serviceAccount = require(keyPath);
+        admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount),
+        });
+      } else {
+        // PRODUCTION ENVIRONMENT: The file isn't uploaded for security.
+        // Tell Firebase to automatically use its own internal server credentials.
+        console.log("Initializing Firebase Admin with Application Default Credentials.");
+        admin.initializeApp({
+          credential: admin.credential.applicationDefault(),
+        });
+      }
+    } catch (error) {
+      console.error('Firebase Admin Initialization Error:', error);
+      // Absolute fallback if the above methods fail
+      if (!admin.apps.length) {
+        admin.initializeApp();
+      }
+    }
   }
 
-  return {
-    db: getFirestore(app),
-    auth: getAuth(app)
+  return { 
+    db: admin.firestore(), 
+    storage: admin.storage() 
   };
 }
