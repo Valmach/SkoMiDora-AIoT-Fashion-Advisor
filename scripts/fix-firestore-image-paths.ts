@@ -2,7 +2,6 @@ import * as admin from "firebase-admin";
 
 /*
  One-time Firestore cleanup for wardrobe image paths
-
  Fixes:
  - public/... -> public_wardrobe_items/...
  - corrupted unicode dash sequences
@@ -21,12 +20,13 @@ function normalizeImagePath(path: unknown): string | null {
 
   let p = path.trim();
 
+  // FIX: Use forward slash correctly in regex without unnecessary escaping
   if (p.startsWith("public/")) {
-    p = p.replace(/^public\\//, "public_wardrobe_items/");
+    p = p.replace(/^public\//, "public_wardrobe_items/");
   }
 
   // Fix corrupted UTF-8 dash sequences
-  p = p.replace(/â/g, "-");
+  p = p.replace(/â€“/g, "-");
   p = p.replace(/â/g, "-");
 
   return p;
@@ -42,21 +42,24 @@ async function run() {
 
   for (const doc of snap.docs) {
     scanned++;
-    const data = doc.data();
+    // Use 'as any' or define an interface to access 'imagePath' safely
+    const data = doc.data() as { imagePath?: unknown };
 
     if (!data.imagePath) continue;
 
     const fixed = normalizeImagePath(data.imagePath);
+    
+    // Ensure we only update if it actually changed
     if (fixed && fixed !== data.imagePath) {
       await doc.ref.update({ imagePath: fixed });
       updated++;
-      console.log("Updated", doc.id, "->", fixed);
+      console.log(`Updated ${doc.id} -> ${fixed}`);
     }
   }
 
   console.log("DONE");
-  console.log("scanned:", scanned);
-  console.log("updated:", updated);
+  console.log(`scanned: ${scanned}`);
+  console.log(`updated: ${updated}`);
 }
 
 run().catch((err) => {
