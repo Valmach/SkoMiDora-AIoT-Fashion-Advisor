@@ -9,7 +9,6 @@ const google = createGoogleGenerativeAI({
   apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY,
 });
 
-// Enforce that the AI must return a highly specific search query we can use to build a shopping link
 const ShoppingRecommendationSchema = z.object({
   recommendations: z.array(z.object({
     suggestedBrand: z.string().describe("The specific luxury designer brand (e.g., The Row, Loewe, Khaite)"),
@@ -26,15 +25,21 @@ export async function generateShoppingRecommendations(
 ) {
   try {
     const { db } = getFirebaseAdmin();
-    // Using publicWardrobeItems as requested
     const snapshot = await db.collection('publicWardrobeItems').limit(300).get();
     
     let currentWardrobe = "The closet is currently empty.";
     if (!snapshot.empty) {
       const items = snapshot.docs.map(doc => doc.data());
-      // Randomize to prevent the AI from fixating on the first few items
       const shuffledItems = items.sort(() => 0.5 - Math.random());
-      currentWardrobe = shuffledItems.map(item => `- ${item.color || ''} ${item.itemType || ''} ${item.itemName || ''}`).join('\n');
+      
+      // FIX APPLIED HERE: Handle the new contract (aiFriendlyName) AND the old contract (itemName)
+      currentWardrobe = shuffledItems.map(item => {
+        const name = item.aiFriendlyName || item.itemName || 'Unnamed Luxury Item';
+        const type = item.itemType || '';
+        const color = item.color || '';
+        // Build a clean string for Gemini even if some old metadata is missing
+        return `- ${color} ${type} ${name}`.trim();
+      }).filter(str => str !== '-').join('\n');
     }
 
     const weatherPrompt = weatherContext ? `Weather context: ${weatherContext}.` : 'Provide versatile recommendations.';
@@ -70,7 +75,6 @@ export async function generateShoppingRecommendations(
       throw new Error("AI returned empty recommendations.");
     }
 
-    // Materialize the shopping links based on the specific search query
     const materializedLinks = object.recommendations.map(rec => ({
       ...rec,
       shopUrl: `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(rec.searchQuery)}`
