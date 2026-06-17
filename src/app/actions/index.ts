@@ -3,7 +3,7 @@
 /**
  * FILE: src/app/actions/index.ts
  * PURPOSE: Central hub for all AIoT Wardrobe actions.
- * * This file acts as a "Barrel Export" to keep imports clean in the UI.
+ * This file acts as a "Barrel Export" to keep imports clean in the UI.
  * It supports both the "Action" suffix naming and clean naming to prevent
  * build errors in existing pages like src/app/page.tsx.
  */
@@ -33,18 +33,27 @@ export async function analyzeStyleDNAAction(input?: any) {
    OUTFIT & EVENT EXPORTS
 ----------------------------------------------------------- */
 
-/** Generates the 3-card event recommendation grid */
-export async function generateOutfitForEventAction(input: any) {
-  return generateOutfitImpl(input);
+/**
+ * Generates the 3-card event recommendation grid.
+ * Uses a fallback empty array to prevent undefined type mismatch errors.
+ */
+export async function generateOutfitForEventAction(input: any, closetItems?: any[]) {
+  return generateOutfitImpl(input, closetItems || []);
 }
 
 /* -----------------------------------------------------------
    CLOSET & STORAGE EXPORTS
 ----------------------------------------------------------- */
 
-/** Processes new image uploads and saves metadata to Firestore */
-export async function analyzeAndSaveClothingItem(formData: FormData) {
-  return analyzeAndSaveImpl(formData);
+/** * Processes new image uploads and saves metadata to Firestore.
+ * Signature updated to accept the explicit structured object required by the action.
+ */
+export async function analyzeAndSaveClothingItem(input: { 
+  imageUrl: string; 
+  imagePath: string; 
+  aiFriendlyName: string; 
+}) {
+  return analyzeAndSaveImpl(input);
 }
 
 /** Removes items from Firestore and Firebase Storage */
