@@ -1,16 +1,22 @@
 "use client";
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, CloudRain, Snowflake, Sun } from "lucide-react";
-// ✅ Pulled in the Gelasio Serif layout parameters directly from Google Next Google Fonts
-import { Gelasio } from 'next/font/google';
+// ✅ Pulled in fonts
+import { Gelasio, Great_Vibes } from 'next/font/google';
 
 const gelasio = Gelasio({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
   style: ['normal', 'italic']
+});
+
+const greatVibes = Great_Vibes({ 
+  subsets: ['latin'], 
+  weight: ['400'] 
 });
 
 const SafeImage = ({ src, alt }: { src: string, alt: string }) => {
@@ -151,7 +157,6 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
         <div className="flex flex-col gap-3 relative z-10 w-full">
           
           <div className="flex items-start justify-between gap-3 w-full">
-            {/* ✅ Applied Gelasio font directly here to transform the event card subtitle headers */}
             <div className={`${gelasio.className} flex items-center gap-2 text-[11px] text-zinc-300 uppercase tracking-[0.15em] shrink-0 mt-1`}>
               <span className="text-[#9A1B22] font-bold">0{index + 1}</span>
               <span className="text-zinc-700 font-sans">•</span>
@@ -208,7 +213,6 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
            <div className={`absolute inset-0 z-10 ${overlay}`} />
            <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/50 to-transparent z-10" />
            
-           {/* ✅ Applied Gelasio font directly here to style the city overlay subtitles */}
            <div className={`${gelasio.className} absolute bottom-3 right-3 z-20 flex items-center gap-2 opacity-100 backdrop-blur-sm bg-black/30 px-3 py-1.5 border border-zinc-800/50 max-w-[80%]`}>
               {icon}
               <span className="text-[10px] uppercase tracking-[0.1em] text-zinc-100 font-medium drop-shadow-md truncate">
@@ -217,10 +221,31 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
            </div>
         </div>
 
-       <div className="relative pl-4 border-l-2 border-[#9A1B22]/50 h-auto min-h-[60px] mt-4">
+       <div className="relative pl-4 border-l-2 border-[#9A1B22]/50 h-auto min-h-[60px] mt-4 flex-1">
           <p className="text-xs text-zinc-400 font-light leading-loose italic line-clamp-4">
             &ldquo;{outfit.reasoning}&rdquo;
           </p>
+        </div>
+
+        {/* ========================================== */}
+        {/* FIND MISSING BITS BUTTON (LUXURY ROLLOVER) */}
+        {/* ========================================== */}
+        <div className="mt-6 flex justify-center pb-2">
+          <Link href={`/stylist?event=${encodeURIComponent(outfit.eventName || displayLocation || "Upcoming Event")}&weather=${encodeURIComponent(outfit.weather || "")}`}>
+            <button className="group relative flex h-12 w-[220px] items-center justify-center overflow-hidden border border-zinc-800 bg-transparent transition-all duration-500 hover:border-zinc-600 hover:bg-black">
+              
+              {/* Default State: Sleek, minimal uppercase text */}
+              <span className="absolute text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 transition-all duration-500 group-hover:-translate-y-6 group-hover:opacity-0">
+                Find Missing Bits
+              </span>
+              
+              {/* Hover State: White cursive text that slides in */}
+              <span className={`absolute text-2xl text-white opacity-0 transition-all duration-500 translate-y-6 group-hover:translate-y-0 group-hover:opacity-100 ${greatVibes.className}`}>
+                Find Missing Bits
+              </span>
+              
+            </button>
+          </Link>
         </div>
 
       </CardContent>
