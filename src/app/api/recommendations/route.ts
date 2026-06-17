@@ -51,8 +51,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Closet inventory is empty' }, { status: 400 });
     }
 
-    let compiledOutfits: any[] = [];
-    let trackingExclusionList: string[] = [];
+    const compiledOutfits: any[] = [];
+    const trackingExclusionList: string[] = [];
 
     // Multi-Pass Generation Loop: Separately requests each card and appends chosen items to the next iteration's blacklist
     for (let currentPass = 0; currentPass < targetCardCount; currentPass++) {

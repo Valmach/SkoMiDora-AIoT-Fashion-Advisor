@@ -27,10 +27,10 @@ export const syncWardrobeImageToFirestore = onObjectFinalized(async (event) => {
     }
 
     const userId = pathSegments[1];
-    const bucketName = fileData.bucket;
+    const bucket = fileData.bucket;
     const encodedPath = encodeURIComponent(filePath);
     const baseUrl = "https://firebasestorage.googleapis.com/v0/b";
-    const downloadUrl = `${baseUrl}/${bucketName}/o/${encodedPath}?alt=media`;
+    const downloadUrl = `${baseUrl}/${bucket}/o/${encodedPath}?alt=media`;
 
     const itemPayload = {
       storagePath: filePath,
@@ -48,7 +48,7 @@ export const syncWardrobeImageToFirestore = onObjectFinalized(async (event) => {
       .collection("wardrobeItems")
       .add(itemPayload);
 
-    console.log(`Synced asset successfully. Doc ID: ${docRef.id}`);
+    console.log(`Synced successfully. Doc ID: ${docRef.id}`);
   } catch (error) {
     console.error("Error executing Firestore sync workflow:", error);
   }
