@@ -11,10 +11,10 @@ const google = createGoogleGenerativeAI({
 
 const ShoppingRecommendationSchema = z.object({
   recommendations: z.array(z.object({
-    suggestedBrand: z.string().describe("The specific luxury designer brand (e.g., The Row, Loewe, Khaite)"),
-    itemType: z.string().describe("The exact category of the item"),
-    description: z.string().describe("Why this specific piece fills a gap in their current wardrobe for this event."),
-    searchQuery: z.string().describe("A highly specific phrase to find this item online (e.g., 'Loewe camel wool tailored coat')")
+    suggestedBrand: z.string(),
+    itemType: z.string(),
+    description: z.string(),
+    searchQuery: z.string()
   }))
 });
 
@@ -23,31 +23,38 @@ export async function generateShoppingRecommendations(
   weatherContext: string, 
   targetCategory: string = "Any Missing Piece"
 ) {
+  console.log("=========================================");
+  console.log("🛒 STYLIST ACTION TRIGGERED");
+  console.log(`🎯 Target Category: ${targetCategory}`);
+  console.log(`📍 Context: ${eventContext} | ⛅ Weather: ${weatherContext}`);
+  
   try {
     const { db } = getFirebaseAdmin();
+    console.log("✅ Firebase Admin Initialized");
+
     const snapshot = await db.collection('publicWardrobeItems').limit(300).get();
+    console.log(`📦 Found ${snapshot.size} items in publicWardrobeItems`);
     
     let currentWardrobe = "The closet is currently empty.";
     if (!snapshot.empty) {
       const items = snapshot.docs.map(doc => doc.data());
       const shuffledItems = items.sort(() => 0.5 - Math.random());
       
-      // FIX APPLIED HERE: Handle the new contract (aiFriendlyName) AND the old contract (itemName)
       currentWardrobe = shuffledItems.map(item => {
         const name = item.aiFriendlyName || item.itemName || 'Unnamed Luxury Item';
         const type = item.itemType || '';
         const color = item.color || '';
-        // Build a clean string for Gemini even if some old metadata is missing
         return `- ${color} ${type} ${name}`.trim();
       }).filter(str => str !== '-').join('\n');
     }
 
-    const weatherPrompt = weatherContext ? `Weather context: ${weatherContext}.` : 'Provide versatile recommendations.';
+    // Snipping the console log so it doesn't flood the terminal, just showing length
+    console.log(`👕 Wardrobe string length passed to AI: ${currentWardrobe.length} characters`);
 
     const prompt = `
       You are an elite personal shopper for a high-net-worth client. 
       Event: "${eventContext || 'General Wardrobe Update'}"
-      ${weatherPrompt}
+      Weather context: ${weatherContext || 'Provide versatile recommendations.'}
 
       The client specifically needs: "${targetCategory}".
       
@@ -56,14 +63,15 @@ export async function generateShoppingRecommendations(
 
       YOUR MISSION:
       Analyze their existing wardrobe above. Identify what is missing to complete a look for the event.
-      Provide exactly 3 luxury recommendations that they DO NOT already own.
+      YOU MUST RETURN EXACTLY 3 RECOMMENDATIONS. DO NOT RETURN AN EMPTY ARRAY.
       
-      CRITICAL:
       1. If they asked for a specific category (e.g., "Shorts"), ALL 3 items must be Shorts.
       2. If they asked for "Any Missing Piece", provide 3 different types of items that complete their current wardrobe.
       3. Suggest high-end, contemporary luxury brands (The Row, Bottega Veneta, Khaite, Marni, etc.).
     `;
 
+    console.log("🧠 Sending prompt to Gemini 2.5 Flash...");
+    
     const { object } = await generateObject({
       model: google('gemini-2.5-flash'),
       schema: ShoppingRecommendationSchema,
@@ -71,7 +79,11 @@ export async function generateShoppingRecommendations(
       temperature: 0.8, 
     });
 
+    console.log("✨ Gemini Response Received:");
+    console.log(JSON.stringify(object, null, 2));
+
     if (!object || !object.recommendations || object.recommendations.length === 0) {
+      console.log("❌ ERROR: Gemini returned an empty array.");
       throw new Error("AI returned empty recommendations.");
     }
 
@@ -80,10 +92,14 @@ export async function generateShoppingRecommendations(
       shopUrl: `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(rec.searchQuery)}`
     }));
 
+    console.log("✅ Success! Sending links to frontend.");
+    console.log("=========================================");
+    
     return { success: true, recommendations: materializedLinks };
 
   } catch (error: any) {
-    console.error("❌ Recommendation Engine Error:", error);
-    return { success: false, error: "Failed to generate missing pieces." };
+    console.error("❌ FATAL STYLIST ERROR:", error);
+    // 👇 Send the RAW system error directly to the browser
+    return { success: false, error: `CRASH REASON: ${error.message || String(error)}` }; 
   }
 }
