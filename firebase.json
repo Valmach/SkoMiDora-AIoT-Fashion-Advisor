@@ -27,5 +27,11 @@
     "environment": {
       "BUILD_COMMAND": "npm run build"
     }
+  },
+  "functions": {
+    "source": "functions"
+  },
+  "storage": {
+    "rules": "storage.rules"
   }
 }

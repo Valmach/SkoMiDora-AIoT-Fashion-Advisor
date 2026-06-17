@@ -1,15 +1,28 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow public read access for wardrobe item images
-    match /public_wardrobe_items/{allPaths=**} {
-      allow read: if true;
-      allow write: if false; // Writes should only happen from the trusted backend
+    
+    // 1. Block everything by default to prevent accidental leaks
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
 
-    // Example for user-specific private files
+    // 2. Your existing public catalog logic
+    match /public_wardrobe_items/{allPaths=**} {
+      allow read: if true;
+      allow write: if false; // Writes only happen from the trusted backend Admin SDK
+    }
+
+    // 3. The locked-down user private directory
     match /users/{userId}/{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // READ: Users can see all files inside their own directory
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // WRITE: Users can upload, but ONLY if it is an image under 5MB
+      allow write: if request.auth != null 
+                   && request.auth.uid == userId
+                   && request.resource.contentType.matches('image/.*')
+                   && request.resource.size < 5 * 1024 * 1024;
     }
   }
 }
