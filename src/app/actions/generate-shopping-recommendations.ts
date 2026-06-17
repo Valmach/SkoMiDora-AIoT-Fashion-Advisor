@@ -1,79 +1,77 @@
 'use server';
 
 import { getFirebaseAdmin } from '@/lib/firebase-admin';
-import { ai } from '@/ai/genkit';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { generateObject } from 'ai';
 import { z } from 'zod';
 
+const google = createGoogleGenerativeAI({
+  apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY,
+});
+
+// Enforce that the AI must return a highly specific search query we can use to build a shopping link
 const ShoppingRecommendationSchema = z.object({
   recommendations: z.array(z.object({
-    suggestedBrand: z.string().describe("The specific designer brand recommended (e.g., The Row, Bottega Veneta, Khaite, Loewe, Jacquemus)"),
-    itemType: z.string().describe("The category of the item (e.g., Outerwear, Footwear, Dress, Accessory)"),
-    description: z.string().describe("A compelling, single-sentence description of why this piece works for the event and complements their existing wardrobe."),
-    searchQuery: z.string().describe("A highly specific search phrase to find this item (e.g., 'Loewe camel wool tailored coat')")
+    suggestedBrand: z.string().describe("The specific luxury designer brand (e.g., The Row, Loewe, Khaite)"),
+    itemType: z.string().describe("The exact category of the item"),
+    description: z.string().describe("Why this specific piece fills a gap in their current wardrobe for this event."),
+    searchQuery: z.string().describe("A highly specific phrase to find this item online (e.g., 'Loewe camel wool tailored coat')")
   }))
 });
 
 export async function generateShoppingRecommendations(
   eventContext: string, 
   weatherContext: string, 
-  targetCategory: string = "Any Missing Piece", 
-  userPreference: string = "high-end luxury"
+  targetCategory: string = "Any Missing Piece"
 ) {
-  console.log(`[Server Action] Starting recommendation for: ${eventContext} | Weather: ${weatherContext} | Category: ${targetCategory}`);
-
   try {
     const { db } = getFirebaseAdmin();
-
-    const snapshot = await db.collection('publicWardrobeItems').limit(500).get();
+    // Using publicWardrobeItems as requested
+    const snapshot = await db.collection('publicWardrobeItems').limit(300).get();
     
-    let currentWardrobe = "";
+    let currentWardrobe = "The closet is currently empty.";
     if (!snapshot.empty) {
       const items = snapshot.docs.map(doc => doc.data());
-      
-      // FIX 1: THE SHUFFLE - Mathematically scramble the array to prevent Top-Of-Pile Bias
+      // Randomize to prevent the AI from fixating on the first few items
       const shuffledItems = items.sort(() => 0.5 - Math.random());
-      
-      currentWardrobe = shuffledItems.map(item => `- ${item.color || 'Unspecified'} ${item.itemType || 'Clothing item'} ${item.itemName || ''}`).join('\n');
-      console.log(`[Server Action] Successfully loaded and shuffled ${items.length} items from wardrobe.`);
-    } else {
-      currentWardrobe = "The user's closet is currently empty.";
+      currentWardrobe = shuffledItems.map(item => `- ${item.color || ''} ${item.itemType || ''} ${item.itemName || ''}`).join('\n');
     }
 
-    // THE CATEGORY-AWARE & DIVERSITY-ENFORCED PROMPT
-    const prompt = `
-      You are an elite, avant-garde personal stylist for high-net-worth clients. 
-      The user has an upcoming event: "${eventContext}".
-      The exact weather conditions for this event are: "${weatherContext}".
+    const weatherPrompt = weatherContext ? `Weather context: ${weatherContext}.` : 'Provide versatile recommendations.';
 
-      Here is their entire current wardrobe inventory (${snapshot.size} items):
+    const prompt = `
+      You are an elite personal shopper for a high-net-worth client. 
+      Event: "${eventContext || 'General Wardrobe Update'}"
+      ${weatherPrompt}
+
+      The client specifically needs: "${targetCategory}".
+      
+      Here is what they ALREADY own:
       ${currentWardrobe}
 
-      CRITICAL STYLING RULES:
-      1. CLIMATE ENFORCEMENT: You MUST strictly filter the inventory and recommendations based on the ${weatherContext} weather. 
-      2. TARGET CATEGORY ENFORCEMENT: The user is specifically looking for: "${targetCategory}".
-         - If this says "Any Missing Piece", provide a mixed curation of completely different items (e.g., 1 top, 1 shoe, 1 bag).
-         - If this specifies a distinct category (e.g., "Shoes", "Outerwear", "Dresses"), ALL 3 recommendations MUST be from that exact category. Do not mix and match.
-      3. DIVERSITY ENFORCEMENT (CRITICAL): You MUST explore unique, unexpected luxury designers. DO NOT default to the most obvious choices (like only suggesting Chanel or Fendi). Provide fresh, high-end pairings (e.g., The Row, Khaite, Marni, Loewe) that the user might not have considered.
-      4. Ensure the recommendations seamlessly complement the specific items they already own from the inventory list above.
+      YOUR MISSION:
+      Analyze their existing wardrobe above. Identify what is missing to complete a look for the event.
+      Provide exactly 3 luxury recommendations that they DO NOT already own.
+      
+      CRITICAL:
+      1. If they asked for a specific category (e.g., "Shorts"), ALL 3 items must be Shorts.
+      2. If they asked for "Any Missing Piece", provide 3 different types of items that complete their current wardrobe.
+      3. Suggest high-end, contemporary luxury brands (The Row, Bottega Veneta, Khaite, Marni, etc.).
     `;
 
-    console.log("[Server Action] Sending prompt to Gemini via Genkit with High Temperature...");
-    const { output } = await ai.generate({
-      model: 'googleai/gemini-2.5-flash',
-      // FIX 2: THE HEAT - Crank temperature to 0.85 to force creative, non-repetitive styling
-      config: {
-        temperature: 0.85,
-        topP: 0.9,
-      },
+    const { object } = await generateObject({
+      model: google('gemini-2.5-flash'),
+      schema: ShoppingRecommendationSchema,
       prompt: prompt,
-      output: { schema: ShoppingRecommendationSchema }
+      temperature: 0.8, 
     });
 
-    if (!output || !output.recommendations) {
-      return { success: false, error: "AI failed to generate recommendations." };
+    if (!object || !object.recommendations || object.recommendations.length === 0) {
+      throw new Error("AI returned empty recommendations.");
     }
 
-    const materializedLinks = output.recommendations.map(rec => ({
+    // Materialize the shopping links based on the specific search query
+    const materializedLinks = object.recommendations.map(rec => ({
       ...rec,
       shopUrl: `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(rec.searchQuery)}`
     }));
@@ -82,6 +80,6 @@ export async function generateShoppingRecommendations(
 
   } catch (error: any) {
     console.error("❌ Recommendation Engine Error:", error);
-    return { success: false, error: error.message || "Failed to generate shopping opportunities." };
+    return { success: false, error: "Failed to generate missing pieces." };
   }
 }
