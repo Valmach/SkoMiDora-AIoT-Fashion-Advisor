@@ -1,0 +1,12 @@
+[debug] [2026-06-17T20:58:57.659Z] ----------------------------------------------------------------------
+[debug] [2026-06-17T20:58:57.661Z] Command:       /nix/store/ws50yvm6vzlzf7jzz6n7xh4szddrack1-nodejs-20.19.1/bin/node /nix/store/gm9mcvzb17vv8cla08khrg29vxn3sq4r-firebase-tools-15.1.0/lib/node_modules/firebase-tools/lib/bin/firebase.js deploy --only hosting,functions --force --non-interactive
+[debug] [2026-06-17T20:58:57.662Z] CLI Version:   15.1.0
+[debug] [2026-06-17T20:58:57.662Z] Platform:      linux
+[debug] [2026-06-17T20:58:57.662Z] Node Version:  v20.19.1
+[debug] [2026-06-17T20:58:57.662Z] Time:          Wed Jun 17 2026 20:58:57 GMT+0000 (Coordinated Universal Time)
+[debug] [2026-06-17T20:58:57.662Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-06-17T20:58:58.937Z] Object "" in "firebase.json" has unknown property: {"additionalProperty":"projects"}
+[debug] [2026-06-17T20:58:58.939Z] Checked if tokens are valid: true, expires at: 1781731211361
+[debug] [2026-06-17T20:58:58.940Z] Checked if tokens are valid: true, expires at: 1781731211361
+[debug] [2026-06-17T20:58:58.942Z] >>> [apiv2][query] GET https://monospace-pa.googleapis.com/v1/workspaces/skomidora-aiot-29612212 [none]

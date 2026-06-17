@@ -22,11 +22,11 @@ const CATEGORIES = [
   "Sweaters & Cardigans",
   "Jackets & Outerwear", 
   "Trousers",
-  "Shorts",               // ✅ Shorts Integrated
+  "Shorts",
   "Jeans",
   "Skirts", 
   "Dresses", 
-  "Swimwear & Resort",    // ✅ Swimwear Integrated
+  "Swimwear & Resort",
   "Innerwear & Underwear",
   "Shoes", 
   "Jewelry",
@@ -109,7 +109,6 @@ function StylistContent() {
                 placeholder="e.g., Winter trip to Oslo, Gala in Paris, London business trip..."
                 className="w-full bg-zinc-900/30 border border-zinc-800 hover:border-zinc-700 text-zinc-100 pl-5 pr-12 py-4 text-sm font-light tracking-wide focus:border-[#9A1B22] focus:bg-black outline-none transition-all duration-300 placeholder:text-zinc-500 shadow-inner rounded-none"
               />
-              {/* Icon that fades in when the user clicks into the input */}
               <div className="absolute inset-y-0 right-0 pr-5 flex items-center pointer-events-none transition-opacity duration-500 opacity-0 group-focus-within/input:opacity-100">
                 <Sparkles className="h-4 w-4 text-[#9A1B22]" />
               </div>
@@ -150,31 +149,42 @@ function StylistContent() {
           </div>
         </div>
 
+        {/* ========================================== */}
+        {/* FIX APPLIED HERE: BUTTON SPAN WRAPPERS     */}
+        {/* ========================================== */}
         <Button 
           onClick={handleGenerateLooks} 
           disabled={isStyling}
           className="bg-[#9A1B22] text-white hover:bg-[#7A151B] rounded-none px-12 py-7 font-bold uppercase tracking-[0.15em] text-xs transition-all shadow-lg w-full md:w-auto mt-2"
         >
           {isStyling ? (
-            <><Loader2 className="mr-3 h-5 w-5 animate-spin" /> Consulting Stylist...</>
+            <span key="styling-state" className="flex items-center">
+              <Loader2 className="mr-3 h-5 w-5 animate-spin" /> Consulting Stylist...
+            </span>
           ) : (
-            <><Search className="mr-3 h-4 w-4" /> Find {activeCategory === "Any Missing Piece" ? "Missing Pieces" : activeCategory}</>
+            <span key="idle-state" className="flex items-center">
+              <Search className="mr-3 h-4 w-4" /> Find {activeCategory === "Any Missing Piece" ? "Missing Pieces" : activeCategory}
+            </span>
           )}
         </Button>
       </div>
 
-      {/* RECOMMENDATIONS RESULTS */}
-      {recs.length > 0 && (
-        <div className="mt-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-          <div className="flex items-center gap-3 mb-8 px-2 border-b border-zinc-900 pb-5">
-            <Sparkles className="h-6 w-6 text-[#9A1B22]" />
-            <h2 className={`${greatVibes.className} text-5xl font-normal text-white tracking-wide`}>
-              Curated <span className="text-[#9A1B22]">{activeCategory !== "Any Missing Piece" ? activeCategory : "Pieces"}</span>
-            </h2>
+      {/* ========================================== */}
+      {/* FIX APPLIED HERE: STABLE DIV WRAPPER       */}
+      {/* ========================================== */}
+      <div key="recs-container" className="w-full mt-12 min-h-[500px]">
+        {recs.length > 0 && (
+          <div className="animate-in fade-in slide-in-from-bottom-8 duration-1000">
+            <div className="flex items-center gap-3 mb-8 px-2 border-b border-zinc-900 pb-5">
+              <Sparkles className="h-6 w-6 text-[#9A1B22]" />
+              <h2 className={`${greatVibes.className} text-5xl font-normal text-white tracking-wide`}>
+                Curated <span className="text-[#9A1B22]">{activeCategory !== "Any Missing Piece" ? activeCategory : "Pieces"}</span>
+              </h2>
+            </div>
+            <ShoppingRecommendations eventContext={eventContext || "General Wardrobe Refresh"} recommendations={recs} />
           </div>
-          <ShoppingRecommendations eventContext={eventContext || "General Wardrobe Refresh"} recommendations={recs} />
-        </div>
-      )}
+        )}
+      </div>
 
     </div>
   );
