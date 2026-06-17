@@ -1,30 +1,40 @@
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { storage } from "@/lib/firebase";
+import { getAuth } from "firebase/auth";
 
+/**
+ * Patched upload function to bypass browser-level XHR/Fetch interference
+ * by using a direct HTTP multipart/form-data request.
+ */
 export async function uploadToCloset(file: File, userId: string) {
-  // Use a unique name to prevent collisions and ensure path compatibility
-  const storagePath = `users/${userId}/wardrobe/${Date.now()}-${file.name}`;
-  const storageRef = ref(storage, storagePath);
+  const auth = getAuth();
+  const user = auth.currentUser;
 
-  const uploadTask = uploadBytesResumable(storageRef, file);
+  if (!user) {
+    throw new Error("Upload failed: User not authenticated.");
+  }
 
-  return new Promise((resolve, reject) => {
-    uploadTask.on(
-      "state_changed",
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        console.log(`Upload progress: ${progress}%`);
+  // Get the ID token to authenticate the proxy request
+  const token = await user.getIdToken();
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("userId", userId);
+
+  // Direct HTTP call to your own function, bypassing Firebase Storage SDK logic
+  const response = await fetch(
+    "https://us-central1-styleai-footwear.cloudfunctions.net/uploadProxy",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
       },
-      (error) => {
-        console.error("SDK Upload Error (Check Storage Rules):", error);
-        reject(error);
-      },
-      async () => {
-        // Once complete, the Gen 2 function will trigger automatically
-        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-        console.log("Upload complete. Triggering Cloud Function...");
-        resolve(downloadURL);
-      }
-    );
-  });
+      body: formData,
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(`Upload Proxy failed: ${response.status} ${JSON.stringify(errorData)}`);
+  }
+
+  return response.json();
 }
