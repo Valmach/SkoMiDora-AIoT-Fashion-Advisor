@@ -3,35 +3,39 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 export function getFirebaseAdmin() {
-  if (!admin.apps.length) {
+  let app: admin.app.App;
+
+  // 1. Explicitly hunt for the [DEFAULT] app to prevent Next.js caching conflicts
+  const existingApp = admin.apps.find((a) => a?.name === '[DEFAULT]');
+  
+  if (existingApp) {
+    app = existingApp;
+  } else {
     try {
-      // Step 1: Check for the local file in Firebase Studio
+      // 2. Check for the local physical key file
       const keyPath = path.resolve(process.cwd(), 'firebase-admin-key.json');
       
       if (fs.existsSync(keyPath)) {
-        console.log("Initializing Firebase Admin locally...");
+        console.log("Booting Firebase Admin (Local Mode)");
         const serviceAccount = require(keyPath);
-        admin.initializeApp({
+        app = admin.initializeApp({
           credential: admin.credential.cert(serviceAccount),
         });
       } else {
-        // Step 2: Production Initialization
-        // In Firebase Next.js hosting, zero-arguments is the official standard.
-        console.log("Initializing Firebase Admin in Production...");
-        admin.initializeApp({
-           projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "styleai-footwear"
-        });
+        // 3. PRODUCTION MODE: Zero arguments. 
+        // This forces Firebase to securely inherit Cloud Run's internal service account.
+        console.log("Booting Firebase Admin (Production Serverless Mode)");
+        app = admin.initializeApp(); 
       }
     } catch (error: any) {
-      // Step 3: NO MORE SWALLOWING ERRORS.
-      // If initialization fails, we throw the exact reason directly back to the browser.
-      throw new Error(`INIT FAILURE: ${error.message || String(error)}`);
+      console.error("CRITICAL: Failed to initialize Firebase Admin:", error);
+      throw new Error(`FIREBASE INIT FAILED: ${error.message}`);
     }
   }
 
-  // If we made it here, the database is legally connected.
+  // 4. Bind Firestore directly to the confirmed app instance
   return { 
-    db: admin.firestore(), 
-    storage: admin.storage() 
+    db: app.firestore(), 
+    storage: app.storage() 
   };
 }
