@@ -1,10 +1,8 @@
-// components/UpcomingEventAdviceCard.tsx
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { MapPin, Calendar, CloudSun, Volume2, Square, ArrowRight } from 'lucide-react';
+import { MapPin, Calendar, CloudSun, Volume2, Square, ArrowRight, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Playfair_Display } from 'next/font/google'; 
@@ -16,15 +14,7 @@ const playfair = Playfair_Display({
 });
 
 interface AdviceProps {
-  eventAdvice: {
-    eventName: string;
-    date: string;
-    weatherForecast: string;
-    reasoning: string;
-    styleKeywords: string[];
-    location?: string;
-    cityBg?: string; 
-  };
+  eventAdvice: any; // Relaxed to 'any' to accept the raw Google Calendar object
   analyzedItems: any[];
   cardIndex: number;
 }
@@ -33,7 +23,6 @@ interface AdviceProps {
 const CITY_IMAGES: Record<string, string> = {
   'Paris': 'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=800&q=80', 
   'New York': 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?auto=format&fit=crop&w=800&q=80', 
-  // VERIFIED: Raw Direct Image URL for Oslo Sunset
   'Oslo': 'https://plus.unsplash.com/premium_photo-1697729974131-40aabc4817c0?q=80&w=831&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', 
   'Rome': 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=800&q=80', 
   'London': 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=800&q=80', 
@@ -42,6 +31,13 @@ const CITY_IMAGES: Record<string, string> = {
 
 export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, cardIndex }: AdviceProps) {
   if (!eventAdvice) return null;
+
+  // --- SAFE DATA FALLBACKS TO PREVENT CRASHES ---
+  const safeEventName = eventAdvice.eventName || eventAdvice.summary || eventAdvice.title || eventAdvice.name || "Upcoming Event";
+  const safeDate = eventAdvice.date || eventAdvice.start?.dateTime || eventAdvice.start?.date || "Date TBA";
+  const safeWeather = eventAdvice.weatherForecast || eventAdvice.weather || eventAdvice.weatherContext || "Weather data unavailable";
+  const safeReasoning = eventAdvice.reasoning || "Stylist notes are being generated...";
+  const safeKeywords = eventAdvice.styleKeywords || [];
 
   const animationDelay = `${cardIndex * 150}ms`;
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -65,7 +61,7 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
     setIsSpeaking(true);
     
     try {
-      const textToRead = `${eventAdvice.eventName}. ${eventAdvice.weatherForecast}. Stylist Notes: ${eventAdvice.reasoning}`;
+      const textToRead = `${safeEventName}. ${safeWeather}. Stylist Notes: ${safeReasoning}`;
       const userLocale = navigator.language || 'en-US'; 
       
       const response = await fetch('/api/tts', {
@@ -92,6 +88,7 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
   };
 
   const getCityImage = (name: string) => {
+    if (!name) return CITY_IMAGES['Default'];
     const lowerName = name.toLowerCase();
     if (lowerName.includes("paris")) return CITY_IMAGES['Paris'];
     if (lowerName.includes("new york")) return CITY_IMAGES['New York'];
@@ -103,16 +100,15 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
 
   return (
     <div 
-      className={`animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-backwards h-full`}
+      className={`animate-in fade-in slide-in-from-bottom-4 duration-700 fill-mode-backwards h-full flex flex-col`}
       style={{ animationDelay }}
     >
-      <Card className={`bg-zinc-900/80 border-zinc-800 overflow-hidden h-full flex flex-col border-l-4 border-l-[#DC143C] group hover:border-[#DC143C]/50 transition-all duration-300`}>
+      <Card className={`bg-zinc-900/80 border-zinc-800 overflow-hidden flex-grow flex flex-col border-l-4 border-l-[#DC143C] group hover:border-[#DC143C]/50 transition-all duration-300`}>
         
         <div className="h-56 w-full bg-zinc-800 relative overflow-hidden group shrink-0">
           <img 
-            // FIX: strictly force our local dictionary
-            src={getCityImage(eventAdvice.eventName)} 
-            alt={eventAdvice.eventName}
+            src={getCityImage(safeEventName)} 
+            alt={safeEventName}
             className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-700 group-hover:scale-110 transform transition-transform"
             onError={(e) => { e.currentTarget.src = CITY_IMAGES['Default']; }}
           />
@@ -120,7 +116,8 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
           
           <div className="absolute top-4 right-4 bg-black/60 text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 backdrop-blur-md border border-[#DC143C]/30">
             <Calendar size={10} className="text-[#DC143C]" />
-            {eventAdvice.date.split('•')[0]} 
+            {/* Safely split date just in case it's formatted weirdly */}
+            {typeof safeDate === 'string' ? safeDate.split('•')[0] : 'Upcoming'} 
           </div>
         </div>
 
@@ -128,11 +125,11 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
           <div className="flex justify-between items-end">
             <div>
               <CardTitle className={`text-3xl text-white mb-1 drop-shadow-xl ${playfair.className} italic`}>
-                {eventAdvice.eventName.split(' ')[0]} 
+                {safeEventName.split(' ')[0]} 
               </CardTitle>
               <div className="flex items-center gap-2 text-zinc-400 text-xs tracking-wider uppercase font-medium">
                 <MapPin size={12} className="text-[#DC143C]" />
-                <span>{eventAdvice.eventName.split(' ').slice(1).join(' ')}</span>
+                <span>{safeEventName.split(' ').slice(1).join(' ') || "Location TBA"}</span>
               </div>
             </div>
           </div>
@@ -142,10 +139,10 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
           
           <div className="flex items-center gap-2 text-xs text-zinc-300/80">
             <CloudSun size={14} className="text-[#DC143C]" />
-            {eventAdvice.weatherForecast}
+            {safeWeather}
           </div>
 
-          <div className="relative pl-4 border-l-2 border-[#DC143C]/50">
+          <div className="relative pl-4 border-l-2 border-[#DC143C]/50 flex-grow">
             <div className="flex items-center justify-between mb-2">
               <div className="text-[10px] text-[#DC143C] uppercase tracking-[0.2em] font-bold">
                 Stylist Notes
@@ -167,25 +164,26 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
             </div>
             
             <p className={`font-normal text-sm text-zinc-200 tracking-wide leading-relaxed ${playfair.className}`}>
-              "{eventAdvice.reasoning}"
+              "{safeReasoning}"
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2 mt-auto">
-            {eventAdvice.styleKeywords && eventAdvice.styleKeywords.map((keyword, i) => (
+          <div className="flex flex-wrap gap-2 mt-4">
+            {safeKeywords.map((keyword: string, i: number) => (
               <Badge key={i} variant="outline" className="border-zinc-700 text-zinc-400 text-[10px] uppercase tracking-widest hover:text-white hover:border-[#DC143C] transition-colors bg-transparent">
                 {keyword}
               </Badge>
             ))}
           </div>
 
-          {/* FIX: Passing the event name and weather as URL parameters so the next page knows what to load */}
+          {/* Syncs with the AI Stylist flow we created earlier */}
           <Link 
-            href={`/outfit-recommendations?event=${encodeURIComponent(eventAdvice.eventName)}&weather=${encodeURIComponent(eventAdvice.weatherForecast)}`} 
+            href={`/stylist?event=${encodeURIComponent(safeEventName)}&weather=${encodeURIComponent(safeWeather)}`} 
             className="mt-4 w-full"
           >
             <button className="w-full py-3 px-4 bg-zinc-800 hover:bg-[#DC143C] text-white text-xs font-bold uppercase tracking-widest rounded transition-colors flex items-center justify-center gap-2 group">
-              View 3 Outfit Options
+              <Sparkles size={14} />
+              Style This Event
               <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
             </button>
           </Link>
