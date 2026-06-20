@@ -23,6 +23,10 @@ export default function StylistPage() {
   const [aiResponse, setAiResponse] = useState<any>(null);
   const [hardwareSyncStatus, setHardwareSyncStatus] = useState<'idle' | 'syncing' | 'success'>('idle');
 
+  // NEW: State for manual entry when URL params are missing
+  const [manualEventInput, setManualEventInput] = useState("");
+  const [displayEventName, setDisplayEventName] = useState(eventName || "");
+
   // Automatically trigger the Gemini AI if an event was passed from the Calendar
   useEffect(() => {
     if (eventName) {
@@ -33,6 +37,7 @@ export default function StylistPage() {
   const generateStylingAndHardwareConfig = async (event: string, eventWeather: string) => {
     setIsGenerating(true);
     setHardwareSyncStatus('idle');
+    setDisplayEventName(event); // Update the header to show the current event
     
     try {
       // NOTE: In production, move this fetch to a Next.js Server Action to hide the API key
@@ -109,9 +114,37 @@ export default function StylistPage() {
           </div>
           <h1 className={`text-5xl md:text-6xl font-normal tracking-wide ${imperial.className}`}> 
             <span className="text-white">Curated for </span>
-            <span className="text-[#9A1B22]">{eventName || "You"}</span>
+            <span className="text-[#9A1B22]">{displayEventName || "You"}</span>
           </h1>
         </div>
+
+        {/* 1. MANUAL ENTRY STATE (Fixes the blank page when navigating from sidebar) */}
+        {!isGenerating && !aiResponse && (
+          <div className="bg-zinc-950 border border-zinc-900 p-8 rounded-sm animate-in fade-in duration-500">
+            <h3 className="text-zinc-400 text-xs uppercase tracking-[0.2em] mb-6">Describe Your Occasion</h3>
+            <div className="flex flex-col md:flex-row gap-4">
+              <input
+                type="text"
+                placeholder="e.g., Yacht Party in Monaco, Business Dinner..."
+                className="flex-1 bg-black border border-zinc-800 p-4 text-white text-sm focus:outline-none focus:border-[#9A1B22] transition-colors rounded-none placeholder:text-zinc-600"
+                value={manualEventInput}
+                onChange={(e) => setManualEventInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && manualEventInput.trim()) {
+                    generateStylingAndHardwareConfig(manualEventInput, "Unknown");
+                  }
+                }}
+              />
+              <Button 
+                onClick={() => generateStylingAndHardwareConfig(manualEventInput, "Unknown")}
+                disabled={!manualEventInput.trim()}
+                className="bg-[#9A1B22] text-white hover:bg-[#7A151B] uppercase tracking-[0.2em] text-xs py-7 px-8 rounded-none transition-all"
+              >
+                <Sparkles className="w-4 h-4 mr-2" /> Style Event
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Loading State */}
         {isGenerating && (
