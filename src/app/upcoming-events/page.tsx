@@ -1,137 +1,172 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation'; 
-import { getUpcomingEventsStyleAdviceAction } from '@/app/actions/get-calendar-data';
-import UpcomingEventAdviceCard from '@/components/UpcomingEventAdviceCard';
-import { collection, getDocs } from 'firebase/firestore';
+import { useSearchParams } from 'next/navigation';
+import { doc, setDoc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
-import { Loader2, Calendar, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, Cpu, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
 import { Outfit, Imperial_Script } from "next/font/google"; 
 
-const outfit = Outfit({
-  subsets: ["latin"],
-  weight: ["300", "400", "700"], 
-});
+const outfit = Outfit({ subsets: ["latin"], weight: ["300", "400", "700"] });
+const imperial = Imperial_Script({ subsets: ["latin"], weight: ["400"] });
 
-const imperial = Imperial_Script({
-  subsets: ["latin"],
-  weight: ["400"], 
-});
+export default function StylistPage() {
+  const searchParams = useSearchParams();
+  const eventName = searchParams.get('event');
+  const weather = searchParams.get('weather');
 
-export default function UpcomingEventsPage() {
-  const [events, setEvents] = useState<any[]>([]);
-  const [closetItems, setClosetItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   
-  const router = useRouter(); 
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiResponse, setAiResponse] = useState<any>(null);
+  const [hardwareSyncStatus, setHardwareSyncStatus] = useState<'idle' | 'syncing' | 'success'>('idle');
 
-  const fetchData = async () => {
-    setLoading(true);
+  // Automatically trigger the Gemini AI if an event was passed from the Calendar
+  useEffect(() => {
+    if (eventName) {
+      generateStylingAndHardwareConfig(eventName, weather || "Unknown");
+    }
+  }, [eventName, weather]);
+
+  const generateStylingAndHardwareConfig = async (event: string, eventWeather: string) => {
+    setIsGenerating(true);
+    setHardwareSyncStatus('idle');
+    
     try {
-      let items: any[] = [];
-      if (firestore) {
-        const snapshot = await getDocs(collection(firestore, 'publicWardrobeItems'));
-        items = snapshot.docs.map(d => {
-          const data = d.data();
-          return {
-            ...data,
-            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : null,
-            updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : null,
-          };
-        });
-        setClosetItems(items);
-      }
-
-      const advice = await getUpcomingEventsStyleAdviceAction(items);
-      setEvents(advice);
+      // NOTE: In production, move this fetch to a Next.js Server Action to hide the API key
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || ""; 
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
       
-    } catch (error) {
-      console.error("Error loading events:", error);
-      toast({ 
-        title: "Error", 
-        description: "Could not sync with Google Calendar.", 
-        variant: "destructive" 
+      const promptText = `
+        The user is attending: "${event}". The weather is: "${eventWeather}".
+        1. Recommend a high-end luxury outfit from their digital closet.
+        2. Assign a hex color code for the SkoMiDora smart shoebox's internal LED Aura to match the event's vibe.
+      `;
+
+      const payload = {
+        contents: [{ parts: [{ text: promptText }] }],
+        systemInstruction: { parts: [{ text: "Return strictly JSON: { 'outfit': 'string', 'ledColor': '#hexcode', 'vibe': 'string' }" }] },
+        generationConfig: { responseMimeType: "application/json" }
+      };
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
+
+      const data = await response.json();
+      const resultData = JSON.parse(data.candidates[0].content.parts[0].text);
+      
+      setAiResponse(resultData);
+      
+      // Immediately push this configuration to Firestore for the ESP32-S3 to read
+      await syncToShoeboxHardware(resultData.ledColor, event);
+
+    } catch (error) {
+      console.error("AI Generation Error:", error);
+      toast({ title: "Error", description: "Failed to generate styling.", variant: "destructive" });
     } finally {
-      setLoading(false);
+      setIsGenerating(false);
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const syncToShoeboxHardware = async (hexColor: string, event: string) => {
+    setHardwareSyncStatus('syncing');
+    try {
+      if (!firestore) throw new Error("Firestore not initialized");
+      
+      // Write to a specific document that the ESP32-S3 listens to
+      const hardwareRef = doc(firestore, 'shoeboxHardware', 'currentActiveState');
+      
+      await setDoc(hardwareRef, {
+        activeEvent: event,
+        ledAuraHex: hexColor,
+        isSynced: true,
+        updatedAt: new Date().toISOString()
+      });
+
+      setHardwareSyncStatus('success');
+      toast({ title: "Hardware Synced", description: "SkoMiDora Box Aura calibrated.", style: { backgroundColor: '#111', color: '#fff' }});
+      
+    } catch (error) {
+      console.error("Firestore Sync Error:", error);
+      setHardwareSyncStatus('idle');
+      toast({ title: "Sync Failed", description: "Could not connect to Shoebox hardware.", variant: "destructive" });
+    }
+  };
 
   return (
     <div className={`min-h-screen bg-black text-white p-6 md:p-12 ${outfit.className}`}>
-      
-      {/* HEADER SECTION */}
-      <div className="max-w-7xl mx-auto mb-12 flex flex-col md:flex-row justify-between items-end border-b border-zinc-900 pb-8 gap-6">
-        <div>
-           <div className="flex items-center gap-2 text-zinc-500 text-xs font-bold uppercase tracking-[0.2em] mb-4">
-             <span className="text-[#9A1B22]">●</span> Synced Agenda
-           </div>
-           
-           <div className="flex items-center gap-4">
-             <Calendar className="h-8 md:h-10 w-8 md:w-10 text-[#9A1B22]" />
-             <h1 className={`text-5xl md:text-6xl font-normal tracking-wide ${imperial.className}`}> 
-               <span className="text-white">Your Google Calendar </span>
-               <span className="text-[#9A1B22]">Events</span>
-             </h1>
-           </div>
-        </div>
+      <div className="max-w-4xl mx-auto">
         
-        <Button 
-          onClick={fetchData} 
-          variant="outline" 
-          className="rounded-none border-zinc-800 hover:bg-zinc-900 hover:text-white text-xs uppercase tracking-[0.15em]"
-          disabled={loading}
-        >
-          {loading ? <Loader2 className="mr-3 h-4 w-4 animate-spin" /> : "Refresh Agenda"}
-        </Button>
-      </div>
-
-      {/* EVENTS GRID */}
-      <div className="max-w-7xl mx-auto">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 space-y-4">
-            <Loader2 className="h-10 w-10 animate-spin text-[#9A1B22]" />
-            <p className="text-zinc-500 text-xs uppercase tracking-[0.2em] font-medium">Consulting AI Stylist...</p>
+        {/* Header */}
+        <div className="border-b border-zinc-900 pb-8 mb-8">
+          <div className="flex items-center gap-2 text-zinc-500 text-xs font-bold uppercase tracking-[0.2em] mb-4">
+            <span className="text-[#9A1B22]">●</span> AI Concierge
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {events.map((event, index) => {
-              
-              const currentEventName = event.summary || event.title || event.name || "Upcoming Event";
-              const currentWeather = event.weather || event.temperature || event.weatherContext || "Weather data unavailable";
+          <h1 className={`text-5xl md:text-6xl font-normal tracking-wide ${imperial.className}`}> 
+            <span className="text-white">Curated for </span>
+            <span className="text-[#9A1B22]">{eventName || "You"}</span>
+          </h1>
+        </div>
 
-              return (
-                <div key={index} className="flex flex-col h-full space-y-4 group">
-                  {/* The original Card */}
-                  <div className="flex-grow">
-                    <UpcomingEventAdviceCard 
-                      eventAdvice={event} 
-                      analyzedItems={closetItems}
-                      cardIndex={index}
-                    />
+        {/* Loading State */}
+        {isGenerating && (
+          <div className="flex flex-col items-center justify-center py-32 space-y-6">
+            <Sparkles className="h-12 w-12 text-[#9A1B22] animate-pulse" />
+            <p className="text-zinc-500 text-xs uppercase tracking-[0.2em] font-medium">Analyzing Wardrobe & Event Context...</p>
+          </div>
+        )}
+
+        {/* Results */}
+        {aiResponse && !isGenerating && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
+            
+            {/* Outfit Recommendation */}
+            <div className="md:col-span-2 bg-zinc-950 border border-zinc-800 p-8 rounded-sm shadow-2xl relative overflow-hidden">
+               <div className="absolute top-0 left-0 w-1 h-full" style={{ backgroundColor: aiResponse.ledColor }}></div>
+               <h3 className="text-xs text-zinc-500 uppercase tracking-[0.2em] mb-4">AI Stylist Recommendation</h3>
+               <p className="text-lg text-zinc-200 leading-relaxed font-light">{aiResponse.outfit}</p>
+               
+               <div className="mt-8 pt-6 border-t border-zinc-900 flex justify-between items-center">
+                 <span className="text-[10px] text-zinc-500 uppercase tracking-widest">Event Vibe</span>
+                 <span className="text-xs text-white font-medium italic">"{aiResponse.vibe}"</span>
+               </div>
+            </div>
+
+            {/* Hardware Sync Status Panel */}
+            <div className="bg-zinc-950 border border-zinc-800 p-8 rounded-sm flex flex-col justify-between">
+              <div>
+                <h3 className="text-xs text-zinc-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                  <Cpu size={14} className="text-[#00A896]" /> Box Hardware
+                </h3>
+
+                <div className="flex items-center gap-4 mb-6">
+                  <div 
+                    className="w-12 h-12 rounded-full border border-zinc-700 shadow-[0_0_15px_rgba(255,255,255,0.1)]"
+                    style={{ backgroundColor: aiResponse.ledColor, boxShadow: `0 0 20px ${aiResponse.ledColor}50` }}
+                  />
+                  <div>
+                    <p className="text-[10px] text-zinc-500 uppercase tracking-widest">LED Aura Calibrated</p>
+                    <p className="text-sm font-mono text-zinc-300">{aiResponse.ledColor}</p>
                   </div>
-
-                  {/* The updated Hand-Off Button -> Routes to Stylist */}
-                  <Button 
-                    onClick={() => {
-                      router.push(`/stylist?event=${encodeURIComponent(currentEventName)}&weather=${encodeURIComponent(currentWeather)}`);
-                    }}
-                    className="w-full bg-[#9A1B22] text-white hover:bg-[#7A151B] uppercase tracking-[0.2em] text-[11px] font-bold py-7 rounded-none flex items-center justify-center gap-3 transition-all shadow-lg group-hover:shadow-[0_0_20px_rgba(154,27,34,0.2)]"
-                  >
-                    <Sparkles className="h-4 w-4" />
-                    Style This Event
-                  </Button>
                 </div>
-              );
-            })}
+              </div>
+
+              {/* Status Indicator */}
+              <div className="bg-black border border-zinc-900 p-4 rounded-sm flex items-center gap-3">
+                {hardwareSyncStatus === 'syncing' && <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />}
+                {hardwareSyncStatus === 'success' && <CheckCircle2 className="h-4 w-4 text-[#00A896]" />}
+                
+                <span className={`text-[10px] uppercase tracking-widest font-mono ${hardwareSyncStatus === 'success' ? 'text-[#00A896]' : 'text-zinc-500'}`}>
+                  {hardwareSyncStatus === 'syncing' ? 'Syncing to ESP32...' : 'Hardware Synced'}
+                </span>
+              </div>
+            </div>
+
           </div>
         )}
       </div>
