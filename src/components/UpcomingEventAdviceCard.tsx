@@ -14,7 +14,7 @@ const playfair = Playfair_Display({
 });
 
 interface AdviceProps {
-  eventAdvice: any; // Relaxed to 'any' to accept the raw Google Calendar object
+  eventAdvice: any; 
   analyzedItems: any[];
   cardIndex: number;
 }
@@ -32,12 +32,16 @@ const CITY_IMAGES: Record<string, string> = {
 export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, cardIndex }: AdviceProps) {
   if (!eventAdvice) return null;
 
-  // --- SAFE DATA FALLBACKS TO PREVENT CRASHES ---
-  const safeEventName = eventAdvice.eventName || eventAdvice.summary || eventAdvice.title || eventAdvice.name || "Upcoming Event";
-  const safeDate = eventAdvice.date || eventAdvice.start?.dateTime || eventAdvice.start?.date || "Date TBA";
-  const safeWeather = eventAdvice.weatherForecast || eventAdvice.weather || eventAdvice.weatherContext || "Weather data unavailable";
-  const safeReasoning = eventAdvice.reasoning || "Stylist notes are being generated...";
-  const safeKeywords = eventAdvice.styleKeywords || [];
+  // --- SAFE DATA FALLBACKS ---
+  const safeEventName = String(eventAdvice.eventName || eventAdvice.summary || eventAdvice.title || eventAdvice.name || "Upcoming Event");
+  const rawDate = eventAdvice.date || eventAdvice.start?.dateTime || eventAdvice.start?.date || "Date TBA";
+  const safeDate = typeof rawDate === 'string' ? rawDate.split('•')[0] : "Upcoming";
+  const safeWeather = String(eventAdvice.weatherForecast || eventAdvice.weather || eventAdvice.weatherContext || "Weather data unavailable");
+  const safeReasoning = String(eventAdvice.reasoning || eventAdvice.description || "Stylist notes are being generated...");
+  
+  const safeKeywords = Array.isArray(eventAdvice.styleKeywords) 
+    ? eventAdvice.styleKeywords 
+    : (typeof eventAdvice.styleKeywords === 'string' ? eventAdvice.styleKeywords.split(', ') : []);
 
   const animationDelay = `${cardIndex * 150}ms`;
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -88,7 +92,7 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
   };
 
   const getCityImage = (name: string) => {
-    if (!name) return CITY_IMAGES['Default'];
+    if (!name || typeof name !== 'string') return CITY_IMAGES['Default'];
     const lowerName = name.toLowerCase();
     if (lowerName.includes("paris")) return CITY_IMAGES['Paris'];
     if (lowerName.includes("new york")) return CITY_IMAGES['New York'];
@@ -116,8 +120,7 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
           
           <div className="absolute top-4 right-4 bg-black/60 text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 backdrop-blur-md border border-[#DC143C]/30">
             <Calendar size={10} className="text-[#DC143C]" />
-            {/* Safely split date just in case it's formatted weirdly */}
-            {typeof safeDate === 'string' ? safeDate.split('•')[0] : 'Upcoming'} 
+            {safeDate} 
           </div>
         </div>
 
@@ -176,16 +179,14 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
             ))}
           </div>
 
-          {/* Syncs with the AI Stylist flow we created earlier */}
+          {/* INNER BUTTON: Routes to outfit-recommendations */}
           <Link 
-            href={`/stylist?event=${encodeURIComponent(safeEventName)}&weather=${encodeURIComponent(safeWeather)}`} 
-            className="mt-4 w-full"
+            href={`/outfit-recommendations?event=${encodeURIComponent(safeEventName)}&weather=${encodeURIComponent(safeWeather)}`} 
+            className="mt-4 w-full flex items-center justify-center gap-2 py-3 px-4 bg-zinc-800 hover:bg-[#DC143C] text-white text-xs font-bold uppercase tracking-widest rounded transition-colors group"
           >
-            <button className="w-full py-3 px-4 bg-zinc-800 hover:bg-[#DC143C] text-white text-xs font-bold uppercase tracking-widest rounded transition-colors flex items-center justify-center gap-2 group">
-              <Sparkles size={14} />
-              Style This Event
-              <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-            </button>
+            <Sparkles size={14} />
+            3 Outfits From Your Closet
+            <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
           </Link>
 
         </CardContent>
