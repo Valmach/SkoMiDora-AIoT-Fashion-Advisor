@@ -38,18 +38,29 @@ export async function POST(req: Request) {
 
     // Send to Gemini 2.5 Flash for Data Extraction
     const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
+    
+    // CRITICAL FAILSAFE: Check if Firebase stripped the API key during deployment
+    if (!apiKey) {
+      console.error("🚨 CRITICAL ERROR: Gemini API key is missing in the live Firebase environment!");
+      return NextResponse.json({ error: 'Server configuration error: Missing API Key' }, { status: 500 });
+    }
+
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
     const promptText = `
       You are the AI Concierge for SkoMiDora, a luxury fashion app.
-      Analyze this forwarded email. Determine if it is a retail purchase receipt (like Amazon/Designer) OR an event invitation/confirmation.
+      Analyze this forwarded email. Determine if it is a retail purchase receipt OR an event invitation.
       
+      CRITICAL RULE FOR RECEIPTS: ONLY extract FASHION, CLOTHING, FOOTWEAR, and ACCESSORY items. 
+      You MUST completely ignore household items, groceries, cleaning supplies, tools, electronics, or food.
+      If the receipt contains ONLY non-fashion items (e.g., butter, oil, glass cleaner), classify the type as "ignored" and leave closetItems empty.
+
       Email Subject: ${emailSubject}
       Email Body: ${emailText}
 
-      Extract the data into this EXACT JSON structure. If it's a receipt, fill the 'closetItems' array. If it's an event, fill the 'eventDetails' object.
+      Extract the data into this EXACT JSON structure:
       {
-        "type": "receipt" | "event" | "unknown",
+        "type": "receipt" | "event" | "ignored" | "unknown",
         "closetItems": [
           { "name": "string", "brand": "string", "color": "string", "category": "shoes | tops | bottoms | accessories", "purchaseDate": "ISO string" }
         ],
@@ -75,7 +86,29 @@ export async function POST(req: Request) {
     });
 
     const aiData = await aiResponse.json();
-    const extractedData = JSON.parse(aiData.candidates[0].content.parts[0].text);
+
+    // Safely intercept Gemini errors so the webhook doesn't crash!
+    if (!aiData.candidates || aiData.candidates.length === 0) {
+      console.error("GEMINI API ERROR. Full payload from Google:", JSON.stringify(aiData, null, 2));
+      return NextResponse.json({ error: 'Gemini API failed or rejected the prompt', details: aiData }, { status: 500 });
+    }
+
+    const rawText = aiData.candidates[0].content?.parts?.[0]?.text;
+    
+    if (!rawText) {
+      console.error("GEMINI RETURNED EMPTY TEXT");
+      return NextResponse.json({ error: 'Empty response from Gemini' }, { status: 500 });
+    }
+
+    // Clean the JSON (Sometimes Gemini accidentally wraps the output in markdown)
+    let cleanJson = rawText.trim();
+    if (cleanJson.startsWith('```json')) {
+      cleanJson = cleanJson.replace(/```json/g, '').replace(/```/g, '').trim();
+    } else if (cleanJson.startsWith('```')) {
+      cleanJson = cleanJson.replace(/```/g, '').trim();
+    }
+
+    const extractedData = JSON.parse(cleanJson);
 
     // Route the extracted data to the correct Firestore collection
     if (!firestore) throw new Error("Firestore not initialized");
@@ -91,6 +124,9 @@ export async function POST(req: Request) {
       }
       console.log(`Successfully ingested ${extractedData.closetItems.length} items from receipt.`);
     } 
+    else if (extractedData.type === 'ignored') {
+       console.log(`Ignored non-fashion receipt.`);
+    }
     else if (extractedData.type === 'event' && extractedData.eventDetails) {
       // Save event to the synced events/agenda
       await addDoc(collection(firestore, 'syncedEvents'), {
