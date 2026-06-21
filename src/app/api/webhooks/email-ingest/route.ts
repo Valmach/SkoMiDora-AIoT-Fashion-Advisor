@@ -5,7 +5,7 @@ import { firestore } from '@/lib/firebase'; // Ensure this points to your initia
 // Force Next.js to treat this as a live, listening API route instead of freezing it into a 404 static file
 export const dynamic = 'force-dynamic';
 
-// 1. NEW: Added a GET handler so you can verify the URL is live in your browser!
+// 1. GET handler to verify the URL is live in your browser
 export async function GET() {
   return NextResponse.json({ 
     status: "success", 
@@ -16,30 +16,20 @@ export async function GET() {
 // 2. The POST handler (For SendGrid's invisible data drops)
 export async function POST(req: Request) {
   try {
-    // Verify Webhook Secret (Prevent unauthorized posts)
-    // NOTE: Temporarily bypassed the secret requirement for initial testing. 
-    // You can uncomment these lines once everything is working smoothly.
-    /*
-    const authHeader = req.headers.get('authorization');
-    if (authHeader !== `Bearer ${process.env.SKOMIDORA_WEBHOOK_SECRET}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    */
-
     // Parse the incoming email payload (SendGrid sends multipart/form-data)
     const formData = await req.formData();
     const emailSubject = formData.get('subject') as string || "";
-    const emailText = formData.get('text') as string || "";
-    const sender = formData.get('from') as string || "";
-
+    
+    // Fallback to HTML if plain text is missing in the email payload
+    const emailText = (formData.get('text') as string) || (formData.get('html') as string) || "";
+    
     if (!emailText) {
-      return NextResponse.json({ error: 'No email body found' }, { status: 400 });
+      return NextResponse.json({ error: 'No email body found in text or html fields' }, { status: 400 });
     }
 
-    // Send to Gemini 2.5 Flash for Data Extraction
-    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
+    // Safely check for any of the Gemini keys from the updated .env file
+    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || "";
     
-    // CRITICAL FAILSAFE: Check if Firebase stripped the API key during deployment
     if (!apiKey) {
       console.error("🚨 CRITICAL ERROR: Gemini API key is missing in the live Firebase environment!");
       return NextResponse.json({ error: 'Server configuration error: Missing API Key' }, { status: 500 });
@@ -87,7 +77,7 @@ export async function POST(req: Request) {
 
     const aiData = await aiResponse.json();
 
-    // Safely intercept Gemini errors so the webhook doesn't crash!
+    // Safely intercept Gemini errors
     if (!aiData.candidates || aiData.candidates.length === 0) {
       console.error("GEMINI API ERROR. Full payload from Google:", JSON.stringify(aiData, null, 2));
       return NextResponse.json({ error: 'Gemini API failed or rejected the prompt', details: aiData }, { status: 500 });
@@ -100,7 +90,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Empty response from Gemini' }, { status: 500 });
     }
 
-    // Clean the JSON (Sometimes Gemini accidentally wraps the output in markdown)
+    // Clean the JSON output
     let cleanJson = rawText.trim();
     if (cleanJson.startsWith('```json')) {
       cleanJson = cleanJson.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -114,7 +104,6 @@ export async function POST(req: Request) {
     if (!firestore) throw new Error("Firestore not initialized");
 
     if (extractedData.type === 'receipt' && extractedData.closetItems.length > 0) {
-      // Save items to the Wardrobe
       for (const item of extractedData.closetItems) {
         await addDoc(collection(firestore, 'publicWardrobeItems'), {
           ...item,
@@ -128,7 +117,6 @@ export async function POST(req: Request) {
        console.log(`Ignored non-fashion receipt.`);
     }
     else if (extractedData.type === 'event' && extractedData.eventDetails) {
-      // Save event to the synced events/agenda
       await addDoc(collection(firestore, 'syncedEvents'), {
         ...extractedData.eventDetails,
         source: 'email_ingestion',
@@ -139,8 +127,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, processedType: extractedData.type });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Webhook Processing Error:", error);
-    return NextResponse.json({ error: 'Failed to process email payload' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to process email payload', details: error?.message || String(error) }, { status: 500 });
   }
 }
