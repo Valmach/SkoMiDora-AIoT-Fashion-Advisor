@@ -5,7 +5,6 @@ import { firestore } from '@/lib/firebase'; // Ensure this points to your initia
 // Force Next.js to treat this as a live, listening API route instead of freezing it into a 404 static file
 export const dynamic = 'force-dynamic';
 
-// 1. GET handler to verify the URL is live in your browser
 export async function GET() {
   return NextResponse.json({ 
     status: "success", 
@@ -13,7 +12,6 @@ export async function GET() {
   }, { status: 200 });
 }
 
-// 2. The POST handler (For SendGrid's invisible data drops)
 export async function POST(req: Request) {
   try {
     // Parse the incoming email payload (SendGrid sends multipart/form-data)
@@ -27,8 +25,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No email body found in text or html fields' }, { status: 400 });
     }
 
-    // Safely check for any of the Gemini keys from the updated .env file
-    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || "";
+    // FIX: Look specifically for the secure server-side keys from your .env file
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || "";
     
     if (!apiKey) {
       console.error("🚨 CRITICAL ERROR: Gemini API key is missing in the live Firebase environment!");
@@ -48,11 +46,11 @@ export async function POST(req: Request) {
       Email Subject: ${emailSubject}
       Email Body: ${emailText}
 
-      Extract the data into this EXACT JSON structure:
+      Extract the data into this EXACT JSON structure to match the frontend database schema. For imageUrl, look for any valid image links in the email, otherwise leave empty.
       {
         "type": "receipt" | "event" | "ignored" | "unknown",
         "closetItems": [
-          { "name": "string", "brand": "string", "color": "string", "category": "shoes | tops | bottoms | accessories", "purchaseDate": "ISO string" }
+          { "itemName": "string", "brand": "string", "color": "string", "itemType": "shoes | tops | bottoms | accessories", "imageUrl": "string", "purchaseDate": "ISO string" }
         ],
         "eventDetails": {
           "eventName": "string",
