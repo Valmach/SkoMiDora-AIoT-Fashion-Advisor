@@ -18,15 +18,15 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const emailSubject = formData.get('subject') as string || "";
     
-    // Fallback to HTML if plain text is missing in the email payload
-    const emailText = (formData.get('text') as string) || (formData.get('html') as string) || "";
+    // 🔥 CRITICAL FIX: Prioritize HTML over Plain Text! 
+    // Plain text strips out images. We need the HTML payload so Gemini can find the <img src="..."> tags.
+    const emailContent = (formData.get('html') as string) || (formData.get('text') as string) || "";
     
-    if (!emailText) {
+    if (!emailContent) {
       return NextResponse.json({ error: 'No email body found in text or html fields' }, { status: 400 });
     }
 
-    // FIX: Look specifically for the secure server-side keys from your .env file
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || "";
+    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || "";
     
     if (!apiKey) {
       console.error("🚨 CRITICAL ERROR: Gemini API key is missing in the live Firebase environment!");
@@ -41,12 +41,13 @@ export async function POST(req: Request) {
       
       CRITICAL RULE FOR RECEIPTS: ONLY extract FASHION, CLOTHING, FOOTWEAR, and ACCESSORY items. 
       You MUST completely ignore household items, groceries, cleaning supplies, tools, electronics, or food.
-      If the receipt contains ONLY non-fashion items (e.g., butter, oil, glass cleaner), classify the type as "ignored" and leave closetItems empty.
+      If the receipt contains ONLY non-fashion items, classify the type as "ignored" and leave closetItems empty.
 
       Email Subject: ${emailSubject}
-      Email Body: ${emailText}
+      Email Body (HTML/Text): ${emailContent}
 
-      Extract the data into this EXACT JSON structure to match the frontend database schema. For imageUrl, look for any valid image links in the email, otherwise leave empty.
+      Extract the data into this EXACT JSON structure to match the frontend database schema. 
+      CRITICAL IMAGE INSTRUCTION: For 'imageUrl', aggressively search the HTML for <img src="..."> tags corresponding to the product photo. DO NOT use the product page webpage link as the image URL. It must be an image URL (like .jpg or .png).
       {
         "type": "receipt" | "event" | "ignored" | "unknown",
         "closetItems": [
