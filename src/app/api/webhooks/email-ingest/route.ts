@@ -68,7 +68,16 @@ export async function POST(req: Request) {
                   color: { type: "STRING" },
                   itemType: { type: "STRING", description: "Must be 'shoes', 'tops', 'bottoms', or 'accessories'" },
                   imageUrl: { type: "STRING", description: "The direct .jpg or .png URL of the product image. Look for m.media-amazon.com links in the HTML." },
-                  purchaseDate: { type: "STRING" }
+                  purchaseDate: { type: "STRING" },
+                  Country: { type: "STRING", description: "Country of origin or manufacturer, if available. Otherwise 'Unknown'." },
+                  detailedSpecifications: { type: "STRING", description: "Technical details, material composition, and functional features." },
+                  narrativeDescription: { type: "STRING", description: "A stylish, engaging description of the item." },
+                  imageType: { type: "STRING", description: "Specific sub-category (e.g., 'slippers', 'heels', 'jacket')." },
+                  styleKeywords: { 
+                    type: "ARRAY", 
+                    items: { type: "STRING" },
+                    description: "3 to 5 style tags (e.g., 'casual', 'comfortable', 'formal')"
+                  }
                 }
               }
             },
