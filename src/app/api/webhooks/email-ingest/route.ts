@@ -18,8 +18,7 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const emailSubject = formData.get('subject') as string || "";
     
-    // 🔥 CRITICAL FIX: Prioritize HTML over Plain Text! 
-    // Plain text strips out images. We need the HTML payload so Gemini can find the <img src="..."> tags.
+    // Prioritize HTML over Plain Text so Gemini can find the <img src="..."> tags.
     const emailContent = (formData.get('html') as string) || (formData.get('text') as string) || "";
     
     if (!emailContent) {
@@ -46,26 +45,45 @@ export async function POST(req: Request) {
       Email Subject: ${emailSubject}
       Email Body (HTML/Text): ${emailContent}
 
-      Extract the data into this EXACT JSON structure to match the frontend database schema. 
-      CRITICAL IMAGE INSTRUCTION: For 'imageUrl', aggressively search the HTML for <img src="..."> tags corresponding to the product photo. DO NOT use the product page webpage link as the image URL. It must be an image URL (like .jpg or .png).
-      {
-        "type": "receipt" | "event" | "ignored" | "unknown",
-        "closetItems": [
-          { "itemName": "string", "brand": "string", "color": "string", "itemType": "shoes | tops | bottoms | accessories", "imageUrl": "string", "purchaseDate": "ISO string" }
-        ],
-        "eventDetails": {
-          "eventName": "string",
-          "date": "ISO string",
-          "location": "string",
-          "description": "string"
-        }
-      }
+      CRITICAL IMAGE INSTRUCTION: Amazon product images are typically hosted on URLs containing "m.media-amazon.com". Aggressively search the HTML for <img src="..."> tags and extract the direct .jpg or .png link for the product.
     `;
 
+    // 🔥 CRITICAL FIX: Enforcing a Strict JSON Schema so Gemini CANNOT hallucinate "name" or "category"
     const payload = {
       contents: [{ parts: [{ text: promptText }] }],
-      systemInstruction: { parts: [{ text: "Return strictly JSON." }] },
-      generationConfig: { responseMimeType: "application/json" }
+      systemInstruction: { parts: [{ text: "Extract data strictly adhering to the provided JSON schema." }] },
+      generationConfig: { 
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            type: { type: "STRING", description: "Must be 'receipt', 'event', 'ignored', or 'unknown'" },
+            closetItems: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  itemName: { type: "STRING", description: "The name of the clothing or footwear item" },
+                  brand: { type: "STRING" },
+                  color: { type: "STRING" },
+                  itemType: { type: "STRING", description: "Must be 'shoes', 'tops', 'bottoms', or 'accessories'" },
+                  imageUrl: { type: "STRING", description: "The direct .jpg or .png URL of the product image. Look for m.media-amazon.com links in the HTML." },
+                  purchaseDate: { type: "STRING" }
+                }
+              }
+            },
+            eventDetails: {
+              type: "OBJECT",
+              properties: {
+                eventName: { type: "STRING" },
+                date: { type: "STRING" },
+                location: { type: "STRING" },
+                description: { type: "STRING" }
+              }
+            }
+          }
+        }
+      }
     };
 
     const aiResponse = await fetch(endpoint, {
@@ -102,7 +120,7 @@ export async function POST(req: Request) {
     // Route the extracted data to the correct Firestore collection
     if (!firestore) throw new Error("Firestore not initialized");
 
-    if (extractedData.type === 'receipt' && extractedData.closetItems.length > 0) {
+    if (extractedData.type === 'receipt' && extractedData.closetItems?.length > 0) {
       for (const item of extractedData.closetItems) {
         await addDoc(collection(firestore, 'publicWardrobeItems'), {
           ...item,
