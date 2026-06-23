@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 
 import { useFirebase } from "@/firebase/provider";
-// POISTETTU: import SkomiDoraLens from "@/components/SkomiDoraLens";
 
 const bonheur = Bonheur_Royale({ subsets: ['latin'], weight: ['400'] });
 const playfair = Playfair_Display({ subsets: ['latin'], weight: ['400', '600', '700'] });
@@ -60,7 +59,7 @@ export default function ClosetPage() {
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading">("idle");
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [activeFilter, setActiveFilter] = useState<string>("Kaikki");
+  const [activeFilter, setActiveFilter] = useState<string>("All");
 
   useEffect(() => {
     if (!firebase || !firebase.firestore) return;
@@ -78,7 +77,7 @@ export default function ClosetPage() {
         setLoading(false);
       }, (err) => {
         console.error(err);
-        setError("Lataus epäonnistui.");
+        setError("Failed to load metadata.");
         setLoading(false);
       });
     return () => unsub();
@@ -107,11 +106,10 @@ export default function ClosetPage() {
     });
   }, [items, firebase, imageUrls, brokenImages]);
 
-  // PALAUTETTU: Alkuperäinen latauslogiikka
   const handleUpload = useCallback(async (file: File) => {
     if (!firebase || !firebase.storage || !firebase.firestore) return;
     setUploadStatus("uploading");
-    toast({ title: "Ladataan...", description: "Odota hetki." });
+    toast({ title: "Uploading...", description: "Please wait." });
     try {
       const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '-');
       const uniqueFileName = `${Date.now()}-${cleanFileName}`;
@@ -123,16 +121,16 @@ export default function ClosetPage() {
       
       const newItem: Partial<ClosetItem> = { 
         itemName: aiFriendlyName, 
-        itemType: "Luokittelematon", 
+        itemType: "Uncategorized", 
         imagePath: imagePath, 
         imageUrl: imageUrl, 
         createdAt: serverTimestamp() 
       };
       
       await addDoc(collection(firebase.firestore, 'publicWardrobeItems'), newItem);
-      toast({ title: "Onnistui!", description: "Vaate lisätty." });
+      toast({ title: "Success!", description: "Item securely added to digital closet." });
     } catch (e: unknown) {
-      toast({ title: "Lataus epäonnistui", variant: "destructive" });
+      toast({ title: "Upload failed", variant: "destructive" });
     } finally {
       setUploadStatus("idle");
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -148,9 +146,9 @@ export default function ClosetPage() {
         await deleteObject(ref(firebase.storage, normalizedPath)).catch((e) => console.warn(e));
       }
       setImageUrls((prev) => { const next = { ...prev }; delete next[item.id]; return next; });
-      toast({ title: "Vaate poistettu" });
+      toast({ title: "Item deleted successfully" });
     } catch (e: unknown) {
-      toast({ title: "Poistaminen epäonnistui", variant: "destructive" });
+      toast({ title: "Failed to delete item", variant: "destructive" });
     }
   };
 
@@ -162,37 +160,34 @@ export default function ClosetPage() {
     );
   }
 
-  const uniqueCategories = ["Kaikki", ...Array.from(new Set(items.map(item => item.itemType || "Luokittelematon")))];
-  const filteredItems = activeFilter === "Kaikki" ? items : items.filter(item => (item.itemType || "Luokittelematon") === activeFilter);
+  const uniqueCategories = ["All", ...Array.from(new Set(items.map(item => item.itemType || "Uncategorized")))];
+  const filteredItems = activeFilter === "All" ? items : items.filter(item => (item.itemType || "Uncategorized") === activeFilter);
 
   return (
     <div className={`container mx-auto space-y-6 pb-12 h-[85vh] overflow-y-auto scrollbar-hide bg-black text-zinc-100 ${inter.className} px-4 pt-4`}>
       
-      {/* YLÄTUNNISTE */}
       <Card className="border-0 shadow-none bg-transparent mb-4">
         <CardContent className="pt-6 px-0 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div>
-            <h1 className={`${bonheur.className} text-7xl font-bold tracking-wide text-white`}>Digitaalinen Vaatekaappi</h1>
+            <h1 className={`${bonheur.className} text-7xl font-bold tracking-wide text-white`}>Digital Closet</h1>
             <p className="text-zinc-400 uppercase tracking-[0.2em] text-xs mt-2 font-medium">
-              <span className="text-[#9A1B22]">●</span> {items.length} Valikoitua Vaatetta
+              <span className="text-[#9A1B22]">●</span> {items.length} Curated Pieces
             </p>
           </div>
           
-          {/* PALAUTETTU: Alkuperäinen painike, SkomiDoraLens poistettu */}
           <div className="w-full md:w-auto shrink-0">
             <Button 
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadStatus !== "idle"}
               className="w-full sm:w-auto flex items-center justify-center gap-3 bg-[#9A1B22] text-white hover:bg-[#7A151B] px-8 py-6 rounded-none uppercase tracking-[0.2em] text-xs font-bold transition-all shadow-lg border border-[#9A1B22]"
             >
-              {uploadStatus === "idle" ? <><Upload size={16} /> Lisää Vaate</> : <><Wand2 size={16} className="animate-spin" /> Ladataan...</>}
+              {uploadStatus === "idle" ? <><Upload size={16} /> Add Item</> : <><Wand2 size={16} className="animate-spin" /> Uploading...</>}
             </Button>
             <input ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
           </div>
         </CardContent>
       </Card>
 
-      {/* SUODATTIMET */}
       <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide w-full snap-x">
         {uniqueCategories.map((category) => (
           <button
@@ -216,7 +211,6 @@ export default function ClosetPage() {
         </div>
       )}
 
-      {/* VAATERUUDUKKO */}
       {loading ? (
         <div className="flex justify-center py-20">
           <Loader2 className="h-10 w-10 animate-spin text-[#9A1B22]" />
@@ -234,16 +228,16 @@ export default function ClosetPage() {
                   {!url || isBroken ? (
                     <div className="flex flex-col items-center justify-center text-zinc-800">
                       <ImageOff className="h-6 w-6 mb-2 opacity-50" />
-                      <span className="text-[10px] uppercase tracking-widest">Ei saatavilla</span>
+                      <span className="text-[10px] uppercase tracking-widest">Unavailable</span>
                     </div>
                   ) : (
                     <img
                       src={url}
-                      alt={item.itemName ?? "Vaate"}
+                      alt={item.itemName ?? "Item"}
                       className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-103 drop-shadow-2xl"
                     />
                   )}
-                  <button onClick={() => handleDelete(item)} className="absolute top-3 right-3 p-2 bg-black/90 text-[#9A1B22] rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-lg border border-zinc-800 hover:bg-[#9A1B22] hover:text-white" title="Poista vaate">
+                  <button onClick={() => handleDelete(item)} className="absolute top-3 right-3 p-2 bg-black/90 text-[#9A1B22] rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-lg border border-zinc-800 hover:bg-[#9A1B22] hover:text-white" title="Remove item">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -268,17 +262,17 @@ export default function ClosetPage() {
                   )}
 
                   <h2 className={`${playfair.className} text-xl font-bold tracking-wide mb-3 text-white leading-tight line-clamp-2 min-h-[2.75rem]`}>
-                    {item.itemName ?? "Nimetön vaate"}
+                    {item.itemName ?? "Untitled item"}
                   </h2>
 
                   <div className="grid grid-cols-2 gap-3 pb-3 border-b border-zinc-900/50 mb-3 text-left">
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">Tyyppi</span>
-                      <span className="text-xs font-medium text-zinc-300 capitalize truncate">{item.itemType || "Luokittelematon"}</span>
+                      <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">Type</span>
+                      <span className="text-xs font-medium text-zinc-300 capitalize truncate">{item.itemType || "Uncategorized"}</span>
                     </div>
                     {item.color && (
                       <div className="flex flex-col gap-0.5 items-end text-right">
-                        <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">Väri</span>
+                        <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">Color</span>
                         <span className="text-xs font-medium text-zinc-300 capitalize truncate">{item.color}</span>
                       </div>
                     )}
@@ -288,13 +282,13 @@ export default function ClosetPage() {
                     <div className="flex flex-col gap-3 mb-3">
                       {item.generalMaterial && (
                         <div>
-                          <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest block mb-0.5">Materiaali</span>
+                          <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest block mb-0.5">Material</span>
                           <span className="text-xs text-zinc-300 font-medium">{item.generalMaterial}</span>
                         </div>
                       )}
                       {item.detailedSpecifications && (
                         <div>
-                          <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest block mb-0.5">Tekniset tiedot</span>
+                          <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest block mb-0.5">Specifications</span>
                           <span className="text-xs text-zinc-400 leading-relaxed line-clamp-2" title={item.detailedSpecifications}>{item.detailedSpecifications}</span>
                         </div>
                       )}
@@ -305,7 +299,7 @@ export default function ClosetPage() {
                     <div className="flex flex-col mt-0.5">
                       <div className="flex items-center space-x-1.5 mb-1.5">
                         <FileText className="h-3 w-3 text-[#9A1B22]" />
-                        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-600">Toimituksen huomautus</span>
+                        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-600">Editorial Note</span>
                       </div>
                       <p className="text-xs text-zinc-400 leading-relaxed font-normal line-clamp-3">{item.narrativeDescription}</p>
                     </div>
@@ -315,7 +309,7 @@ export default function ClosetPage() {
                     <div className="flex flex-col mt-auto pt-3 border-t border-zinc-900">
                       <div className="flex items-center space-x-1.5 mb-2">
                         <Sparkles className="h-3 w-3 text-[#9A1B22]" />
-                        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-600">Estetiikka</span>
+                        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-600">Aesthetics</span>
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {item.styleKeywords.map((keyword, i) => (
