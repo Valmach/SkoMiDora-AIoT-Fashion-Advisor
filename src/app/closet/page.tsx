@@ -40,6 +40,13 @@ type ClosetItem = {
   createdAt?: any;
 };
 
+// Utility to ensure we never render a raw object and crash React
+const safeString = (val: any): string => {
+  if (typeof val === 'string') return val;
+  if (typeof val === 'number') return String(val);
+  return '';
+};
+
 function normalizeImagePath(path: string): string {
   let p = path;
   if (!p.includes("/") && !p.startsWith("http")) p = `public_wardrobe_items/${p}`;
@@ -100,8 +107,11 @@ export default function ClosetPage() {
         const url = await getDownloadURL(ref(firebase.storage, normalizedPath));
         setImageUrls((prev) => ({ ...prev, [item.id]: url }));
       } catch (err: unknown) {
-        if (item.imagePath.startsWith("http")) setImageUrls((prev) => ({ ...prev, [item.id]: item.imagePath! }));
-        else setBrokenImages((prev) => new Set(prev).add(item.id));
+        if (item.imagePath && item.imagePath.startsWith("http")) {
+          setImageUrls((prev) => ({ ...prev, [item.id]: item.imagePath! }));
+        } else {
+          setBrokenImages((prev) => new Set(prev).add(item.id));
+        }
       }
     });
   }, [items, firebase, imageUrls, brokenImages]);
@@ -181,7 +191,11 @@ export default function ClosetPage() {
               disabled={uploadStatus !== "idle"}
               className="w-full sm:w-auto flex items-center justify-center gap-3 bg-[#9A1B22] text-white hover:bg-[#7A151B] px-8 py-6 rounded-none uppercase tracking-[0.2em] text-xs font-bold transition-all shadow-lg border border-[#9A1B22]"
             >
-              {uploadStatus === "idle" ? <><Upload size={16} /> Add Item</> : <><Wand2 size={16} className="animate-spin" /> Uploading...</>}
+              {uploadStatus === "idle" ? (
+                <span className="flex items-center gap-2"><Upload size={16} /> Add Item</span>
+              ) : (
+                <span className="flex items-center gap-2"><Wand2 size={16} className="animate-spin" /> Uploading...</span>
+              )}
             </Button>
             <input ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
           </div>
@@ -191,15 +205,15 @@ export default function ClosetPage() {
       <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide w-full snap-x">
         {uniqueCategories.map((category) => (
           <button
-            key={category}
-            onClick={() => setActiveFilter(category)}
+            key={safeString(category)}
+            onClick={() => setActiveFilter(safeString(category))}
             className={`whitespace-nowrap px-6 py-3 text-xs font-semibold tracking-[0.15em] uppercase transition-all snap-start border border-zinc-800
               ${activeFilter === category 
                 ? 'bg-[#9A1B22] text-white border-[#9A1B22] shadow-md' 
                 : 'bg-black text-zinc-500 hover:border-zinc-500 hover:text-white'}
             `}
           >
-            {category}
+            {safeString(category)}
           </button>
         ))}
       </div>
@@ -207,7 +221,7 @@ export default function ClosetPage() {
       {error && (
         <div className="flex items-center gap-3 text-white bg-[#9A1B22]/20 p-4 border border-[#9A1B22]/50">
           <AlertCircle className="h-5 w-5 text-[#9A1B22]" />
-          <span className="text-sm tracking-wide">{error}</span>
+          <span className="text-sm tracking-wide">{safeString(error)}</span>
         </div>
       )}
 
@@ -233,7 +247,7 @@ export default function ClosetPage() {
                   ) : (
                     <img
                       src={url}
-                      alt={item.itemName ?? "Item"}
+                      alt={safeString(item.itemName) || "Item"}
                       className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-103 drop-shadow-2xl"
                     />
                   )}
@@ -249,31 +263,31 @@ export default function ClosetPage() {
                       {(item.designer || item.brand) && (
                         <div className="flex items-center gap-1.5">
                           <Tag className="h-2.5 w-2.5 text-[#9A1B22]" />
-                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">{item.designer || item.brand}</span>
+                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">{safeString(item.designer || item.brand)}</span>
                         </div>
                       )}
                       {item.originCountry && (
                         <div className="flex items-center gap-1.5">
                           <Globe className="h-2.5 w-2.5 text-[#9A1B22]" />
-                          <span className="text-[9px] text-zinc-500 uppercase tracking-widest">{item.originCountry}</span>
+                          <span className="text-[9px] text-zinc-500 uppercase tracking-widest">{safeString(item.originCountry)}</span>
                         </div>
                       )}
                     </div>
                   )}
 
                   <h2 className={`${playfair.className} text-xl font-bold tracking-wide mb-3 text-white leading-tight line-clamp-2 min-h-[2.75rem]`}>
-                    {item.itemName ?? "Untitled item"}
+                    {safeString(item.itemName) || "Untitled item"}
                   </h2>
 
                   <div className="grid grid-cols-2 gap-3 pb-3 border-b border-zinc-900/50 mb-3 text-left">
                     <div className="flex flex-col gap-0.5">
                       <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">Type</span>
-                      <span className="text-xs font-medium text-zinc-300 capitalize truncate">{item.itemType || "Uncategorized"}</span>
+                      <span className="text-xs font-medium text-zinc-300 capitalize truncate">{safeString(item.itemType) || "Uncategorized"}</span>
                     </div>
                     {item.color && (
                       <div className="flex flex-col gap-0.5 items-end text-right">
                         <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">Color</span>
-                        <span className="text-xs font-medium text-zinc-300 capitalize truncate">{item.color}</span>
+                        <span className="text-xs font-medium text-zinc-300 capitalize truncate">{safeString(item.color)}</span>
                       </div>
                     )}
                   </div>
@@ -283,13 +297,13 @@ export default function ClosetPage() {
                       {item.generalMaterial && (
                         <div>
                           <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest block mb-0.5">Material</span>
-                          <span className="text-xs text-zinc-300 font-medium">{item.generalMaterial}</span>
+                          <span className="text-xs text-zinc-300 font-medium">{safeString(item.generalMaterial)}</span>
                         </div>
                       )}
                       {item.detailedSpecifications && (
                         <div>
                           <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest block mb-0.5">Specifications</span>
-                          <span className="text-xs text-zinc-400 leading-relaxed line-clamp-2" title={item.detailedSpecifications}>{item.detailedSpecifications}</span>
+                          <span className="text-xs text-zinc-400 leading-relaxed line-clamp-2" title={safeString(item.detailedSpecifications)}>{safeString(item.detailedSpecifications)}</span>
                         </div>
                       )}
                     </div>
@@ -301,11 +315,11 @@ export default function ClosetPage() {
                         <FileText className="h-3 w-3 text-[#9A1B22]" />
                         <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-600">Editorial Note</span>
                       </div>
-                      <p className="text-xs text-zinc-400 leading-relaxed font-normal line-clamp-3">{item.narrativeDescription}</p>
+                      <p className="text-xs text-zinc-400 leading-relaxed font-normal line-clamp-3">{safeString(item.narrativeDescription)}</p>
                     </div>
                   )}
 
-                  {item.styleKeywords && item.styleKeywords.length > 0 && (
+                  {Array.isArray(item.styleKeywords) && item.styleKeywords.length > 0 && (
                     <div className="flex flex-col mt-auto pt-3 border-t border-zinc-900">
                       <div className="flex items-center space-x-1.5 mb-2">
                         <Sparkles className="h-3 w-3 text-[#9A1B22]" />
@@ -314,7 +328,7 @@ export default function ClosetPage() {
                       <div className="flex flex-wrap gap-1">
                         {item.styleKeywords.map((keyword, i) => (
                           <span key={`${item.id}-kw-${i}`} className="bg-zinc-900 text-zinc-400 border border-zinc-800 text-[8px] uppercase tracking-widest px-2 py-0.5 rounded-sm">
-                            {keyword}
+                            {safeString(keyword)}
                           </span>
                         ))}
                       </div>
