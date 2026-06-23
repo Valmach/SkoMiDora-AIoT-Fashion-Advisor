@@ -5,7 +5,7 @@ import {
   collection, query, orderBy, onSnapshot, Timestamp, 
   doc, deleteDoc, addDoc, serverTimestamp 
 } from "firebase/firestore";
-import { ref, getDownloadURL, deleteObject, uploadBytes } from "firebase/storage"; 
+import { ref, getDownloadURL, deleteObject, uploadString } from "firebase/storage"; 
 import { Bonheur_Royale, Playfair_Display, Inter } from 'next/font/google';
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -136,18 +136,29 @@ export default function ClosetPage() {
     toast({ title: "SkoMiDora Lens Active", description: "Uploading and analyzing item..." });
     
     try {
-      // 1. Upload to Firebase Storage
+      // 1. Convert file to Data URL first to avoid Firebase 400 Bad Request on raw File objects
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = error => reject(error);
+      });
+
+      // 2. Upload to Firebase Storage with explicit metadata
       const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '-');
       const uniqueFileName = `${Date.now()}-${cleanFileName}`;
       const imagePath = `public_wardrobe_items/${uniqueFileName}`;
       const storageRef = ref(firebase.storage, imagePath);
-      await uploadBytes(storageRef, file);
+      
+      await uploadString(storageRef, dataUrl, 'data_url', {
+        contentType: file.type || 'image/jpeg'
+      });
       const imageUrl = await getDownloadURL(storageRef);
 
-      // 2. Extract Base64 for Gemini
-      const base64Data = await fileToBase64(file);
+      // 3. Extract raw Base64 for Gemini
+      const base64Data = dataUrl.split(',')[1];
 
-      // 3. Call Gemini Vision API directly (using the precise preview model and empty API key for runtime injection)
+      // 4. Call Gemini Vision API directly (using the precise preview model and empty API key for runtime injection)
       const apiKey = ""; 
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
       const promptText = `
