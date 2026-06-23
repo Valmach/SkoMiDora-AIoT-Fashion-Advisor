@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
 import {
-  Loader2, Trash2, AlertCircle, ImageOff, FileText, Sparkles, Globe, Tag, Upload, Wand2
+  Loader2, Trash2, AlertCircle, ImageOff, FileText, Sparkles, Globe, Tag, Camera, Wand2
 } from "lucide-react";
 
 import { useFirebase } from "@/firebase/provider";
@@ -40,7 +40,6 @@ type ClosetItem = {
   createdAt?: any;
 };
 
-// Utility to ensure we never render a raw object and crash React
 const safeString = (val: any): string => {
   if (typeof val === 'string') return val;
   if (typeof val === 'number') return String(val);
@@ -53,6 +52,20 @@ function normalizeImagePath(path: string): string {
   if (p.startsWith("public/")) p = p.replace(/^public\//, "public_wardrobe_items/");
   return p.replace(/â€“/g, "–");
 }
+
+// Helper to convert file to Base64 for Gemini Vision
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      const base64String = reader.result as string;
+      // Strip the data:image/jpeg;base64, prefix
+      resolve(base64String.split(',')[1]);
+    };
+    reader.onerror = error => reject(error);
+  });
+};
 
 export default function ClosetPage() {
   const firebase = useFirebase();
@@ -118,29 +131,95 @@ export default function ClosetPage() {
 
   const handleUpload = useCallback(async (file: File) => {
     if (!firebase || !firebase.storage || !firebase.firestore) return;
+    
     setUploadStatus("uploading");
-    toast({ title: "Uploading...", description: "Please wait." });
+    toast({ title: "SkoMiDora Lens Active", description: "Uploading and analyzing item..." });
+    
     try {
+      // 1. Upload to Firebase Storage
       const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '-');
       const uniqueFileName = `${Date.now()}-${cleanFileName}`;
       const imagePath = `public_wardrobe_items/${uniqueFileName}`;
       const storageRef = ref(firebase.storage, imagePath);
       await uploadBytes(storageRef, file);
       const imageUrl = await getDownloadURL(storageRef);
-      const aiFriendlyName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, ' ');
+
+      // 2. Extract Base64 for Gemini
+      const base64Data = await fileToBase64(file);
+
+      // 3. Call Gemini Vision API directly
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
+      if (!apiKey) throw new Error("Missing Gemini API Key");
+
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+      const promptText = `
+        You are the Elite AI Concierge and Stylist for SkoMiDora.
+        Analyze this image of a clothing, footwear, or accessory item.
+        Extract the details and generate a rich, luxurious description following the exact JSON schema provided.
+        If you cannot definitively see the brand or country of origin, make an educated guess based on the style, or output "Unknown".
+      `;
+
+      const payload = {
+        contents: [
+          {
+            parts: [
+              { text: promptText },
+              { inlineData: { mimeType: file.type || "image/jpeg", data: base64Data } }
+            ]
+          }
+        ],
+        systemInstruction: { parts: [{ text: "Extract data strictly adhering to the provided JSON schema." }] },
+        generationConfig: { 
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              itemName: { type: "STRING" },
+              brand: { type: "STRING" },
+              color: { type: "STRING" },
+              itemType: { type: "STRING", description: "Must be 'shoes', 'tops', 'bottoms', or 'accessories'" },
+              originCountry: { type: "STRING" },
+              detailedSpecifications: { type: "STRING" },
+              narrativeDescription: { type: "STRING" },
+              imageType: { type: "STRING" },
+              styleKeywords: { type: "ARRAY", items: { type: "STRING" } }
+            },
+            required: ["itemName", "itemType", "color", "narrativeDescription", "styleKeywords"]
+          }
+        }
+      };
+
+      const aiResponse = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const aiData = await aiResponse.json();
       
+      if (!aiData.candidates || aiData.candidates.length === 0) {
+        throw new Error("Gemini AI failed to process the image.");
+      }
+
+      const rawText = aiData.candidates[0].content?.parts?.[0]?.text;
+      const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+      const extractedData = JSON.parse(cleanJson);
+
+      // 4. Save the Enriched Data to Firestore
       const newItem: Partial<ClosetItem> = { 
-        itemName: aiFriendlyName, 
-        itemType: "Uncategorized", 
+        ...extractedData,
         imagePath: imagePath, 
         imageUrl: imageUrl, 
+        source: 'skomidora_lens',
         createdAt: serverTimestamp() 
       };
       
       await addDoc(collection(firebase.firestore, 'publicWardrobeItems'), newItem);
-      toast({ title: "Success!", description: "Item securely added to digital closet." });
-    } catch (e: unknown) {
-      toast({ title: "Upload failed", variant: "destructive" });
+      toast({ title: "Analysis Complete!", description: "Item successfully curated to your digital closet." });
+      
+    } catch (e: any) {
+      console.error("Lens Error:", e);
+      toast({ title: "Analysis failed", description: e.message || "An error occurred.", variant: "destructive" });
     } finally {
       setUploadStatus("idle");
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -192,9 +271,9 @@ export default function ClosetPage() {
               className="w-full sm:w-auto flex items-center justify-center gap-3 bg-[#9A1B22] text-white hover:bg-[#7A151B] px-8 py-6 rounded-none uppercase tracking-[0.2em] text-xs font-bold transition-all shadow-lg border border-[#9A1B22]"
             >
               {uploadStatus === "idle" ? (
-                <span className="flex items-center gap-2"><Upload size={16} /> Add Item</span>
+                <span className="flex items-center gap-2"><Camera size={16} /> SkoMiDora Lens</span>
               ) : (
-                <span className="flex items-center gap-2"><Wand2 size={16} className="animate-spin" /> Uploading...</span>
+                <span className="flex items-center gap-2"><Wand2 size={16} className="animate-spin" /> Analyzing Item...</span>
               )}
             </Button>
             <input ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
