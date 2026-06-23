@@ -150,10 +150,14 @@ export default function ClosetPage() {
       const imagePath = `public_wardrobe_items/${uniqueFileName}`;
       const storageRef = ref(firebase.storage, imagePath);
       
+      console.log("Diagnostics: Uploading image to path:", imagePath);
       await uploadString(storageRef, dataUrl, 'data_url', {
         contentType: file.type || 'image/jpeg'
       });
+      console.log("Diagnostics: Upload complete");
+
       const imageUrl = await getDownloadURL(storageRef);
+      console.log("Diagnostics: Download URL generated:", imageUrl);
 
       // 3. Extract raw Base64 for Gemini
       const base64Data = dataUrl.split(',')[1];
@@ -199,6 +203,7 @@ export default function ClosetPage() {
         }
       };
 
+      console.log("Diagnostics: Calling Gemini API...");
       // Implement robust fetching with exponential backoff
       const fetchWithRetry = async (retries = 5, delay = 1000): Promise<any> => {
         try {
@@ -207,7 +212,10 @@ export default function ClosetPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
           });
-          if (!response.ok) throw new Error('API Error');
+          if (!response.ok) {
+            console.error("Diagnostics: Gemini API Error Status:", response.status);
+            throw new Error('API Error');
+          }
           return await response.json();
         } catch (err) {
           if (retries > 0) {
@@ -219,6 +227,7 @@ export default function ClosetPage() {
       };
 
       const aiData = await fetchWithRetry();
+      console.log("Diagnostics: Gemini API responded successfully");
       
       if (!aiData.candidates || aiData.candidates.length === 0) {
         throw new Error("Gemini AI failed to process the image.");
@@ -237,7 +246,10 @@ export default function ClosetPage() {
         createdAt: serverTimestamp() 
       };
       
+      console.log("Diagnostics: Saving metadata to Firestore");
       await addDoc(collection(firebase.firestore, 'publicWardrobeItems'), newItem);
+      console.log("Diagnostics: Firestore save complete");
+      
       toast({ title: "Analysis Complete!", description: "Item successfully curated to your digital closet." });
       
     } catch (e: any) {
