@@ -147,11 +147,9 @@ export default function ClosetPage() {
       // 2. Extract Base64 for Gemini
       const base64Data = await fileToBase64(file);
 
-      // 3. Call Gemini Vision API directly
-      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
-      if (!apiKey) throw new Error("Missing Gemini API Key");
-
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+      // 3. Call Gemini Vision API directly (using the precise preview model and empty API key for runtime injection)
+      const apiKey = ""; 
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
       const promptText = `
         You are the Elite AI Concierge and Stylist for SkoMiDora.
         Analyze this image of a clothing, footwear, or accessory item.
@@ -162,6 +160,7 @@ export default function ClosetPage() {
       const payload = {
         contents: [
           {
+            role: "user",
             parts: [
               { text: promptText },
               { inlineData: { mimeType: file.type || "image/jpeg", data: base64Data } }
@@ -189,13 +188,26 @@ export default function ClosetPage() {
         }
       };
 
-      const aiResponse = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      // Implement robust fetching with exponential backoff
+      const fetchWithRetry = async (retries = 5, delay = 1000): Promise<any> => {
+        try {
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!response.ok) throw new Error('API Error');
+          return await response.json();
+        } catch (err) {
+          if (retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return fetchWithRetry(retries - 1, delay * 2);
+          }
+          throw err;
+        }
+      };
 
-      const aiData = await aiResponse.json();
+      const aiData = await fetchWithRetry();
       
       if (!aiData.candidates || aiData.candidates.length === 0) {
         throw new Error("Gemini AI failed to process the image.");
@@ -276,7 +288,14 @@ export default function ClosetPage() {
                 <span className="flex items-center gap-2"><Wand2 size={16} className="animate-spin" /> Analyzing Item...</span>
               )}
             </Button>
-            <input ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
+            <input 
+              ref={fileInputRef} 
+              type="file" 
+              className="hidden" 
+              accept="image/*" 
+              capture="environment" 
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} 
+            />
           </div>
         </CardContent>
       </Card>
