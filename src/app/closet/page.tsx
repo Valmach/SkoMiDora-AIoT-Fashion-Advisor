@@ -1,22 +1,22 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { 
   collection, query, orderBy, onSnapshot, Timestamp, 
-  addDoc, serverTimestamp, doc, deleteDoc 
+  doc, deleteDoc 
 } from "firebase/firestore";
-import { ref, getDownloadURL, uploadBytes, deleteObject } from "firebase/storage"; 
+import { ref, getDownloadURL, deleteObject } from "firebase/storage"; 
 import { Bonheur_Royale, Playfair_Display, Inter } from 'next/font/google';
 
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
 import {
-  Loader2, Upload, Trash2, AlertCircle, ImageOff, Wand2, FileText, Sparkles, Globe, Tag
+  Loader2, Trash2, AlertCircle, ImageOff, FileText, Sparkles, Globe, Tag
 } from "lucide-react";
 
 import { useFirebase } from "@/firebase/provider";
+import SkomiDoraLens from "@/components/SkomiDoraLens";
 
 const bonheur = Bonheur_Royale({ 
   subsets: ['latin'], 
@@ -33,6 +33,7 @@ const inter = Inter({
   weight: ['300', '400', '500', '600'],
 });
 
+// Added brand, Country, and imageType to match the new Vision AI schema
 type ClosetItem = {
   id: string;
   itemName?: string;
@@ -43,7 +44,10 @@ type ClosetItem = {
   detailedSpecifications?: string;
   generalMaterial?: string;
   designer?: string; 
+  brand?: string; 
   originCountry?: string;
+  Country?: string;
+  imageType?: string;
   productUrl?: string;
   imagePath?: string;
   imageUrl?: string; 
@@ -66,10 +70,8 @@ export default function ClosetPage() {
   const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading">("idle");
   
   const [activeFilter, setActiveFilter] = useState<string>("All");
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!firebase || !firebase.firestore) return;
@@ -77,7 +79,12 @@ export default function ClosetPage() {
     const unsub = onSnapshot(q, (snap) => {
         const next: ClosetItem[] = snap.docs.map((d) => {
             const data = d.data();
-            return { id: d.id, ...data, createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : Date.now() };
+            // Explicitly cast the returned object as ClosetItem to satisfy TypeScript
+            return { 
+              id: d.id, 
+              ...data, 
+              createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : Date.now() 
+            } as ClosetItem;
         });
         setItems(next);
         setLoading(false);
@@ -111,37 +118,6 @@ export default function ClosetPage() {
       }
     });
   }, [items, firebase, imageUrls, brokenImages]);
-
-  const handleUpload = useCallback(async (file: File) => {
-      if (!firebase || !firebase.storage || !firebase.firestore) return;
-      setUploadStatus("uploading");
-      toast({ title: "Uploading to cloud...", description: "Please wait." });
-      try {
-        const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '-');
-        const uniqueFileName = `${Date.now()}-${cleanFileName}`;
-        const imagePath = `public_wardrobe_items/${uniqueFileName}`;
-        const storageRef = ref(firebase.storage, imagePath);
-        await uploadBytes(storageRef, file);
-        const imageUrl = await getDownloadURL(storageRef);
-        const aiFriendlyName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, ' ');
-        
-        const newItem: Partial<ClosetItem> = { 
-          itemName: aiFriendlyName, 
-          itemType: "Uncategorized", 
-          imagePath: imagePath, 
-          imageUrl: imageUrl, 
-          createdAt: serverTimestamp() 
-        };
-        
-        await addDoc(collection(firebase.firestore, 'publicWardrobeItems'), newItem);
-        toast({ title: "Success!", description: "Item securely added to digital closet." });
-      } catch (e: unknown) {
-        toast({ title: "Upload failed", description: "An error occurred", variant: "destructive" });
-      } finally {
-        setUploadStatus("idle");
-        if (fileInputRef.current) fileInputRef.current.value = "";
-      }
-    }, [toast, firebase]);
 
   const handleDelete = async (item: ClosetItem) => {
     if (!item.id || !firebase) return;
@@ -181,14 +157,11 @@ export default function ClosetPage() {
               <span className="text-[#9A1B22]">●</span> {items.length} Curated Pieces
             </p>
           </div>
-          <Button 
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploadStatus !== "idle"}
-            className="rounded-none px-8 py-6 bg-[#9A1B22] text-white hover:bg-[#7A151B] uppercase tracking-widest text-xs transition-all shadow-lg"
-          >
-            {uploadStatus === "idle" ? <><Upload className="mr-3 h-4 w-4" /> Add Item</> : <><Wand2 className="mr-3 h-4 w-4 animate-spin" /> Uploading...</>}
-          </Button>
-          <input ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
+          
+          {/* THE NEW SKOMIDORA LENS BUTTON */}
+          <div className="w-full md:w-auto shrink-0">
+            <SkomiDoraLens />
+          </div>
         </CardContent>
       </Card>
 
@@ -230,7 +203,7 @@ export default function ClosetPage() {
             return (
               <div key={item.id} className="group relative bg-[#050505] border border-zinc-900 shadow-2xl hover:border-[#9A1B22]/50 transition-all duration-500 overflow-hidden flex flex-col justify-start">
                 
-                {/* FIX 1: Shifted aspect ratio from square to a landscape 3/2 to match the natural boundaries of product imagery */}
+                {/* Image Container */}
                 <div className="relative aspect-[3/2] w-full bg-black flex items-center justify-center overflow-hidden p-3 border-b border-zinc-900 shrink-0">
                   {!url || isBroken ? (
                     <div className="flex flex-col items-center justify-center text-zinc-800">
@@ -249,22 +222,22 @@ export default function ClosetPage() {
                   </button>
                 </div>
 
-                {/* FIX 2: Tightened container margins from p-8 down to pt-4 px-5 pb-5 to instantly seal the white-space gap */}
+                {/* Card Body */}
                 <div className="pt-4 px-5 pb-5 flex flex-col flex-grow">
                   
                   {/* DESIGNER / ORIGIN ROW */}
-                  {(item.designer || item.originCountry) && (
+                  {(item.designer || item.originCountry || item.Country || item.brand) && (
                     <div className="flex items-center justify-between mb-2">
-                      {item.designer && (
+                      {(item.designer || item.brand) && (
                         <div className="flex items-center gap-1.5">
                           <Tag className="h-2.5 w-2.5 text-[#9A1B22]" />
-                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">{item.designer}</span>
+                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">{item.designer || item.brand}</span>
                         </div>
                       )}
-                      {item.originCountry && (
+                      {(item.originCountry || item.Country) && (
                         <div className="flex items-center gap-1.5">
                           <Globe className="h-2.5 w-2.5 text-[#9A1B22]" />
-                          <span className="text-[9px] text-zinc-500 uppercase tracking-widest">{item.originCountry}</span>
+                          <span className="text-[9px] text-zinc-500 uppercase tracking-widest">{item.originCountry || item.Country}</span>
                         </div>
                       )}
                     </div>
