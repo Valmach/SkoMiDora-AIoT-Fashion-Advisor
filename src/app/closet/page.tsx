@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { useFirebase } from "@/firebase/provider";
+import SkomiDoraLens from "@/components/SkomiDoraLens";
 
 const bonheur = Bonheur_Royale({ subsets: ['latin'], weight: ['400'] });
 const playfair = Playfair_Display({ subsets: ['latin'], weight: ['400', '600', '700'] });
@@ -53,20 +54,6 @@ function normalizeImagePath(path: string): string {
   return p.replace(/â€“/g, "–");
 }
 
-// Helper to convert file to Base64 for Gemini Vision
-const fileToBase64 = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => {
-      const base64String = reader.result as string;
-      // Strip the data:image/jpeg;base64, prefix
-      resolve(base64String.split(',')[1]);
-    };
-    reader.onerror = error => reject(error);
-  });
-};
-
 export default function ClosetPage() {
   const firebase = useFirebase();
   const { toast } = useToast();
@@ -76,8 +63,6 @@ export default function ClosetPage() {
   const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading">("idle");
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [activeFilter, setActiveFilter] = useState<string>("All");
 
@@ -129,138 +114,6 @@ export default function ClosetPage() {
     });
   }, [items, firebase, imageUrls, brokenImages]);
 
-  const handleUpload = useCallback(async (file: File) => {
-    if (!firebase || !firebase.storage || !firebase.firestore) return;
-    
-    setUploadStatus("uploading");
-    toast({ title: "SkoMiDora Lens Active", description: "Uploading and analyzing item..." });
-    
-    try {
-      // 1. Convert file to Data URL first to avoid Firebase 400 Bad Request on raw File objects
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = error => reject(error);
-      });
-
-      // 2. Upload to Firebase Storage with explicit metadata
-      const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '-');
-      const uniqueFileName = `${Date.now()}-${cleanFileName}`;
-      const imagePath = `public_wardrobe_items/${uniqueFileName}`;
-      const storageRef = ref(firebase.storage, imagePath);
-      
-      console.log("Diagnostics: Uploading image to path:", imagePath);
-      await uploadString(storageRef, dataUrl, 'data_url', {
-        contentType: file.type || 'image/jpeg'
-      });
-      console.log("Diagnostics: Upload complete");
-
-      const imageUrl = await getDownloadURL(storageRef);
-      console.log("Diagnostics: Download URL generated:", imageUrl);
-
-      // 3. Extract raw Base64 for Gemini
-      const base64Data = dataUrl.split(',')[1];
-
-      // 4. Call Gemini Vision API directly (using the precise preview model and empty API key for runtime injection)
-      const apiKey = ""; 
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-      const promptText = `
-        You are the Elite AI Concierge and Stylist for SkoMiDora.
-        Analyze this image of a clothing, footwear, or accessory item.
-        Extract the details and generate a rich, luxurious description following the exact JSON schema provided.
-        If you cannot definitively see the brand or country of origin, make an educated guess based on the style, or output "Unknown".
-      `;
-
-      const payload = {
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { text: promptText },
-              { inlineData: { mimeType: file.type || "image/jpeg", data: base64Data } }
-            ]
-          }
-        ],
-        systemInstruction: { parts: [{ text: "Extract data strictly adhering to the provided JSON schema." }] },
-        generationConfig: { 
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              itemName: { type: "STRING" },
-              brand: { type: "STRING" },
-              color: { type: "STRING" },
-              itemType: { type: "STRING", description: "Must be 'shoes', 'tops', 'bottoms', or 'accessories'" },
-              originCountry: { type: "STRING" },
-              detailedSpecifications: { type: "STRING" },
-              narrativeDescription: { type: "STRING" },
-              imageType: { type: "STRING" },
-              styleKeywords: { type: "ARRAY", items: { type: "STRING" } }
-            },
-            required: ["itemName", "itemType", "color", "narrativeDescription", "styleKeywords"]
-          }
-        }
-      };
-
-      console.log("Diagnostics: Calling Gemini API...");
-      // Implement robust fetching with exponential backoff
-      const fetchWithRetry = async (retries = 5, delay = 1000): Promise<any> => {
-        try {
-          const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          if (!response.ok) {
-            console.error("Diagnostics: Gemini API Error Status:", response.status);
-            throw new Error('API Error');
-          }
-          return await response.json();
-        } catch (err) {
-          if (retries > 0) {
-            await new Promise(resolve => setTimeout(resolve, delay));
-            return fetchWithRetry(retries - 1, delay * 2);
-          }
-          throw err;
-        }
-      };
-
-      const aiData = await fetchWithRetry();
-      console.log("Diagnostics: Gemini API responded successfully");
-      
-      if (!aiData.candidates || aiData.candidates.length === 0) {
-        throw new Error("Gemini AI failed to process the image.");
-      }
-
-      const rawText = aiData.candidates[0].content?.parts?.[0]?.text;
-      const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-      const extractedData = JSON.parse(cleanJson);
-
-      // 4. Save the Enriched Data to Firestore
-      const newItem: Partial<ClosetItem> = { 
-        ...extractedData,
-        imagePath: imagePath, 
-        imageUrl: imageUrl, 
-        source: 'skomidora_lens',
-        createdAt: serverTimestamp() 
-      };
-      
-      console.log("Diagnostics: Saving metadata to Firestore");
-      await addDoc(collection(firebase.firestore, 'publicWardrobeItems'), newItem);
-      console.log("Diagnostics: Firestore save complete");
-      
-      toast({ title: "Analysis Complete!", description: "Item successfully curated to your digital closet." });
-      
-    } catch (e: any) {
-      console.error("Lens Error:", e);
-      toast({ title: "Analysis failed", description: e.message || "An error occurred.", variant: "destructive" });
-    } finally {
-      setUploadStatus("idle");
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  }, [toast, firebase]);
-
   const handleDelete = async (item: ClosetItem) => {
     if (!item.id || !firebase) return;
     try {
@@ -300,25 +153,7 @@ export default function ClosetPage() {
           </div>
           
           <div className="w-full md:w-auto shrink-0">
-            <Button 
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploadStatus !== "idle"}
-              className="w-full sm:w-auto flex items-center justify-center gap-3 bg-[#9A1B22] text-white hover:bg-[#7A151B] px-8 py-6 rounded-none uppercase tracking-[0.2em] text-xs font-bold transition-all shadow-lg border border-[#9A1B22]"
-            >
-              {uploadStatus === "idle" ? (
-                <span className="flex items-center gap-2"><Camera size={16} /> SkoMiDora Lens</span>
-              ) : (
-                <span className="flex items-center gap-2"><Wand2 size={16} className="animate-spin" /> Analyzing Item...</span>
-              )}
-            </Button>
-            <input 
-              ref={fileInputRef} 
-              type="file" 
-              className="hidden" 
-              accept="image/*" 
-              capture="environment" 
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} 
-            />
+            <SkomiDoraLens />
           </div>
         </CardContent>
       </Card>
