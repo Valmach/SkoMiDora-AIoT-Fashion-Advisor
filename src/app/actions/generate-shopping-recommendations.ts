@@ -1,0 +1,105 @@
+'use server';
+
+import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { generateObject } from 'ai';
+import { z } from 'zod';
+
+const google = createGoogleGenerativeAI({
+  apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY,
+});
+
+const ShoppingRecommendationSchema = z.object({
+  recommendations: z.array(z.object({
+    suggestedBrand: z.string(),
+    itemType: z.string(),
+    description: z.string(),
+    searchQuery: z.string()
+  }))
+});
+
+export async function generateShoppingRecommendations(
+  eventContext: string, 
+  weatherContext: string, 
+  targetCategory: string = "Any Missing Piece"
+) {
+  console.log("=========================================");
+  console.log("🛒 STYLIST ACTION TRIGGERED");
+  console.log(`🎯 Target Category: ${targetCategory}`);
+  console.log(`📍 Context: ${eventContext} | ⛅ Weather: ${weatherContext}`);
+  
+  try {
+    const { db } = getFirebaseAdmin();
+    console.log("✅ Firebase Admin Initialized");
+
+    const snapshot = await db.collection('publicWardrobeItems').limit(300).get();
+    console.log(`📦 Found ${snapshot.size} items in publicWardrobeItems`);
+    
+    let currentWardrobe = "The closet is currently empty.";
+    if (!snapshot.empty) {
+      const items = snapshot.docs.map(doc => doc.data());
+      const shuffledItems = items.sort(() => 0.5 - Math.random());
+      
+      currentWardrobe = shuffledItems.map(item => {
+        const name = item.aiFriendlyName || item.itemName || 'Unnamed Luxury Item';
+        const type = item.itemType || '';
+        const color = item.color || '';
+        return `- ${color} ${type} ${name}`.trim();
+      }).filter(str => str !== '-').join('\n');
+    }
+
+    // Snipping the console log so it doesn't flood the terminal, just showing length
+    console.log(`👕 Wardrobe string length passed to AI: ${currentWardrobe.length} characters`);
+
+    const prompt = `
+      You are an elite personal shopper for a high-net-worth client. 
+      Event: "${eventContext || 'General Wardrobe Update'}"
+      Weather context: ${weatherContext || 'Provide versatile recommendations.'}
+
+      The client specifically needs: "${targetCategory}".
+      
+      Here is what they ALREADY own:
+      ${currentWardrobe}
+
+      YOUR MISSION:
+      Analyze their existing wardrobe above. Identify what is missing to complete a look for the event.
+      YOU MUST RETURN EXACTLY 3 RECOMMENDATIONS. DO NOT RETURN AN EMPTY ARRAY.
+      
+      1. If they asked for a specific category (e.g., "Shorts"), ALL 3 items must be Shorts.
+      2. If they asked for "Any Missing Piece", provide 3 different types of items that complete their current wardrobe.
+      3. Suggest high-end, contemporary luxury brands (The Row, Bottega Veneta, Khaite, Marni, etc.).
+    `;
+
+    console.log("🧠 Sending prompt to Gemini 2.5 Flash...");
+    
+    const { object } = await generateObject({
+      model: google('gemini-2.5-flash'),
+      schema: ShoppingRecommendationSchema,
+      prompt: prompt,
+      temperature: 0.8, 
+    });
+
+    console.log("✨ Gemini Response Received:");
+    console.log(JSON.stringify(object, null, 2));
+
+    if (!object || !object.recommendations || object.recommendations.length === 0) {
+      console.log("❌ ERROR: Gemini returned an empty array.");
+      throw new Error("AI returned empty recommendations.");
+    }
+
+    const materializedLinks = object.recommendations.map(rec => ({
+      ...rec,
+      shopUrl: `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(rec.searchQuery)}`
+    }));
+
+    console.log("✅ Success! Sending links to frontend.");
+    console.log("=========================================");
+    
+    return { success: true, recommendations: materializedLinks };
+
+  } catch (error: any) {
+    console.error("❌ FATAL STYLIST ERROR:", error);
+    // 👇 Send the RAW system error directly to the browser
+    return { success: false, error: `CRASH REASON: ${error.message || String(error)}` }; 
+  }
+}
