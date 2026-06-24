@@ -5,7 +5,7 @@ import { Camera, Sparkles, Loader2, CheckCircle2 } from 'lucide-react';
 import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { app } from '@/lib/firebase'; 
 
-// Client-side image compression helper to bypass the 494 Error
+// 🚀 1. The HTML Canvas Compressor to permanently bypass the 494 Payload Limit
 const compressImage = (file: File, maxWidth = 800): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -14,7 +14,6 @@ const compressImage = (file: File, maxWidth = 800): Promise<string> => {
       const img = new Image();
       img.src = event.target?.result as string;
       img.onload = () => {
-        // Calculate new dimensions keeping aspect ratio
         const ratio = maxWidth / img.width;
         const width = img.width > maxWidth ? maxWidth : img.width;
         const height = img.width > maxWidth ? img.height * ratio : img.height;
@@ -27,9 +26,7 @@ const compressImage = (file: File, maxWidth = 800): Promise<string> => {
         if (!ctx) return reject(new Error("Failed to get canvas context"));
         
         ctx.drawImage(img, 0, 0, width, height);
-        
-        // Export as heavily compressed JPEG (0.7 quality)
-        resolve(canvas.toDataURL('image/jpeg', 0.7));
+        resolve(canvas.toDataURL('image/jpeg', 0.7)); // 70% quality JPEG
       };
       img.onerror = (e) => reject(e);
     };
@@ -50,18 +47,18 @@ export default function SkomiDoraLens() {
     setSuccess(false);
 
     try {
-      // 1. COMPRESS THE IMAGE FIRST to dodge the 494 Payload Limit
-      console.log("Original file size:", (file.size / 1024 / 1024).toFixed(2), "MB");
+      // 1. Compress Image first
+      console.log("Compressing image...");
       const compressedBase64 = await compressImage(file);
-      console.log("Compressed base64 created successfully");
 
-      // 2. Upload the tiny compressed image to Firebase Storage
-      const storage = getStorage(app);
-      const storageRef = ref(storage, `public_wardrobe_items/lens_${Date.now()}.jpg`);
+      // 🚀 2. FORCE THE EXACT BUCKET TO BYPASS CACHED NEXT.JS VARIABLES
+      const customStorage = getStorage(app, "gs://styleai-footwear.firebasestorage.app");
+      
+      const storageRef = ref(customStorage, `public_wardrobe_items/lens_${Date.now()}.jpg`);
       await uploadString(storageRef, compressedBase64, 'data_url');
       const downloadUrl = await getDownloadURL(storageRef);
 
-      // 3. Pass the tiny string to our Vision API
+      // 3. Pass to our new Vision API
       const response = await fetch('/api/vision-ingest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -71,11 +68,7 @@ export default function SkomiDoraLens() {
         })
       });
 
-      if (!response.ok) {
-        const errData = await response.json();
-        console.error("API Error Response:", errData);
-        throw new Error(`Vision API failed: ${response.status}`);
-      }
+      if (!response.ok) throw new Error("Vision API failed");
       
       setIsProcessing(false);
       setSuccess(true);
