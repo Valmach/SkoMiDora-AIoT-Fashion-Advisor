@@ -6,6 +6,7 @@ import { MapPin, Calendar, CloudSun, Volume2, Square, ArrowRight, Sparkles } fro
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Playfair_Display } from 'next/font/google'; 
+import { useToast } from "@/hooks/use-toast"; // Lisätty virheilmoituksia varten
 
 const playfair = Playfair_Display({ 
   subsets: ['latin'], 
@@ -30,6 +31,8 @@ const CITY_IMAGES: Record<string, string> = {
 };
 
 export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, cardIndex }: AdviceProps) {
+  const { toast } = useToast();
+
   if (!eventAdvice) return null;
 
   // --- SAFE DATA FALLBACKS ---
@@ -70,7 +73,15 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
     }
 
     setIsSpeaking(true);
-    const textToRead = `${safeEventName}. ${safeWeather}. Stylist Notes: ${safeReasoning}`;
+
+    // 🚀 CRITICAL FIX: Clean the text before sending to the TTS API.
+    // The Gemini TTS API throws a 400 Bad Request if it encounters Markdown (*, _, #) or complex Emojis.
+    let rawText = `${safeEventName}. ${safeWeather}. Stylist Notes: ${safeReasoning}`;
+    const cleanTextToRead = rawText
+      .replace(/[*#_`~\[\]]/g, '') // Remove Markdown
+      .replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '') // Remove Emojis
+      .slice(0, 800); // Limit length to prevent payload size errors
+
     const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
 
     // 2. Synchronously unlock the audio context for strict browsers (Safari/iOS)
@@ -79,10 +90,10 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
     audio.play().catch(() => {});
     setAudioElement(audio);
 
-    // 3. Synchronous Fallback if API Key is missing (prevents async blocking)
+    // 3. Synchronous Fallback if API Key is missing
     if (!apiKey) {
-      console.warn("No Gemini API key found. Using native browser TTS.");
-      const utterance = new SpeechSynthesisUtterance(textToRead);
+      toast({ title: "Local Audio Active", description: "No API key found. Using built-in device voice." });
+      const utterance = new SpeechSynthesisUtterance(cleanTextToRead);
       utterance.onend = () => setIsSpeaking(false);
       utterance.onerror = () => setIsSpeaking(false);
       window.speechSynthesis.speak(utterance);
@@ -92,7 +103,7 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
     try {
       // 4. Use Gemini 2.5 Flash TTS
       const payload = {
-        contents: [{ parts: [{ text: textToRead }] }],
+        contents: [{ parts: [{ text: cleanTextToRead }] }],
         generationConfig: {
           responseModalities: ["AUDIO"],
           speechConfig: {
@@ -110,7 +121,8 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
 
       if (!response.ok) {
         const errText = await response.text();
-        throw new Error(`Gemini TTS API Failed: ${errText}`);
+        console.error("Gemini TTS 400 Error Details:", errText);
+        throw new Error(`Google API responded with status: ${response.status}`);
       }
 
       const data = await response.json();
@@ -165,16 +177,21 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
         
         audio.src = url;
         audio.onended = () => setIsSpeaking(false);
-        audio.onerror = () => setIsSpeaking(false);
+        audio.onerror = () => {
+          setIsSpeaking(false);
+          toast({ title: "Playback Error", description: "Audio stream was interrupted.", variant: "destructive" });
+        };
         await audio.play();
       } else {
-        throw new Error("No audio data returned");
+        throw new Error("No audio data returned from the API.");
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.warn("Premium audio failed, falling back to native browser speech:", error);
+      toast({ title: "TTS API Unavailable", description: "Falling back to native voice.", variant: "destructive" });
+      
       // 5. Async Fallback 
-      const utterance = new SpeechSynthesisUtterance(textToRead);
+      const utterance = new SpeechSynthesisUtterance(cleanTextToRead);
       utterance.onend = () => setIsSpeaking(false);
       utterance.onerror = () => setIsSpeaking(false);
       window.speechSynthesis.speak(utterance);
