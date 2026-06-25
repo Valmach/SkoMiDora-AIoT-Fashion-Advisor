@@ -5,7 +5,7 @@
  * - Canonicalize Firestore storagePath to match real Storage layout
  *
  * FACT:
- * - Images live in gs://styleai-footwear.appspot.com/public/*
+ * - Images live in gs://styleai-footwear.firebasestorage.app/public/*
  * - Firestore incorrectly references public_wardrobe_items/*
  *
  * ACTION:
@@ -29,12 +29,12 @@ const path = require("path");
 if (!admin.apps.length) {
   admin.initializeApp({
     projectId: "styleai-footwear",
-    storageBucket: "styleai-footwear.appspot.com",
+    storageBucket: "styleai-footwear.firebasestorage.app",
   });
 }
 
 const db = admin.firestore();
-const bucket = getStorage().bucket("styleai-footwear.appspot.com");
+const bucket = getStorage().bucket("styleai-footwear.firebasestorage.app");
 
 // ------------------------------------------------------
 // CONFIG

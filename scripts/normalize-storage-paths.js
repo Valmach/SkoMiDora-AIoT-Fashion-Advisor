@@ -26,12 +26,12 @@ const path = require("path");
 if (!admin.apps.length) {
   admin.initializeApp({
     projectId: "styleai-footwear",
-    storageBucket: "styleai-footwear.appspot.com",
+    storageBucket: "styleai-footwear.firebasestorage.app",
   });
 }
 
 const db = admin.firestore();
-const bucket = getStorage().bucket("styleai-footwear.appspot.com");
+const bucket = getStorage().bucket("styleai-footwear.firebasestorage.app");
 
 // ------------------------------------------------------
 // CONFIG

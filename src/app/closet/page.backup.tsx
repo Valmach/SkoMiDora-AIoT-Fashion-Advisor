@@ -1,18 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { 
   collection, query, orderBy, onSnapshot, Timestamp, 
   doc, deleteDoc, addDoc, serverTimestamp 
 } from "firebase/firestore";
-import { ref, getDownloadURL, deleteObject } from "firebase/storage"; 
+import { ref, getDownloadURL, deleteObject, uploadString } from "firebase/storage"; 
 import { Bonheur_Royale, Playfair_Display, Inter } from 'next/font/google';
 
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
 import {
-  Loader2, Trash2, AlertCircle, ImageOff, FileText, Sparkles, Globe, Tag
+  Loader2, Trash2, AlertCircle, ImageOff, FileText, Sparkles, Globe, Tag, Camera, Wand2
 } from "lucide-react";
 
 import { useFirebase } from "@/firebase/provider";

@@ -25,7 +25,7 @@ const { getStorage } = require("firebase-admin/storage");
 if (!admin.apps.length) {
   admin.initializeApp({
     projectId: "styleai-footwear",
-    storageBucket: "styleai-footwear.appspot.com",
+    storageBucket: "styleai-footwear.firebasestorage.app",
     // Uses Application Default Credentials automatically
   });
 }
@@ -34,7 +34,7 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 
 // Storage bucket (explicit binding, defensive)
-const bucket = getStorage().bucket("styleai-footwear.appspot.com");
+const bucket = getStorage().bucket("styleai-footwear.firebasestorage.app");
 
 // ------------------------------------------------------
 // CONFIG

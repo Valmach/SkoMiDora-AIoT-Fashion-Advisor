@@ -17,12 +17,12 @@ const { getStorage } = require("firebase-admin/storage");
 if (!admin.apps.length) {
   admin.initializeApp({
     projectId: "styleai-footwear",
-    storageBucket: "styleai-footwear.appspot.com", // ✅ CONFIRMED BUCKET
+    storageBucket: "styleai-footwear.firebasestorage.app", // ✅ CONFIRMED BUCKET
   });
 }
 
 const db = admin.firestore();
-const bucket = getStorage().bucket("styleai-footwear.appspot.com");
+const bucket = getStorage().bucket("styleai-footwear.firebasestorage.app");
 
 // ------------------------------------------------------
 // CONFIG

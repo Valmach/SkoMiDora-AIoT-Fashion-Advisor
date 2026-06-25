@@ -52,42 +52,114 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
       if (audioElement) {
         audioElement.pause();
       }
+      window.speechSynthesis.cancel();
     };
   }, [audioElement]);
 
   const handleSpeak = async () => {
-    if (isSpeaking && audioElement) {
-      audioElement.pause();
+    // 1. Stop playback if already speaking
+    if (isSpeaking) {
+      if (audioElement) {
+        audioElement.pause();
+        setAudioElement(null);
+      }
+      window.speechSynthesis.cancel();
       setIsSpeaking(false);
       return;
     }
 
     setIsSpeaking(true);
+    const textToRead = `${safeEventName}. ${safeWeather}. Stylist Notes: ${safeReasoning}`;
     
     try {
-      const textToRead = `${safeEventName}. ${safeWeather}. Stylist Notes: ${safeReasoning}`;
-      const userLocale = navigator.language || 'en-US'; 
-      
-      const response = await fetch('/api/tts', {
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+      if (!apiKey) throw new Error('Missing Gemini API Key');
+
+      // 2. Use Gemini 2.5 Flash TTS
+      const payload = {
+        contents: [{ parts: [{ text: textToRead }] }],
+        generationConfig: {
+          responseModalities: ["AUDIO"],
+          speechConfig: {
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } }
+          }
+        },
+        model: "models/gemini-2.5-flash-preview-tts"
+      };
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: textToRead, locale: userLocale }),
+        body: JSON.stringify(payload)
       });
 
-      if (!response.ok) throw new Error('Failed to fetch premium audio');
+      if (!response.ok) throw new Error('Failed to fetch premium audio from Gemini');
 
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
+      const data = await response.json();
+      const audioPart = data.candidates?.[0]?.content?.parts?.[0];
       
-      audio.onended = () => setIsSpeaking(false);
-      
-      setAudioElement(audio);
-      audio.play();
+      if (audioPart?.inlineData?.data) {
+        const base64Data = audioPart.inlineData.data;
+        const mimeType = audioPart.inlineData.mimeType || "audio/L16;rate=24000";
+        
+        let sampleRate = 24000;
+        const rateMatch = mimeType.match(/rate=(\d+)/);
+        if (rateMatch) sampleRate = parseInt(rateMatch[1], 10);
+
+        // 3. Decode base64 to binary
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        // 4. Convert PCM16 to WAV format for browser playback
+        const numChannels = 1;
+        const bitsPerSample = 16;
+        const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+        const blockAlign = numChannels * (bitsPerSample / 8);
+        const pcmData = bytes.buffer;
+        
+        const wavHeader = new ArrayBuffer(44);
+        const view = new DataView(wavHeader);
+        
+        // RIFF chunk
+        view.setUint32(0, 0x52494646, false); // 'RIFF'
+        view.setUint32(4, 36 + pcmData.byteLength, true);
+        view.setUint32(8, 0x57415645, false); // 'WAVE'
+        
+        // fmt sub-chunk
+        view.setUint32(12, 0x666D7420, false); // 'fmt '
+        view.setUint32(16, 16, true); 
+        view.setUint16(20, 1, true); // PCM
+        view.setUint16(22, numChannels, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, byteRate, true);
+        view.setUint16(32, blockAlign, true);
+        view.setUint16(34, bitsPerSample, true);
+        
+        // data sub-chunk
+        view.setUint32(36, 0x64617461, false); // 'data'
+        view.setUint32(40, pcmData.byteLength, true);
+
+        const blob = new Blob([wavHeader, pcmData], { type: 'audio/wav' });
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        
+        audio.onended = () => setIsSpeaking(false);
+        setAudioElement(audio);
+        audio.play();
+      } else {
+        throw new Error("No audio data returned");
+      }
 
     } catch (error) {
-      console.error("Audio playback failed:", error);
-      setIsSpeaking(false);
+      console.warn("Premium audio failed, falling back to native browser speech:", error);
+      // 5. Bulletproof Fallback
+      const utterance = new SpeechSynthesisUtterance(textToRead);
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+      window.speechSynthesis.speak(utterance);
     }
   };
 

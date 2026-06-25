@@ -1,18 +1,21 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { Camera, Sparkles, Loader2, CheckCircle2 } from 'lucide-react';
+import { Camera, Loader2, CheckCircle2 } from 'lucide-react';
 import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { app } from '@/lib/firebase'; 
+import { app } from '@/lib/firebase';
 
-// 🚀 1. The HTML Canvas Compressor to permanently bypass the 494 Payload Limit
+// HTML Canvas Compressor
 const compressImage = (file: File, maxWidth = 800): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
+
     reader.readAsDataURL(file);
+
     reader.onload = (event) => {
       const img = new Image();
       img.src = event.target?.result as string;
+
       img.onload = () => {
         const ratio = maxWidth / img.width;
         const width = img.width > maxWidth ? maxWidth : img.width;
@@ -21,15 +24,18 @@ const compressImage = (file: File, maxWidth = 800): Promise<string> => {
         const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
-        
+
         const ctx = canvas.getContext('2d');
-        if (!ctx) return reject(new Error("Failed to get canvas context"));
-        
+        if (!ctx) return reject(new Error('Failed to get canvas context'));
+
         ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.7)); // 70% quality JPEG
+
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
       };
+
       img.onerror = (e) => reject(e);
     };
+
     reader.onerror = (e) => reject(e);
   });
 };
@@ -39,7 +45,9 @@ export default function SkomiDoraLens() {
   const [success, setSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageCapture = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageCapture = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -47,63 +55,101 @@ export default function SkomiDoraLens() {
     setSuccess(false);
 
     try {
-      // 1. Compress Image first
-      console.log("Compressing image...");
+      console.log('Compressing image...');
       const compressedBase64 = await compressImage(file);
 
-      // 🚀 2. FORCE THE EXACT BUCKET TO BYPASS CACHED NEXT.JS VARIABLES
-      const customStorage = getStorage(app, "gs://styleai-footwear.firebasestorage.app");
-      
-      const storageRef = ref(customStorage, `public_wardrobe_items/lens_${Date.now()}.jpg`);
-      await uploadString(storageRef, compressedBase64, 'data_url');
+      const storage = getStorage(app);
+      const imagePath = `public_wardrobe_items/lens_${Date.now()}.jpg`;
+      const storageRef = ref(storage, imagePath);
+
+      console.log('========== SKOMIDORA LENS ==========');
+      console.log('Bucket:', storage.app.options.storageBucket);
+      console.log('Project:', storage.app.options.projectId);
+      console.log('Path:', imagePath);
+      console.log('Original file type:', file.type);
+      console.log('Compressed image size:', compressedBase64.length);
+      console.log('====================================');
+
+      try {
+        await uploadString(storageRef, compressedBase64, 'data_url', {
+          contentType: 'image/jpeg',
+        });
+
+        console.log('✅ Firebase Storage upload succeeded');
+      } catch (e: any) {
+        console.error('========== STORAGE ERROR ==========');
+        console.error('Code:', e.code);
+        console.error('Message:', e.message);
+        console.error('Server Response:', e.serverResponse);
+        console.error('Custom Data:', e.customData);
+        console.error('Full Error:', e);
+        console.error('===================================');
+
+        throw e;
+      }
+
       const downloadUrl = await getDownloadURL(storageRef);
 
-      // 3. Pass to our new Vision API
+      console.log('Download URL:', downloadUrl);
+
       const response = await fetch('/api/vision-ingest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          imageBase64: compressedBase64, 
-          imageUrl: downloadUrl 
-        })
+        body: JSON.stringify({
+          imageBase64: compressedBase64,
+          imageUrl: downloadUrl,
+          imagePath,
+        }),
       });
 
-      if (!response.ok) throw new Error("Vision API failed");
-      
-      setIsProcessing(false);
-      setSuccess(true);
-      
-      setTimeout(() => setSuccess(false), 3000);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Vision API failed:', response.status, errorText);
+        throw new Error(`Vision API failed: ${response.status}`);
+      }
 
-    } catch (error) {
-      console.error("SkoMiDora Lens Error:", error);
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (error: any) {
+      console.error('SkoMiDora Lens Error:', error);
+      alert(error?.message || 'Failed to analyze image. Please try again.');
+    } finally {
       setIsProcessing(false);
-      alert("Failed to analyze image. Please try again.");
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
   return (
     <div className="w-full sm:w-auto relative group">
-      <input 
-        type="file" 
-        accept="image/*" 
-        capture="environment" 
+      <input
+        type="file"
+        accept="image/*"
+        capture="environment"
         ref={fileInputRef}
         className="hidden"
         onChange={handleImageCapture}
       />
 
-      <button 
+      <button
         onClick={() => fileInputRef.current?.click()}
         disabled={isProcessing}
         className="w-full sm:w-auto flex items-center justify-center gap-3 bg-[#9A1B22] text-white hover:bg-[#7A151B] px-8 py-6 rounded-none uppercase tracking-[0.2em] text-xs font-bold transition-all disabled:opacity-50 shadow-lg group-hover:shadow-[0_0_20px_rgba(154,27,34,0.3)] border border-[#9A1B22]"
       >
         {isProcessing ? (
-          <><Loader2 size={16} className="animate-spin" /> Analyzing Image...</>
+          <>
+            <Loader2 size={16} className="animate-spin" /> Analyzing Image...
+          </>
         ) : success ? (
-          <><CheckCircle2 size={16} className="text-white" /> Added to Closet</>
+          <>
+            <CheckCircle2 size={16} className="text-white" /> Added to Closet
+          </>
         ) : (
-          <><Camera size={16} /> Use SkoMiDora Lens</>
+          <>
+            <Camera size={16} /> Use SkoMiDora Lens
+          </>
         )}
       </button>
     </div>

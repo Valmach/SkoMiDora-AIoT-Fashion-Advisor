@@ -5,7 +5,7 @@
  * - Upload missing images into the canonical bucket layout
  *
  * TARGET:
- * gs://styleai-footwear.appspot.com/public/<filename>
+ * gs://styleai-footwear.firebasestorage.app/public/<filename>
  *
  * SAFE:
  * - Uploads only
@@ -24,7 +24,7 @@ const path = require('path');
 
 const LOCAL_IMAGE_DIR = './reingest-images'; // <-- put images here
 const TARGET_PREFIX = 'public/';
-const BUCKET_NAME = 'styleai-footwear.appspot.com';
+const BUCKET_NAME = 'styleai-footwear.firebasestorage.app';
 
 // ------------------------------------------------------
 // INIT

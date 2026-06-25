@@ -20,7 +20,7 @@ const admin = require("firebase-admin");
 if (!admin.apps.length) {
   admin.initializeApp({
     projectId: "styleai-footwear",
-    storageBucket: "styleai-footwear.appspot.com",
+    storageBucket: "styleai-footwear.firebasestorage.app",
   });
 }
 

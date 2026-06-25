@@ -1,6 +1,6 @@
 const admin = require("firebase-admin");
 admin.initializeApp({
-  storageBucket: "styleai-footwear.appspot.com"
+  storageBucket: "styleai-footwear.firebasestorage.app"
 });
 
 async function run() {
@@ -11,7 +11,7 @@ async function run() {
   for (const doc of snap.docs) {
     const data = doc.data();
     if (!data.imagePath) continue;
-    const correctUrl = `https://storage.googleapis.com/styleai-footwear.appspot.com/${data.imagePath}`;
+    const correctUrl = `https://storage.googleapis.com/styleai-footwear.firebasestorage.app/${data.imagePath}`;
 
     if (data.imageUrl !== correctUrl) {
       console.log("Fixing:", doc.id);
