@@ -2,10 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Camera, Loader2, CheckCircle2 } from 'lucide-react';
-import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { app } from '@/lib/firebase';
 
-// HTML Canvas Compressor
 const compressImage = (file: File, maxWidth = 800): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -29,7 +26,6 @@ const compressImage = (file: File, maxWidth = 800): Promise<string> => {
         if (!ctx) return reject(new Error('Failed to get canvas context'));
 
         ctx.drawImage(img, 0, 0, width, height);
-
         resolve(canvas.toDataURL('image/jpeg', 0.7));
       };
 
@@ -58,39 +54,31 @@ export default function SkomiDoraLens() {
       console.log('Compressing image...');
       const compressedBase64 = await compressImage(file);
 
-      const storage = getStorage(app);
-      const imagePath = `public_wardrobe_items/lens_${Date.now()}.jpg`;
-      const storageRef = ref(storage, imagePath);
+      const uploadResponse = await fetch('/api/storage-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64: compressedBase64,
+          fileName: `lens_${Date.now()}.jpg`,
+        }),
+      });
 
-      console.log('========== SKOMIDORA LENS ==========');
-      console.log('Bucket:', storage.app.options.storageBucket);
-      console.log('Project:', storage.app.options.projectId);
-      console.log('Path:', imagePath);
-      console.log('Original file type:', file.type);
-      console.log('Compressed image size:', compressedBase64.length);
-      console.log('====================================');
-
-      try {
-        await uploadString(storageRef, compressedBase64, 'data_url', {
-          contentType: 'image/jpeg',
-        });
-
-        console.log('✅ Firebase Storage upload succeeded');
-      } catch (e: any) {
-        console.error('========== STORAGE ERROR ==========');
-        console.error('Code:', e.code);
-        console.error('Message:', e.message);
-        console.error('Server Response:', e.serverResponse);
-        console.error('Custom Data:', e.customData);
-        console.error('Full Error:', e);
-        console.error('===================================');
-
-        throw e;
+      if (!uploadResponse.ok) {
+        const uploadError = await uploadResponse.text();
+        console.error('Storage upload failed:', uploadError);
+        throw new Error(`Storage upload failed: ${uploadResponse.status}`);
       }
 
-      const downloadUrl = await getDownloadURL(storageRef);
+      const uploadResult = await uploadResponse.json();
 
-      console.log('Download URL:', downloadUrl);
+      const downloadUrl = uploadResult.imageUrl;
+      const imagePath = uploadResult.imagePath;
+
+      console.log('Backend upload succeeded:', {
+        bucket: uploadResult.bucket,
+        imagePath,
+        downloadUrl,
+      });
 
       const response = await fetch('/api/vision-ingest', {
         method: 'POST',

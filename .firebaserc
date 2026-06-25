@@ -9,6 +9,14 @@
         "sk-styleai-footwear-us-cen1": [
           "sk-styleai-footwear-us-cen1"
         ]
+      },
+      "storage": {
+        "wardrobe": [
+          "styleai-footwear.firebasestorage.app"
+        ],
+        "legacy": [
+          "styleai-footwear.appspot.com"
+        ]
       }
     }
   },
