@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Storage } from "@google-cloud/storage";
-import crypto from "crypto";
+import { getApps, initializeApp } from "firebase-admin/app";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
 export const runtime = "nodejs";
+
+if (!getApps().length) {
+  initializeApp();
+}
 
 const BUCKET_NAME =
   process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
@@ -10,6 +15,19 @@ const BUCKET_NAME =
 
 function cleanFileName(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]/g, "-");
+}
+
+function publicGcsUrl(bucket: string, path: string) {
+  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+  return `https://storage.googleapis.com/${bucket}/${encodedPath}`;
+}
+
+function titleFromFileName(name: string) {
+  return name
+    .replace(/\.[^.]+$/, "")
+    .replace(/^\d+-/, "")
+    .replace(/[-_]+/g, " ")
+    .trim();
 }
 
 export async function POST(req: NextRequest) {
@@ -23,7 +41,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing imageBase64" }, { status: 400 });
     }
 
-    const safeFileName = cleanFileName(fileName || `lens_${Date.now()}.jpg`);
+    const contentTypeMatch = imageBase64.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,/);
+    const contentType = contentTypeMatch?.[1] || "image/jpeg";
+    const ext = contentType.includes("png") ? "png" : "jpg";
+
+    const originalName = cleanFileName(fileName || `lens_${Date.now()}.${ext}`);
+    const baseName = originalName.replace(/\.[^.]+$/, "");
+    const safeFileName = `${Date.now()}-${baseName}.${ext}`;
     const imagePath = `public_wardrobe_items/${safeFileName}`;
 
     const base64Data = imageBase64.includes(",")
@@ -31,7 +55,6 @@ export async function POST(req: NextRequest) {
       : imageBase64;
 
     const buffer = Buffer.from(base64Data, "base64");
-    const token = crypto.randomUUID();
 
     const storage = new Storage();
     const bucket = storage.bucket(BUCKET_NAME);
@@ -39,25 +62,43 @@ export async function POST(req: NextRequest) {
 
     await file.save(buffer, {
       resumable: false,
-      contentType: "image/jpeg",
+      contentType,
       metadata: {
-        metadata: {
-          firebaseStorageDownloadTokens: token,
-        },
+        cacheControl: "public,max-age=31536000",
       },
     });
 
-    const encodedPath = encodeURIComponent(imagePath);
+    try {
+      await file.makePublic();
+    } catch (publicError: any) {
+      console.warn("makePublic skipped:", publicError?.message || publicError);
+    }
 
-    const imageUrl =
-      `https://firebasestorage.googleapis.com/v0/b/${BUCKET_NAME}/o/${encodedPath}` +
-      `?alt=media&token=${token}`;
+    const imageUrl = publicGcsUrl(BUCKET_NAME, imagePath);
+
+    const db = getFirestore();
+
+    const docRef = await db.collection("publicWardrobeItems").add({
+      name: titleFromFileName(originalName) || "SkoMiDora Lens Upload",
+      brand: "Unknown",
+      category: "Uncategorized",
+      type: "Lens Upload",
+      color: "Unknown",
+      imageUrl,
+      imagePath,
+      storageBucket: BUCKET_NAME,
+      source: "SkoMiDora Lens",
+      uploadStatus: "uploaded",
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
 
     return NextResponse.json({
       ok: true,
       bucket: BUCKET_NAME,
       imagePath,
       imageUrl,
+      firestoreId: docRef.id,
     });
   } catch (error: any) {
     console.error("Storage upload API error:", error);

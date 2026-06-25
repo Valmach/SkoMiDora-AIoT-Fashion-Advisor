@@ -51,7 +51,6 @@ export default function SkomiDoraLens() {
     setSuccess(false);
 
     try {
-      console.log('Compressing image...');
       const compressedBase64 = await compressImage(file);
 
       const uploadResponse = await fetch('/api/storage-upload', {
@@ -59,48 +58,25 @@ export default function SkomiDoraLens() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           imageBase64: compressedBase64,
-          fileName: `lens_${Date.now()}.jpg`,
+          fileName: file.name || `lens_${Date.now()}.jpg`,
         }),
       });
 
+      const uploadText = await uploadResponse.text();
+
       if (!uploadResponse.ok) {
-        const uploadError = await uploadResponse.text();
-        console.error('Storage upload failed:', uploadError);
+        console.error('Storage upload failed:', uploadResponse.status, uploadText);
         throw new Error(`Storage upload failed: ${uploadResponse.status}`);
       }
 
-      const uploadResult = await uploadResponse.json();
-
-      const downloadUrl = uploadResult.imageUrl;
-      const imagePath = uploadResult.imagePath;
-
-      console.log('Backend upload succeeded:', {
-        bucket: uploadResult.bucket,
-        imagePath,
-        downloadUrl,
-      });
-
-      const response = await fetch('/api/vision-ingest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageBase64: compressedBase64,
-          imageUrl: downloadUrl,
-          imagePath,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Vision API failed:', response.status, errorText);
-        throw new Error(`Vision API failed: ${response.status}`);
-      }
+      const uploadResult = JSON.parse(uploadText);
+      console.log('SkoMiDora Lens upload succeeded:', uploadResult);
 
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (error: any) {
       console.error('SkoMiDora Lens Error:', error);
-      alert(error?.message || 'Failed to analyze image. Please try again.');
+      alert(error?.message || 'Failed to upload image. Please try again.');
     } finally {
       setIsProcessing(false);
 
@@ -128,7 +104,7 @@ export default function SkomiDoraLens() {
       >
         {isProcessing ? (
           <>
-            <Loader2 size={16} className="animate-spin" /> Analyzing Image...
+            <Loader2 size={16} className="animate-spin" /> Uploading Image...
           </>
         ) : success ? (
           <>
