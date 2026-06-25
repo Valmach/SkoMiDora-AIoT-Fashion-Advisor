@@ -61,6 +61,7 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
     if (isSpeaking) {
       if (audioElement) {
         audioElement.pause();
+        audioElement.src = '';
         setAudioElement(null);
       }
       window.speechSynthesis.cancel();
@@ -70,12 +71,26 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
 
     setIsSpeaking(true);
     const textToRead = `${safeEventName}. ${safeWeather}. Stylist Notes: ${safeReasoning}`;
+    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
+
+    // 2. Synchronously unlock the audio context for strict browsers (Safari/iOS)
+    const audio = new Audio();
+    audio.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA"; // Silent 44-byte WAV
+    audio.play().catch(() => {});
+    setAudioElement(audio);
+
+    // 3. Synchronous Fallback if API Key is missing (prevents async blocking)
+    if (!apiKey) {
+      console.warn("No Gemini API key found. Using native browser TTS.");
+      const utterance = new SpeechSynthesisUtterance(textToRead);
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+      window.speechSynthesis.speak(utterance);
+      return;
+    }
     
     try {
-      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-      if (!apiKey) throw new Error('Missing Gemini API Key');
-
-      // 2. Use Gemini 2.5 Flash TTS
+      // 4. Use Gemini 2.5 Flash TTS
       const payload = {
         contents: [{ parts: [{ text: textToRead }] }],
         generationConfig: {
@@ -84,7 +99,7 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
             voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } }
           }
         },
-        model: "models/gemini-2.5-flash-preview-tts"
+        model: "gemini-2.5-flash-preview-tts"
       };
 
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`, {
@@ -93,7 +108,10 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
         body: JSON.stringify(payload)
       });
 
-      if (!response.ok) throw new Error('Failed to fetch premium audio from Gemini');
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Gemini TTS API Failed: ${errText}`);
+      }
 
       const data = await response.json();
       const audioPart = data.candidates?.[0]?.content?.parts?.[0];
@@ -106,14 +124,14 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
         const rateMatch = mimeType.match(/rate=(\d+)/);
         if (rateMatch) sampleRate = parseInt(rateMatch[1], 10);
 
-        // 3. Decode base64 to binary
+        // Decode base64 to binary
         const binaryString = atob(base64Data);
         const bytes = new Uint8Array(binaryString.length);
         for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i);
         }
         
-        // 4. Convert PCM16 to WAV format for browser playback
+        // Convert PCM16 to WAV format for browser playback
         const numChannels = 1;
         const bitsPerSample = 16;
         const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
@@ -144,18 +162,18 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
 
         const blob = new Blob([wavHeader, pcmData], { type: 'audio/wav' });
         const url = URL.createObjectURL(blob);
-        const audio = new Audio(url);
         
+        audio.src = url;
         audio.onended = () => setIsSpeaking(false);
-        setAudioElement(audio);
-        audio.play();
+        audio.onerror = () => setIsSpeaking(false);
+        await audio.play();
       } else {
         throw new Error("No audio data returned");
       }
 
     } catch (error) {
       console.warn("Premium audio failed, falling back to native browser speech:", error);
-      // 5. Bulletproof Fallback
+      // 5. Async Fallback 
       const utterance = new SpeechSynthesisUtterance(textToRead);
       utterance.onend = () => setIsSpeaking(false);
       utterance.onerror = () => setIsSpeaking(false);
@@ -251,7 +269,6 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
             ))}
           </div>
 
-          {/* INNER BUTTON: Routes to outfit-recommendations */}
           <Link 
             href={`/outfit-recommendations?event=${encodeURIComponent(safeEventName)}&weather=${encodeURIComponent(safeWeather)}`} 
             className="mt-4 w-full flex items-center justify-center gap-2 py-3 px-4 bg-zinc-800 hover:bg-[#DC143C] text-white text-xs font-bold uppercase tracking-widest rounded transition-colors group"
