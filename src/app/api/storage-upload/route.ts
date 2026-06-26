@@ -81,9 +81,14 @@ export async function POST(req: NextRequest) {
 
     const db = getFirestore();
 
+    const lensTitle = titleFromFileName(originalName) || "SkoMiDora Lens Upload";
+
     const docRef = await db.collection("publicWardrobeItems").add({
-      name: titleFromFileName(originalName) || "SkoMiDora Lens Upload",
+      itemName: lensTitle,
+      name: lensTitle,
+      designer: "Unknown",
       brand: "Unknown",
+      itemType: "Uncategorized",
       category: "Uncategorized",
       type: "Lens Upload",
       color: "Unknown",
