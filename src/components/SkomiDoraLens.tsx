@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Camera, Loader2, CheckCircle2 } from 'lucide-react';
 
 const compressImage = (file: File, maxWidth = 800): Promise<string> => {
@@ -29,17 +29,32 @@ const compressImage = (file: File, maxWidth = 800): Promise<string> => {
         resolve(canvas.toDataURL('image/jpeg', 0.7));
       };
 
-      img.onerror = (e) => reject(e);
+      img.onerror = reject;
     };
 
-    reader.onerror = (e) => reject(e);
+    reader.onerror = reject;
   });
 };
 
 export default function SkomiDoraLens() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const mobile =
+      /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+      window.matchMedia('(pointer: coarse)').matches;
+
+    setIsMobile(mobile);
+  }, []);
+
+  const openPicker = () => {
+    if (!fileInputRef.current || isProcessing) return;
+    fileInputRef.current.value = '';
+    fileInputRef.current.click();
+  };
 
   const handleImageCapture = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -53,7 +68,7 @@ export default function SkomiDoraLens() {
     try {
       const compressedBase64 = await compressImage(file);
 
-      const uploadResponse = await fetch('/api/storage-upload', {
+      const uploadResponse = await fetch('/api/storage-upload?source=skomidora-lens', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -65,12 +80,12 @@ export default function SkomiDoraLens() {
       const uploadText = await uploadResponse.text();
 
       if (!uploadResponse.ok) {
-        console.error('Storage upload failed:', uploadResponse.status, uploadText);
+        console.error('SkoMiDora backend upload failed:', uploadResponse.status, uploadText);
         throw new Error(`Storage upload failed: ${uploadResponse.status}`);
       }
 
       const uploadResult = JSON.parse(uploadText);
-      console.log('SkoMiDora Lens upload succeeded:', uploadResult);
+      console.log('SkoMiDora Lens backend upload succeeded:', uploadResult);
 
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -91,14 +106,15 @@ export default function SkomiDoraLens() {
       <input
         type="file"
         accept="image/*"
-        capture="environment"
+        capture={isMobile ? 'environment' : undefined}
         ref={fileInputRef}
         className="hidden"
         onChange={handleImageCapture}
       />
 
       <button
-        onClick={() => fileInputRef.current?.click()}
+        type="button"
+        onClick={openPicker}
         disabled={isProcessing}
         className="w-full sm:w-auto flex items-center justify-center gap-3 bg-[#9A1B22] text-white hover:bg-[#7A151B] px-8 py-6 rounded-none uppercase tracking-[0.2em] text-xs font-bold transition-all disabled:opacity-50 shadow-lg group-hover:shadow-[0_0_20px_rgba(154,27,34,0.3)] border border-[#9A1B22]"
       >
@@ -112,7 +128,7 @@ export default function SkomiDoraLens() {
           </>
         ) : (
           <>
-            <Camera size={16} /> Use SkoMiDora Lens
+            <Camera size={16} /> Use SkoMiDora Lens Backend
           </>
         )}
       </button>

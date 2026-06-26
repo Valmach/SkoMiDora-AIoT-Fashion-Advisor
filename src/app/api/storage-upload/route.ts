@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { Storage } from "@google-cloud/storage";
 import { getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import os from "os";
+import path from "path";
+import fs from "fs/promises";
+import crypto from "crypto";
 
 export const runtime = "nodejs";
 
@@ -17,11 +21,6 @@ function cleanFileName(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]/g, "-");
 }
 
-function publicGcsUrl(bucket: string, path: string) {
-  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
-  return `https://storage.googleapis.com/${bucket}/${encodedPath}`;
-}
-
 function titleFromFileName(name: string) {
   return name
     .replace(/\.[^.]+$/, "")
@@ -30,7 +29,14 @@ function titleFromFileName(name: string) {
     .trim();
 }
 
+function publicStorageUrl(bucket: string, objectPath: string) {
+  const encodedPath = objectPath.split("/").map(encodeURIComponent).join("/");
+  return "https://storage.googleapis.com/" + bucket + "/" + encodedPath;
+}
+
 export async function POST(req: NextRequest) {
+  let tempFilePath: string | null = null;
+
   try {
     const body = await req.json();
 
@@ -45,10 +51,10 @@ export async function POST(req: NextRequest) {
     const contentType = contentTypeMatch?.[1] || "image/jpeg";
     const ext = contentType.includes("png") ? "png" : "jpg";
 
-    const originalName = cleanFileName(fileName || `lens_${Date.now()}.${ext}`);
+    const originalName = cleanFileName(fileName || "lens-upload." + ext);
     const baseName = originalName.replace(/\.[^.]+$/, "");
-    const safeFileName = `${Date.now()}-${baseName}.${ext}`;
-    const imagePath = `public_wardrobe_items/${safeFileName}`;
+    const safeFileName = Date.now() + "-" + baseName + "." + ext;
+    const imagePath = "public_wardrobe_items/" + safeFileName;
 
     const base64Data = imageBase64.includes(",")
       ? imageBase64.split(",")[1]
@@ -56,25 +62,22 @@ export async function POST(req: NextRequest) {
 
     const buffer = Buffer.from(base64Data, "base64");
 
+    tempFilePath = path.join(os.tmpdir(), crypto.randomUUID() + "." + ext);
+    await fs.writeFile(tempFilePath, buffer);
+
     const storage = new Storage();
     const bucket = storage.bucket(BUCKET_NAME);
-    const file = bucket.file(imagePath);
 
-    await file.save(buffer, {
+    await bucket.upload(tempFilePath, {
+      destination: imagePath,
       resumable: false,
-      contentType,
       metadata: {
+        contentType,
         cacheControl: "public,max-age=31536000",
       },
     });
 
-    try {
-      await file.makePublic();
-    } catch (publicError: any) {
-      console.warn("makePublic skipped:", publicError?.message || publicError);
-    }
-
-    const imageUrl = publicGcsUrl(BUCKET_NAME, imagePath);
+    const imageUrl = publicStorageUrl(BUCKET_NAME, imagePath);
 
     const db = getFirestore();
 
@@ -110,5 +113,9 @@ export async function POST(req: NextRequest) {
       },
       { status: 500 }
     );
+  } finally {
+    if (tempFilePath) {
+      await fs.unlink(tempFilePath).catch(() => {});
+    }
   }
 }

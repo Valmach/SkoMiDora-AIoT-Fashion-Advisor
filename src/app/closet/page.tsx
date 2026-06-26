@@ -5,7 +5,7 @@ import {
   collection, query, orderBy, onSnapshot, Timestamp, 
   doc, deleteDoc, addDoc, serverTimestamp 
 } from "firebase/firestore";
-import { ref, getDownloadURL, deleteObject } from "firebase/storage"; 
+import { ref, deleteObject } from "firebase/storage"; 
 import { Bonheur_Royale, Playfair_Display, Inter } from 'next/font/google';
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -51,6 +51,15 @@ function normalizeImagePath(path: string): string {
   if (!p.includes("/") && !p.startsWith("http")) p = `public_wardrobe_items/${p}`;
   if (p.startsWith("public/")) p = p.replace(/^public\//, "public_wardrobe_items/");
   return p.replace(/â€“/g, "–");
+}
+
+function publicStorageUrl(path: string): string {
+  const bucket =
+    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+    "styleai-footwear.firebasestorage.app";
+
+  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+  return `https://storage.googleapis.com/${bucket}/${encodedPath}`;
 }
 
 export default function ClosetPage() {
@@ -101,7 +110,7 @@ export default function ClosetPage() {
       }
       try {
         const normalizedPath = normalizeImagePath(item.imagePath);
-        const url = await getDownloadURL(ref(firebase.storage, normalizedPath));
+        const url = publicStorageUrl(normalizedPath);
         setImageUrls((prev) => ({ ...prev, [item.id]: url }));
       } catch (err: unknown) {
         if (item.imagePath && item.imagePath.startsWith("http")) {

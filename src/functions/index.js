@@ -28,9 +28,8 @@ export const syncWardrobeImageToFirestore = onObjectFinalized(async (event) => {
 
     const userId = pathSegments[1];
     const bucketName = fileData.bucket;
-    const encodedPath = encodeURIComponent(filePath);
-    const baseUrl = "https://firebasestorage.googleapis.com/v0/b";
-    const downloadUrl = `${baseUrl}/${bucketName}/o/${encodedPath}?alt=media`;
+    const encodedPath = filePath.split("/").map(encodeURIComponent).join("/");
+    const downloadUrl = `https://storage.googleapis.com/${bucketName}/${encodedPath}`;
 
     const itemPayload = {
       storagePath: filePath,
