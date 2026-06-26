@@ -9,8 +9,12 @@ import crypto from "crypto";
 
 export const runtime = "nodejs";
 
+delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
 if (!getApps().length) {
-  initializeApp();
+  initializeApp({
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "styleai-footwear",
+  });
 }
 
 const BUCKET_NAME =
@@ -31,7 +35,7 @@ function titleFromFileName(name: string) {
 
 function publicStorageUrl(bucket: string, objectPath: string) {
   const encodedPath = objectPath.split("/").map(encodeURIComponent).join("/");
-  return "https://storage.googleapis.com/" + bucket + "/" + encodedPath;
+  return `https://storage.googleapis.com/${bucket}/${encodedPath}`;
 }
 
 export async function POST(req: NextRequest) {
@@ -51,10 +55,10 @@ export async function POST(req: NextRequest) {
     const contentType = contentTypeMatch?.[1] || "image/jpeg";
     const ext = contentType.includes("png") ? "png" : "jpg";
 
-    const originalName = cleanFileName(fileName || "lens-upload." + ext);
+    const originalName = cleanFileName(fileName || `lens-upload.${ext}`);
     const baseName = originalName.replace(/\.[^.]+$/, "");
-    const safeFileName = Date.now() + "-" + baseName + "." + ext;
-    const imagePath = "public_wardrobe_items/" + safeFileName;
+    const safeFileName = `${Date.now()}-${baseName}.${ext}`;
+    const imagePath = `public_wardrobe_items/${safeFileName}`;
 
     const base64Data = imageBase64.includes(",")
       ? imageBase64.split(",")[1]
@@ -62,7 +66,7 @@ export async function POST(req: NextRequest) {
 
     const buffer = Buffer.from(base64Data, "base64");
 
-    tempFilePath = path.join(os.tmpdir(), crypto.randomUUID() + "." + ext);
+    tempFilePath = path.join(os.tmpdir(), `${crypto.randomUUID()}.${ext}`);
     await fs.writeFile(tempFilePath, buffer);
 
     const storage = new Storage();
@@ -92,6 +96,7 @@ export async function POST(req: NextRequest) {
       storageBucket: BUCKET_NAME,
       source: "SkoMiDora Lens",
       uploadStatus: "uploaded",
+      aiAnalyzed: false,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
