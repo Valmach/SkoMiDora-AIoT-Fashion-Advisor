@@ -117,7 +117,7 @@ export default function UpcomingEventsPage() {
             {events.map((event, index) => {
              
               const currentEventName = event.summary || event.title || event.name || "Upcoming Event";
-              const currentWeather = event.weather || event.temperature || event.weatherContext || "Weather data unavailable";
+              const currentWeather = event.weatherForecast || event.weather || event.temperature || event.weatherContext || "Weather data unavailable";
 
               return (
                 <div key={index} className="flex flex-col h-full space-y-4 group">
