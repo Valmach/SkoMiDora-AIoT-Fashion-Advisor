@@ -1,12 +1,18 @@
 'use server';
 
-import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import { initializeApp, getApps } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 
+delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
 const google = createGoogleGenerativeAI({
-  apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY,
+  apiKey:
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
+    process.env.GOOGLE_API_KEY,
 });
 
 const ShoppingRecommendationSchema = z.object({
@@ -14,92 +20,280 @@ const ShoppingRecommendationSchema = z.object({
     suggestedBrand: z.string(),
     itemType: z.string(),
     description: z.string(),
-    searchQuery: z.string()
+    searchQuery: z.string(),
+    closetMatchReason: z.string().optional(),
   }))
 });
 
+function getAdminDb() {
+  if (!getApps().length) {
+    initializeApp({
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'styleai-footwear',
+    });
+  }
+
+  return getFirestore();
+}
+
+function cleanText(value: unknown): string {
+  return String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeBrand(value: unknown): string {
+  return cleanText(value)
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function topValues(values: string[], limit = 8): string[] {
+  const counts = new Map<string, number>();
+
+  values
+    .map(cleanText)
+    .filter(Boolean)
+    .forEach((value) => {
+      counts.set(value, (counts.get(value) || 0) + 1);
+    });
+
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, limit)
+    .map(([value]) => value);
+}
+
+function normalizeTargetCategory(value: string): string {
+  const raw = cleanText(value);
+  if (!raw || raw === 'Any Missing Piece') return 'Any Missing Piece';
+
+  const compact = raw.toLowerCase();
+
+  if (compact.includes('shoe') || compact.includes('boot') || compact.includes('sandal') || compact.includes('heel')) return 'Shoes';
+  if (compact.includes('dress')) return 'Dresses';
+  if (compact.includes('skirt')) return 'Skirts';
+  if (compact.includes('short')) return 'Shorts';
+  if (compact.includes('jean')) return 'Jeans';
+  if (compact.includes('trouser') || compact.includes('pant')) return 'Trousers';
+  if (compact.includes('jacket') || compact.includes('coat') || compact.includes('outerwear')) return 'Jackets & Outerwear';
+  if (compact.includes('sweater') || compact.includes('cardigan')) return 'Sweaters & Cardigans';
+  if (compact.includes('shirt') || compact.includes('blouse')) return 'Shirts & Blouses';
+  if (compact.includes('tank')) return 'Tank Tops';
+  if (compact.includes('jewel')) return 'Jewelry';
+  if (compact.includes('accessor')) return 'Accessories';
+
+  return raw;
+}
+
+function brandIsInCloset(brand: string, favoriteDesigners: string[]): boolean {
+  const normalized = brand.toLowerCase().trim();
+
+  return favoriteDesigners.some((designer) => {
+    const d = designer.toLowerCase().trim();
+    return normalized === d || normalized.includes(d) || d.includes(normalized);
+  });
+}
+
+function chooseClosetDesigner(index: number, favoriteDesigners: string[]): string {
+  if (!favoriteDesigners.length) return '';
+  return favoriteDesigners[index % favoriteDesigners.length];
+}
+
 export async function generateShoppingRecommendations(
-  eventContext: string, 
-  weatherContext: string, 
-  targetCategory: string = "Any Missing Piece"
+  eventContext: string,
+  weatherContext: string,
+  targetCategory: string = 'Any Missing Piece'
 ) {
-  console.log("=========================================");
-  console.log("🛒 STYLIST ACTION TRIGGERED");
+  console.log('=========================================');
+  console.log('�� STYLIST ACTION TRIGGERED');
   console.log(`🎯 Target Category: ${targetCategory}`);
   console.log(`📍 Context: ${eventContext} | ⛅ Weather: ${weatherContext}`);
-  
-  try {
-    const { db } = getFirebaseAdmin();
-    console.log("✅ Firebase Admin Initialized");
 
-    const snapshot = await db.collection('publicWardrobeItems').limit(300).get();
+  try {
+    const db = getAdminDb();
+    console.log('✅ Firebase Admin Initialized');
+
+    const snapshot = await db
+      .collection('publicWardrobeItems')
+      .limit(300)
+      .get();
+
     console.log(`📦 Found ${snapshot.size} items in publicWardrobeItems`);
-    
-    let currentWardrobe = "The closet is currently empty.";
-    if (!snapshot.empty) {
-      const items = snapshot.docs.map(doc => doc.data());
-      const shuffledItems = items.sort(() => 0.5 - Math.random());
-      
-      currentWardrobe = shuffledItems.map(item => {
-        const name = item.aiFriendlyName || item.itemName || 'Unnamed Luxury Item';
-        const type = item.itemType || '';
-        const color = item.color || '';
-        return `- ${color} ${type} ${name}`.trim();
-      }).filter(str => str !== '-').join('\n');
+
+    const closetItems = snapshot.docs.map((doc) => doc.data());
+
+    const designers = closetItems
+      .map((item) => normalizeBrand(item.designer || item.designerName || item.brand || item.manufacturer))
+      .filter(Boolean);
+
+    const itemTypes = closetItems
+      .map((item) => cleanText(item.itemType || item.type || item.category))
+      .filter(Boolean);
+
+    const colors = closetItems
+      .map((item) => cleanText(item.color))
+      .filter(Boolean);
+
+    const materials = closetItems
+      .map((item) => cleanText(item.generalMaterial || item.materials || item.material))
+      .filter(Boolean);
+
+    const keywords = closetItems
+      .flatMap((item) => Array.isArray(item.styleKeywords) ? item.styleKeywords : [])
+      .map(cleanText)
+      .filter(Boolean);
+
+    const favoriteDesigners = topValues(designers, 10);
+    const favoriteTypes = topValues(itemTypes, 12);
+    const favoriteColors = topValues(colors, 10);
+    const favoriteMaterials = topValues(materials, 10);
+    const favoriteKeywords = topValues(keywords, 16);
+
+    let currentWardrobe = 'The closet is currently empty.';
+
+    if (closetItems.length > 0) {
+      currentWardrobe = closetItems
+        .slice(0, 120)
+        .map((item) => {
+          const name = cleanText(item.aiFriendlyName || item.itemName || item.name || 'Unnamed luxury item');
+          const designer = normalizeBrand(item.designer || item.designerName || item.brand || item.manufacturer);
+          const type = cleanText(item.itemType || item.type || item.category);
+          const color = cleanText(item.color);
+          const material = cleanText(item.generalMaterial || item.materials || item.material);
+          const style = Array.isArray(item.styleKeywords) ? item.styleKeywords.slice(0, 5).join(', ') : '';
+
+          return [
+            designer && `Designer: ${designer}`,
+            name && `Item: ${name}`,
+            type && `Type: ${type}`,
+            color && `Color: ${color}`,
+            material && `Material: ${material}`,
+            style && `Style: ${style}`,
+          ].filter(Boolean).join(' | ');
+        })
+        .filter(Boolean)
+        .join('\n');
     }
 
-    // Snipping the console log so it doesn't flood the terminal, just showing length
+    const normalizedTargetCategory = normalizeTargetCategory(targetCategory);
+
+    const designerProfile =
+      favoriteDesigners.length > 0
+        ? favoriteDesigners.join(', ')
+        : 'No designer profile found yet. Use adjacent contemporary luxury brands, but explain the aesthetic match.';
+
+    console.log(`👗 Favorite designers: ${designerProfile}`);
     console.log(`👕 Wardrobe string length passed to AI: ${currentWardrobe.length} characters`);
 
     const prompt = `
-      You are an elite personal shopper for a high-net-worth client. 
-      Event: "${eventContext || 'General Wardrobe Update'}"
-      Weather context: ${weatherContext || 'Provide versatile recommendations.'}
+You are SkoMiDora's AI Style Consultant and personal shopper.
 
-      The client specifically needs: "${targetCategory}".
-      
-      Here is what they ALREADY own:
-      ${currentWardrobe}
+Event:
+"${eventContext || 'General Wardrobe Update'}"
 
-      YOUR MISSION:
-      Analyze their existing wardrobe above. Identify what is missing to complete a look for the event.
-      YOU MUST RETURN EXACTLY 3 RECOMMENDATIONS. DO NOT RETURN AN EMPTY ARRAY.
-      
-      1. If they asked for a specific category (e.g., "Shorts"), ALL 3 items must be Shorts.
-      2. If they asked for "Any Missing Piece", provide 3 different types of items that complete their current wardrobe.
-      3. Suggest high-end, contemporary luxury brands (The Row, Bottega Veneta, Khaite, Marni, etc.).
-    `;
+Weather:
+${weatherContext || 'Provide versatile recommendations.'}
 
-    console.log("🧠 Sending prompt to Gemini 2.5 Flash...");
-    
+Target category:
+"${normalizedTargetCategory}"
+
+The user's existing closet designer DNA:
+${designerProfile}
+
+Closet category profile:
+${favoriteTypes.join(', ') || 'No category profile found'}
+
+Closet color palette:
+${favoriteColors.join(', ') || 'No color profile found'}
+
+Closet material profile:
+${favoriteMaterials.join(', ') || 'No material profile found'}
+
+Closet aesthetic keywords:
+${favoriteKeywords.join(', ') || 'No aesthetic keywords found'}
+
+Existing wardrobe inventory:
+${currentWardrobe}
+
+MISSION:
+Return exactly 3 Shop The Look recommendations.
+
+STRICT RULES:
+1. The recommendations must match the user's existing designer DNA.
+2. Prefer designers already found in the closet: ${designerProfile}.
+3. Do not recommend random brands unless there is no strong closet designer match.
+4. If you recommend an adjacent designer, explain why it matches the user's closet aesthetic.
+5. If the target category is not "Any Missing Piece", all 3 recommendations must be that category.
+6. If the target is "Any Missing Piece", recommend missing pieces that complete the event look.
+7. Use the weather and event context.
+8. The searchQuery must include the suggestedBrand, itemType, and event/style context.
+9. The description must explicitly say how this recommendation connects to the user's existing closet designers, colors, materials, or style keywords.
+
+Return only structured JSON matching the schema.
+`;
+
+    console.log('🧠 Sending designer-aware prompt to Gemini 2.5 Flash...');
+
     const { object } = await generateObject({
       model: google('gemini-2.5-flash'),
       schema: ShoppingRecommendationSchema,
-      prompt: prompt,
-      temperature: 0.8, 
+      prompt,
+      temperature: 0.45,
     });
 
-    console.log("✨ Gemini Response Received:");
+    console.log('✨ Gemini Response Received:');
     console.log(JSON.stringify(object, null, 2));
 
-    if (!object || !object.recommendations || object.recommendations.length === 0) {
-      console.log("❌ ERROR: Gemini returned an empty array.");
-      throw new Error("AI returned empty recommendations.");
+    if (!object?.recommendations?.length) {
+      throw new Error('AI returned empty recommendations.');
     }
 
-    const materializedLinks = object.recommendations.map(rec => ({
-      ...rec,
-      shopUrl: `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(rec.searchQuery)}`
-    }));
+    const materializedLinks = object.recommendations.slice(0, 3).map((rec, index) => {
+      const currentBrand = cleanText(rec.suggestedBrand);
+      const closetDesigner = chooseClosetDesigner(index, favoriteDesigners);
 
-    console.log("✅ Success! Sending links to frontend.");
-    console.log("=========================================");
-    
+      const finalBrand =
+        favoriteDesigners.length > 0 && !brandIsInCloset(currentBrand, favoriteDesigners)
+          ? closetDesigner
+          : currentBrand || closetDesigner || 'Luxury designer';
+
+      const finalItemType =
+        normalizedTargetCategory !== 'Any Missing Piece'
+          ? normalizedTargetCategory
+          : cleanText(rec.itemType) || 'Missing Piece';
+
+      const closetReason =
+        rec.closetMatchReason ||
+        (favoriteDesigners.length > 0
+          ? `Matched to your closet designer profile: ${favoriteDesigners.slice(0, 5).join(', ')}.`
+          : 'Matched to the closet aesthetic profile.');
+
+      const finalDescription = cleanText(rec.description).includes(finalBrand)
+        ? cleanText(rec.description)
+        : `${closetReason} ${cleanText(rec.description)}`;
+
+      const searchQuery = `${finalBrand} ${finalItemType} ${eventContext || ''} ${favoriteColors.slice(0, 3).join(' ')} ${favoriteMaterials.slice(0, 2).join(' ')}`.trim();
+
+      return {
+        ...rec,
+        suggestedBrand: finalBrand,
+        itemType: finalItemType,
+        description: finalDescription,
+        closetMatchReason: closetReason,
+        searchQuery,
+        shopUrl: `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(searchQuery)}`,
+      };
+    });
+
+    console.log('✅ Success! Sending designer-matched links to frontend.');
+    console.log('=========================================');
+
     return { success: true, recommendations: materializedLinks };
-
   } catch (error: any) {
-    console.error("❌ FATAL STYLIST ERROR:", error);
-    // 👇 Send the RAW system error directly to the browser
-    return { success: false, error: `CRASH REASON: ${error.message || String(error)}` }; 
+    console.error('❌ FATAL STYLIST ERROR:', error);
+    return {
+      success: false,
+      error: `CRASH REASON: ${error.message || String(error)}`,
+    };
   }
 }
