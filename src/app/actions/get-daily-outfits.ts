@@ -47,6 +47,73 @@ function normalizeType(t: any): string {
   return String(t || '').trim().toLowerCase();
 }
 
+function cleanText(value: any): string {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+function itemText(item: any): string {
+  return [
+    item?.itemName,
+    item?.itemType,
+    item?.type,
+    item?.category,
+    item?.color,
+    item?.generalMaterial,
+    item?.materials,
+    item?.material,
+    item?.designer,
+    item?.brand,
+    item?.detailedSpecifications,
+    item?.narrativeDescription,
+    Array.isArray(item?.styleKeywords) ? item.styleKeywords.join(' ') : '',
+  ].map(cleanText).join(' ').toLowerCase();
+}
+
+function parseTempC(weatherContext: string): number | null {
+  const weather = cleanText(weatherContext);
+
+  const cMatch = weather.match(/(-?\d+(?:\.\d+)?)\s*°?\s*C\b/i);
+  if (cMatch) return Number(cMatch[1]);
+
+  const fMatch = weather.match(/(-?\d+(?:\.\d+)?)\s*°?\s*F\b/i);
+  if (fMatch) return Math.round((Number(fMatch[1]) - 32) * 5 / 9);
+
+  return null;
+}
+
+function getClimate(weatherContext: string) {
+  const tempC = parseTempC(weatherContext);
+  const text = cleanText(weatherContext).toLowerCase();
+
+  if (tempC !== null && tempC >= 24) return { tier: 'hot', tempC };
+  if (tempC !== null && tempC >= 18) return { tier: 'warm', tempC };
+  if (tempC !== null && tempC <= 12) return { tier: 'cold', tempC };
+
+  if (/\b(hot|heat|humid|summer|sunny|clear)\b/.test(text)) return { tier: 'hot', tempC };
+  if (/\b(warm|mild)\b/.test(text)) return { tier: 'warm', tempC };
+  if (/\b(cold|snow|winter|freezing)\b/.test(text)) return { tier: 'cold', tempC };
+
+  return { tier: 'warm', tempC };
+}
+
+function isHeavyColdItem(item: any): boolean {
+  return /\b(boot|boots|coat|puffer|parka|wool|cashmere|alpaca|thermal|fleece|fur|shearling|down|heavy|winter|snow|knitwear|thick sweater|heavy sweater)\b/.test(itemText(item));
+}
+
+function isWarmWeatherItem(item: any): boolean {
+  return /\b(linen|cotton|silk|dress|shirtdress|shirt|blouse|tank|tee|t-shirt|shorts|skirt|sandal|sandals|mule|mules|slide|slides|loafer|loafers|pump|pumps|swim|swimwear|swimsuit|bikini|resort|lightweight|sleeveless|halter)\b/.test(itemText(item));
+}
+
+function inferLocation(eventContext: string): string {
+  const text = cleanText(eventContext).toLowerCase();
+  if (text.includes('paris') || text.includes('france')) return 'Paris';
+  if (text.includes('rome') || text.includes('italy')) return 'Rome';
+  if (text.includes('oslo') || text.includes('norway')) return 'Oslo';
+  if (text.includes('london') || text.includes('uk')) return 'London';
+  if (text.includes('new york') || text.includes('nyc')) return 'New York';
+  return 'Global Destination';
+}
+
 function isFootwear(item: any): boolean {
   const t = normalizeType(item?.itemType);
   if (FOOTWEAR_TYPES.has(t)) return true;
@@ -157,7 +224,13 @@ const CITY_CONFIG = [
    SERVER ACTION
 ====================================================== */
 
-export async function getDailyOutfitsAction(closetItems: any[]) {
+export async function getDailyOutfitsAction(
+  closetItems: any[],
+  eventContext: string = '',
+  weatherContext: string = ''
+) {
+  const climate = getClimate(weatherContext);
+
   // ✅ Prevent handbags from entering the AI context window completely
   const validApparel = closetItems.filter(item => {
     const type = (item.itemType || '').toLowerCase();
@@ -166,7 +239,16 @@ export async function getDailyOutfitsAction(closetItems: any[]) {
     return !isBag;
   });
 
-  if (!validApparel || validApparel.length === 0) {
+  const weatherEligible = validApparel.filter(item => {
+    if (climate.tier === 'hot') {
+      return !isHeavyColdItem(item) || isWarmWeatherItem(item);
+    }
+    return true;
+  });
+
+  const recommendationPool = weatherEligible.length >= 4 ? weatherEligible : validApparel;
+
+  if (!recommendationPool || recommendationPool.length === 0) {
     return [{
       eventName: "Closet Empty",
       eventTime: "Now",
@@ -190,7 +272,7 @@ export async function getDailyOutfitsAction(closetItems: any[]) {
   const dateString = new Date().toLocaleDateString('en-US', options);
   const uniqueRequestID = Date.now(); 
 
-  const shuffledCloset = shuffleArray(validApparel);
+  const shuffledCloset = shuffleArray(recommendationPool);
 
   const closetText = shuffledCloset
     .map((item) => {
@@ -208,37 +290,59 @@ export async function getDailyOutfitsAction(closetItems: any[]) {
     })
     .join('\n');
 
-  const cityWeatherBlock = CITY_CONFIG
-    .map((c, idx) => `${idx + 1}. ${c.city}: ${c.weatherHint}`)
-    .join('\n');
+  const targetEvent = cleanText(eventContext) || 'Summer Style Curation';
+  const targetLocation = inferLocation(targetEvent);
+  const liveWeatherContext = cleanText(weatherContext) || 'Warm summer weather';
+
+  const hardWeatherRule = climate.tier === 'hot'
+    ? 'HARD WEATHER BAN: Do not use boots, heavy coats, cashmere wraps, wool coats, alpaca, thermal layers, fleece, fur, heavy knitwear, parkas, or winter outerwear. Prefer sandals, mules, pumps, loafers, silk, linen, cotton, lightweight dresses, skirts, shirts, shorts, swim/resort pieces, and breathable tailoring.'
+    : 'Weather rule: choose climate-appropriate pieces. Avoid winter-weight garments unless the weather is cold.';
 
   const prompt = `
-You are an avant-garde luxury personal fashion stylist for the high-end SkoMiDora styling app. Your objective is to curate 3 completely distinct outfit collections utilizing the wardrobe inventory list.
+You are an avant-garde luxury personal fashion stylist for the high-end SkoMiDora styling app.
 
 CURRENT TIME CONTEXT:
-Today is ${dateString}. The season context is Summer.
+Today is ${dateString}. The season context is June 2026 / Summer.
 System Reference Code: ${uniqueRequestID}
 
+EVENT CONTEXT:
+${targetEvent}
+
+LOCATION:
+${targetLocation}
+
+LIVE WEATHER CONTEXT:
+${liveWeatherContext}
+
+TEMPERATURE CLASSIFICATION:
+${climate.tier}${climate.tempC !== null ? ` (${climate.tempC}°C)` : ''}
+
+${hardWeatherRule}
+
 RECOMMENDATION PARAMETERS:
-You must return EXACTLY 3 recommendations—one for each target city.
-${cityWeatherBlock}
+Return EXACTLY 3 recommendations for the SAME event and SAME weather context.
+They are 3 different outfit options, not 3 different cities.
+
+LOOK ARCHETYPES:
+1. Breathable Tailoring & City Polish
+2. Fluid Summer Texture & Color Movement
+3. Evening Refinement & Lightweight Drama
 
 CRITICAL INVENTORY EXPLORATION DIRECTIVES:
-1. MAXIMIZE CLOSET DEPTH: You must explore the full breadth of the inventory. Openly pull seasonal items such as high-fashion shorts, swimwear, resort wear, tailored layers, and fine knits to build sophisticated warm-weather combinations.
-2. COMPULSORY REPETITION BAN: A wardrobe inventory element can ONLY appear in ONE look. Once an item name is used in an outfit list, it is strictly banned from being selected in the other remaining outfits. You must use a minimum of 6 completely distinct items across the whole response payload.
-3. THREE DISTINCT DESIGN ARCHETYPES REQUIRED:
-   - Recommendation 1 (City 1): Must emphasize "Architectural Tailoring & Structured Minimalist Shapes".
-   - Recommendation 2 (City 2): Must emphasize "Fluid Summer Textures, Vibrant Elements & High-Contrast Visuals".
-   - Recommendation 3 (City 3): Must emphasize "Progressive Multi-Layering, Sculpted Silhouettes & Contemporary Avant-Chic Styling".
-4. Each look object MUST reference exactly:
+1. MAXIMIZE CLOSET DEPTH: explore the full closet and avoid repeatedly using the same obvious hero item.
+2. COMPULSORY REPETITION BAN: a wardrobe item can appear in only one look.
+3. Use at least 6 completely distinct item names across the whole response.
+4. Each recommendation must include exactly:
    - one footwear item name
    - one clothing item name
-5. Use the exact text literal for item names from the input matrix. Do not alter capitalization or paraphrase. Do not invent items.
+5. Use exact item names from the wardrobe inventory. Do not invent items.
+6. The reasoning must explain why the look fits the event and the live weather.
+7. For hot weather, never select boots or heavy coats.
 
 WARDROBE INVENTORY:
 ${closetText}
 
-Assemble exactly 3 highly-differentiated luxury looks matching these rules.
+Return exactly 3 highly differentiated luxury looks for the selected event.
 `;
 
   const result = await generateObject({
@@ -250,19 +354,34 @@ Assemble exactly 3 highly-differentiated luxury looks matching these rules.
 
   const fixedNames = result.object.recommendations.map(rec => ({
     ...rec,
-    items: correctItemNames(rec.items, validApparel),
+    items: correctItemNames(rec.items, recommendationPool),
   }));
 
-  const enriched = fixedNames.map((rec, index) => {
-    const cfg = CITY_CONFIG[index] || CITY_CONFIG[0];
+  const usedNames = new Set<string>();
 
-    const { footwear, clothing } = pickOneOfEach(rec.items, validApparel);
+  const enriched = fixedNames.slice(0, 3).map((rec, index) => {
+    const availablePool = recommendationPool.filter(item => !usedNames.has(cleanText(item.itemName).toLowerCase()));
+    const poolForLook = availablePool.length >= 2 ? availablePool : recommendationPool;
+
+    const { footwear, clothing } = pickOneOfEach(rec.items, poolForLook);
+
+    if (clothing?.itemName) usedNames.add(cleanText(clothing.itemName).toLowerCase());
+    if (footwear?.itemName) usedNames.add(cleanText(footwear.itemName).toLowerCase());
+
+    const finalItems = [
+      clothing?.itemName,
+      footwear?.itemName,
+    ].filter(Boolean);
+
+    const cfg = CITY_CONFIG[index] || CITY_CONFIG[0];
 
     return {
       ...rec,
-      city: cfg.city,
-      location: cfg.city,
-      weather: rec.weather || cfg.weatherHint,
+      eventName: targetEvent,
+      city: targetLocation,
+      location: targetLocation,
+      weather: liveWeatherContext,
+      items: finalItems.length > 0 ? finalItems : rec.items,
 
       footwearName: footwear?.itemName || 'Footwear',
       footwearImageUrl: resolveImage(footwear),
@@ -271,7 +390,7 @@ Assemble exactly 3 highly-differentiated luxury looks matching these rules.
       clothingImageUrl: resolveImage(clothing),
 
       cityBg: cfg.bgUrl,
-      temp: '--',
+      temp: climate.tempC !== null ? `${climate.tempC}°C` : '--',
     };
   });
 

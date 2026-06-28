@@ -31,13 +31,20 @@ export default function OutfitRecommendationsPage() {
   const [isPending, startTransition] = useTransition();
   const [dataLoaded, setDataLoaded] = useState(false);
   const [targetEvent, setTargetEvent] = useState<string | null>(null);
+  const [targetWeather, setTargetWeather] = useState<string | null>(null);
 
   useEffect(() => {
     // 1. Safely grab the URL parameter (the "address") without breaking the Next.js build
     const params = new URLSearchParams(window.location.search);
     const eventParam = params.get('event');
+    const weatherParam = params.get('weather');
+
     if (eventParam) {
       setTargetEvent(eventParam);
+    }
+
+    if (weatherParam) {
+      setTargetWeather(weatherParam);
     }
 
     if (!db) return;
@@ -64,7 +71,7 @@ export default function OutfitRecommendationsPage() {
 
       startTransition(async () => {
         try {
-          const recs = await getDailyOutfitsAction(items);
+          const recs = await getDailyOutfitsAction(items, eventParam || "", weatherParam || "");
           setRecommendations(recs);
         } catch (error) {
           console.error("Failed to fetch outfits:", error);
@@ -147,7 +154,8 @@ export default function OutfitRecommendationsPage() {
                   // We forcefully inject the clicked city into the card's location field.
                   // This completely prevents the VW Bus default and guarantees the correct images show.
                   location: targetEvent || rec.location || "Global Destination",
-                  eventName: targetEvent || rec.eventName || `Outfit ${idx + 1}`
+                  eventName: targetEvent || rec.eventName || `Outfit ${idx + 1}`,
+                  weather: targetWeather || rec.weather || ""
                 }}
                 index={idx}
                 analyzedItems={closet}

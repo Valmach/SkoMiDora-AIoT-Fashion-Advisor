@@ -48,8 +48,8 @@ export async function getUpcomingEventsStyleAdviceAction(closetItems: any[]) {
       name: "Oslo Spring Summit",
       city: "Oslo, Norway",
       date: formatDate(tomorrow, "11:30 AM"), 
-      keywords: ["wool", "cashmere", "trench", "boots", "thermal", "burgundy", "alpaca", "knitwear"],
-      reasoning: "Oslo requires smart Scandi-style layering. The snow is melting, but you still need your burgundy knits and cashmere wraps. Pair a robust trench coat with sturdy leather boots.",
+      keywords: ["linen", "cotton", "silk", "shirt", "blouse", "trousers", "skirt", "sandal", "loafer", "mule", "lightweight", "tailored"],
+      reasoning: "Oslo is being styled for live June weather. Prioritize breathable tailoring, lightweight shirts, refined trousers, skirts, loafers, mules, or sandals. Avoid boots, heavy coats, cashmere wraps, thermal layers, and winter-weight outerwear when temperatures are warm.",
       // Oslo Cityscape
       cityBg: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?q=80&w=1200&auto=format&fit=crop"
     },
@@ -57,8 +57,8 @@ export async function getUpcomingEventsStyleAdviceAction(closetItems: any[]) {
       name: "Rome Cultural Tour",
       city: "Rome, Italy",
       date: formatDate(weekend, "6:00 PM"), 
-      keywords: ["silk", "velvet", "leather boots", "emerald", "trench", "platform", "cardigan"],
-      reasoning: "Italian spring style right now is about 'Royal Luxury'—velvet textures and emerald tones. Pair with elevated platform booties to stay chic while walking the historic streets.",
+      keywords: ["linen", "silk", "dress", "skirt", "shorts", "swimwear", "resort", "sandal", "mule", "slide", "sleeveless", "halter"],
+      reasoning: "Rome is being styled for hot Mediterranean summer. Prioritize linen, silk, lightweight dresses, skirts, refined shorts, resort pieces, sandals, mules, and breathable evening polish. Avoid boots, trenches, heavy knits, and winter-weight layering in high heat.",
       // The Colosseum
       cityBg: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?q=80&w=1200&auto=format&fit=crop"
     }
