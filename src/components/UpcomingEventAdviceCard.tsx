@@ -59,142 +59,90 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
     };
   }, [audioElement]);
 
-  const handleSpeak = async () => {
-    // 1. Stop playback if already speaking
+  const handleSpeak = () => {
     if (isSpeaking) {
       if (audioElement) {
         audioElement.pause();
-        audioElement.src = '';
+        audioElement.src = "";
         setAudioElement(null);
       }
+
       window.speechSynthesis.cancel();
       setIsSpeaking(false);
       return;
     }
 
-    setIsSpeaking(true);
+    const rawText = `${safeEventName}. ${safeWeather}. Stylist Notes: ${safeReasoning}`;
 
-    // 🚀 CRITICAL FIX: Clean the text before sending to the TTS API.
-    // The Gemini TTS API throws a 400 Bad Request if it encounters Markdown (*, _, #) or complex Emojis.
-    let rawText = `${safeEventName}. ${safeWeather}. Stylist Notes: ${safeReasoning}`;
     const cleanTextToRead = rawText
-      .replace(/[*#_`~\[\]]/g, '') // Remove Markdown
-      .replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '') // Remove Emojis
-      .slice(0, 800); // Limit length to prevent payload size errors
+      .replace(/[*#_`~\[\]]/g, "")
+      .replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 900);
 
-    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
-
-    // 2. Synchronously unlock the audio context for strict browsers (Safari/iOS)
-    const audio = new Audio();
-    audio.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA"; // Silent 44-byte WAV
-    audio.play().catch(() => {});
-    setAudioElement(audio);
-
-    // 3. Synchronous Fallback if API Key is missing
-    if (!apiKey) {
-      toast({ title: "Local Audio Active", description: "No API key found. Using built-in device voice." });
-      const utterance = new SpeechSynthesisUtterance(cleanTextToRead);
-      utterance.onend = () => setIsSpeaking(false);
-      utterance.onerror = () => setIsSpeaking(false);
-      window.speechSynthesis.speak(utterance);
+    if (!cleanTextToRead) {
+      toast({
+        title: "Nothing to read",
+        description: "No event advice text was available.",
+        variant: "destructive",
+      });
       return;
     }
-    
-    try {
-      // 4. Use Gemini 2.5 Flash TTS
-      const payload = {
-        contents: [{ parts: [{ text: cleanTextToRead }] }],
-        generationConfig: {
-          responseModalities: ["AUDIO"],
-          speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } }
-          }
-        },
-        model: "gemini-2.5-flash-preview-tts"
-      };
 
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      toast({
+        title: "Audio unavailable",
+        description: "This browser does not support built-in speech playback.",
+        variant: "destructive",
       });
+      return;
+    }
 
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error("Gemini TTS 400 Error Details:", errText);
-        throw new Error(`Google API responded with status: ${response.status}`);
+    const synth = window.speechSynthesis;
+    synth.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(cleanTextToRead);
+    utterance.rate = 0.92;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      toast({
+        title: "Playback error",
+        description: "The browser speech engine could not play this note.",
+        variant: "destructive",
+      });
+    };
+
+    setIsSpeaking(true);
+
+    let started = false;
+
+    const speakNow = () => {
+      if (started) return;
+      started = true;
+
+      const voices = synth.getVoices();
+      const preferredVoice =
+        voices.find((voice) => /google us english|microsoft.*english|samantha|alex/i.test(voice.name)) ||
+        voices.find((voice) => voice.lang?.toLowerCase().startsWith("en")) ||
+        voices[0];
+
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
       }
 
-      const data = await response.json();
-      const audioPart = data.candidates?.[0]?.content?.parts?.[0];
-      
-      if (audioPart?.inlineData?.data) {
-        const base64Data = audioPart.inlineData.data;
-        const mimeType = audioPart.inlineData.mimeType || "audio/L16;rate=24000";
-        
-        let sampleRate = 24000;
-        const rateMatch = mimeType.match(/rate=(\d+)/);
-        if (rateMatch) sampleRate = parseInt(rateMatch[1], 10);
+      synth.speak(utterance);
+    };
 
-        // Decode base64 to binary
-        const binaryString = atob(base64Data);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-        }
-        
-        // Convert PCM16 to WAV format for browser playback
-        const numChannels = 1;
-        const bitsPerSample = 16;
-        const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
-        const blockAlign = numChannels * (bitsPerSample / 8);
-        const pcmData = bytes.buffer;
-        
-        const wavHeader = new ArrayBuffer(44);
-        const view = new DataView(wavHeader);
-        
-        // RIFF chunk
-        view.setUint32(0, 0x52494646, false); // 'RIFF'
-        view.setUint32(4, 36 + pcmData.byteLength, true);
-        view.setUint32(8, 0x57415645, false); // 'WAVE'
-        
-        // fmt sub-chunk
-        view.setUint32(12, 0x666D7420, false); // 'fmt '
-        view.setUint32(16, 16, true); 
-        view.setUint16(20, 1, true); // PCM
-        view.setUint16(22, numChannels, true);
-        view.setUint32(24, sampleRate, true);
-        view.setUint32(28, byteRate, true);
-        view.setUint16(32, blockAlign, true);
-        view.setUint16(34, bitsPerSample, true);
-        
-        // data sub-chunk
-        view.setUint32(36, 0x64617461, false); // 'data'
-        view.setUint32(40, pcmData.byteLength, true);
-
-        const blob = new Blob([wavHeader, pcmData], { type: 'audio/wav' });
-        const url = URL.createObjectURL(blob);
-        
-        audio.src = url;
-        audio.onended = () => setIsSpeaking(false);
-        audio.onerror = () => {
-          setIsSpeaking(false);
-          toast({ title: "Playback Error", description: "Audio stream was interrupted.", variant: "destructive" });
-        };
-        await audio.play();
-      } else {
-        throw new Error("No audio data returned from the API.");
-      }
-
-    } catch (error: any) {
-      console.warn("Premium audio failed, falling back to native browser speech:", error);
-      toast({ title: "TTS API Unavailable", description: "Falling back to native voice.", variant: "destructive" });
-      
-      // 5. Async Fallback 
-      const utterance = new SpeechSynthesisUtterance(cleanTextToRead);
-      utterance.onend = () => setIsSpeaking(false);
-      utterance.onerror = () => setIsSpeaking(false);
-      window.speechSynthesis.speak(utterance);
+    if (synth.getVoices().length > 0) {
+      speakNow();
+    } else {
+      synth.onvoiceschanged = speakNow;
+      setTimeout(speakNow, 250);
     }
   };
 
