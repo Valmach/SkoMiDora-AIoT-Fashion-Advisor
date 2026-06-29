@@ -34,8 +34,12 @@ export async function POST(request: Request) {
 
     let data: any = null;
     let lastError = '';
+    let lastStatus = 0;
+    let attemptedVoices: any[] = [];
 
     for (const selectedVoice of selectedVoices) {
+      attemptedVoices.push(selectedVoice);
+
       const payload = {
         input: { text },
         voice: selectedVoice,
@@ -57,12 +61,22 @@ export async function POST(request: Request) {
         break;
       }
 
+      lastStatus = response.status;
       lastError = await response.text();
-      console.error('GCP TTS voice failed:', selectedVoice, lastError);
+      console.error('GCP TTS voice failed:', selectedVoice, lastStatus, lastError);
     }
 
     if (!data?.audioContent) {
-      throw new Error(`Google TTS failed for all candidate voices: ${lastError}`);
+      return NextResponse.json(
+        {
+          error: 'Google TTS failed',
+          hasApiKey: Boolean(apiKey),
+          lastStatus,
+          attemptedVoices,
+          upstreamSample: lastError.slice(0, 700),
+        },
+        { status: 502 }
+      );
     }
 
     const audioBuffer = Buffer.from(data.audioContent, 'base64');
@@ -73,8 +87,15 @@ export async function POST(request: Request) {
         'Content-Length': audioBuffer.length.toString(),
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('TTS Route Error:', error);
-    return NextResponse.json({ error: 'Failed to generate audio' }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: 'Failed to generate audio',
+        message: error?.message || String(error),
+        hasApiKey: Boolean(process.env.GOOGLE_TTS_API_KEY),
+      },
+      { status: 500 }
+    );
   }
 }
