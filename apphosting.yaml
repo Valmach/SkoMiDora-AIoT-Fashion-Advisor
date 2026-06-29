@@ -11,6 +11,8 @@ runConfig:
 # Environment Variables & Secrets 
 # -------------------------------------------------------
 env:
+  - variable: GOOGLE_TTS_API_KEY
+    secret: GOOGLE_TTS_API_KEY
   # --- Public Variables (Browser Safe) ---
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
     value: AIzaSyB6TKlJLqnIzJltKM1jHmugZFhoSu-RpCI
