@@ -99,6 +99,47 @@ function chooseClosetDesigner(index: number, favoriteDesigners: string[]): strin
   return favoriteDesigners[index % favoriteDesigners.length];
 }
 
+
+function buildShoppingUrl(query: string): string {
+  return `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(query)}`;
+}
+
+function fallbackShoppingRecommendations(
+  targetCategory: string,
+  eventContext: string,
+  weatherContext: string,
+  closetBrands: string[]
+) {
+  const category = normalizeTargetCategory(targetCategory);
+  const event = cleanText(eventContext) || "General Wardrobe Refresh";
+  const weather = cleanText(weatherContext) || "current weather";
+
+  const brands = closetBrands.length
+    ? closetBrands.slice(0, 6)
+    : ["Zimmermann", "Gabriela Hearst", "Stella McCartney", "Loewe", "Maison Margiela", "Stuart Weitzman"];
+
+  const categorySearch =
+    category === "Any Missing Piece"
+      ? "luxury outfit finishing piece"
+      : category;
+
+  return brands.slice(0, 3).map((brand, index) => {
+    const searchQuery = `${brand} ${categorySearch} ${event} ${weather}`.trim();
+
+    return {
+      suggestedBrand: brand,
+      itemType: category,
+      description:
+        index === 0
+          ? `Shop ${brand} first because this designer already appears in the closet and keeps the recommendation aligned with the user's existing wardrobe.`
+          : `Use ${brand} as a closet-matched alternative for ${categorySearch}, tuned to the event and weather context.`,
+      searchQuery,
+      closetMatchReason: `${brand} was selected from the user's closet designer profile, not from a generic luxury list.`,
+      shopUrl: buildShoppingUrl(searchQuery),
+    };
+  });
+}
+
 export async function generateShoppingRecommendations(
   eventContext: string,
   weatherContext: string,
@@ -291,9 +332,47 @@ Return only structured JSON matching the schema.
     return { success: true, recommendations: materializedLinks };
   } catch (error: any) {
     console.error('❌ FATAL STYLIST ERROR:', error);
-    return {
-      success: false,
-      error: `CRASH REASON: ${error.message || String(error)}`,
-    };
+
+    try {
+      const db = getAdminDb();
+
+      const fallbackSnapshot = await db
+        .collection('publicWardrobeItems')
+        .limit(120)
+        .get();
+
+      const fallbackClosetItems = fallbackSnapshot.docs.map((doc) => doc.data());
+
+      const fallbackDesigners = topValues(
+        fallbackClosetItems
+          .map((item: any) => normalizeBrand(item.designer || item.designerName || item.brand || item.manufacturer))
+          .filter(Boolean),
+        10
+      );
+
+      const fallbackRecommendations = fallbackShoppingRecommendations(
+        targetCategory,
+        eventContext,
+        weatherContext,
+        fallbackDesigners
+      );
+
+      console.log('✅ AI stylist fallback generated closet-designer shopping links.');
+
+      return {
+        success: true,
+        fallback: true,
+        error: `AI stylist fallback used because Gemini failed: ${error.message || String(error)}`,
+        recommendations: fallbackRecommendations,
+      };
+    } catch (fallbackError: any) {
+      console.error('❌ STYLIST FALLBACK ALSO FAILED:', fallbackError);
+
+      return {
+        success: false,
+        error: `CRASH REASON: ${error.message || String(error)} | FALLBACK REASON: ${fallbackError.message || String(fallbackError)}`,
+        recommendations: [],
+      };
+    }
   }
 }
