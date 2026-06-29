@@ -224,6 +224,86 @@ const CITY_CONFIG = [
    SERVER ACTION
 ====================================================== */
 
+
+function pickUnusedItem(items: any[], usedNames: Set<string>) {
+  return items.find((item) => {
+    const name = cleanText(item?.itemName).toLowerCase();
+    return name && !usedNames.has(name);
+  }) || null;
+}
+
+function buildDeterministicFallbackOutfits(
+  recommendationPool: any[],
+  eventContext: string,
+  weatherContext: string,
+  climate: { tier: string; tempC: number | null }
+) {
+  const targetEvent = cleanText(eventContext) || "Summer Style Curation";
+  const targetLocation = inferLocation(targetEvent);
+  const liveWeatherContext = cleanText(weatherContext) || "Warm summer weather";
+
+  const pool =
+    climate.tier === "hot"
+      ? recommendationPool.filter((item) => !isHeavyColdItem(item) || isWarmWeatherItem(item))
+      : recommendationPool;
+
+  const safePool = pool.length ? pool : recommendationPool;
+  const clothingPool = safePool.filter(isClothing);
+  const footwearPool = safePool.filter(isFootwear);
+
+  const usedNames = new Set<string>();
+
+  const archetypes = [
+    "Breathable Tailoring & City Polish",
+    "Fluid Summer Texture & Color Movement",
+    "Evening Refinement & Lightweight Drama",
+  ];
+
+  return archetypes.map((archetype, index) => {
+    const clothing = pickUnusedItem(clothingPool, usedNames) || pickUnusedItem(safePool, usedNames);
+
+    if (clothing?.itemName) {
+      usedNames.add(cleanText(clothing.itemName).toLowerCase());
+    }
+
+    const footwear = pickUnusedItem(footwearPool, usedNames);
+
+    if (footwear?.itemName) {
+      usedNames.add(cleanText(footwear.itemName).toLowerCase());
+    }
+
+    const finalItems = [
+      clothing?.itemName,
+      footwear?.itemName,
+    ].filter(Boolean);
+
+    const cfg = CITY_CONFIG[index] || CITY_CONFIG[0];
+
+    return {
+      eventName: targetEvent,
+      eventTime: "Now",
+      location: targetLocation,
+      weather: liveWeatherContext,
+      outfitIdea: archetype,
+      reasoning:
+        climate.tier === "hot"
+          ? "Fallback closet curation used because the AI outfit generator failed. This look avoids heavy coats, boots, wool, cashmere, alpaca, and winter-weight pieces for hot weather."
+          : "Fallback closet curation used because the AI outfit generator failed. This look uses available closet pieces while preserving event and weather context.",
+      items: finalItems,
+      colorPalette: "Closet-led palette",
+      city: targetLocation,
+      temp: climate.tempC !== null ? `${climate.tempC}°C` : "--",
+      cityBg: cfg.bgUrl,
+
+      clothingName: clothing?.itemName || "Wardrobe Item",
+      clothingImageUrl: resolveImage(clothing),
+
+      footwearName: footwear?.itemName || "Footwear",
+      footwearImageUrl: resolveImage(footwear),
+    };
+  }).filter((rec) => rec.items.length > 0);
+}
+
 export async function getDailyOutfitsAction(
   closetItems: any[],
   eventContext: string = '',
@@ -345,14 +425,28 @@ ${closetText}
 Return exactly 3 highly differentiated luxury looks for the selected event.
 `;
 
-  const result = await generateObject({
-    model: google('gemini-2.5-flash'),
-    schema,
-    prompt,
-    temperature: 0.9, 
-  });
+  let result;
 
-  const fixedNames = result.object.recommendations.map(rec => ({
+  try {
+    result = await generateObject({
+      model: google('gemini-2.5-flash'),
+      schema,
+      prompt,
+      temperature: 0.75,
+    });
+  } catch (error) {
+    console.error("Daily outfit AI generation failed. Using deterministic closet fallback:", error);
+    return buildDeterministicFallbackOutfits(recommendationPool, eventContext, weatherContext, climate);
+  }
+
+  const aiRecommendations = result?.object?.recommendations || [];
+
+  if (!aiRecommendations.length) {
+    console.error("Daily outfit AI returned no recommendations. Using deterministic closet fallback.");
+    return buildDeterministicFallbackOutfits(recommendationPool, eventContext, weatherContext, climate);
+  }
+
+  const fixedNames = aiRecommendations.map(rec => ({
     ...rec,
     items: correctItemNames(rec.items, recommendationPool),
   }));
