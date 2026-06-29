@@ -92,7 +92,7 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
     };
   }, [audioElement]);
 
-  const handleSpeak = () => {
+  const handleSpeak = async () => {
     if (isSpeaking) {
       if (audioElement) {
         audioElement.pause();
@@ -123,6 +123,47 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
       return;
     }
 
+    // Trying Google UK female TTS first for a less synthetic voice.
+    try {
+      const response = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: cleanTextToRead,
+          locale: "en-GB",
+        }),
+      });
+
+      if (response.ok) {
+        const audioBlob = await response.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+
+        setAudioElement(audio);
+        setIsSpeaking(true);
+
+        audio.onended = () => {
+          URL.revokeObjectURL(audioUrl);
+          setAudioElement(null);
+          setIsSpeaking(false);
+        };
+
+        audio.onerror = () => {
+          URL.revokeObjectURL(audioUrl);
+          setAudioElement(null);
+          setIsSpeaking(false);
+          console.warn("Google TTS audio playback failed. Falling back to browser speech.");
+        };
+
+        await audio.play();
+        return;
+      }
+
+      console.warn("Google TTS route failed. Falling back to browser speech:", await response.text());
+    } catch (error) {
+      console.warn("Google TTS unavailable. Falling back to browser speech:", error);
+    }
+
     if (typeof window === "undefined" || !("speechSynthesis" in window)) {
       toast({
         title: "Audio unavailable",
@@ -137,8 +178,8 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
 
     const utterance = new SpeechSynthesisUtterance(cleanTextToRead);
     utterance.lang = "en-GB";
-    utterance.rate = 0.92;
-    utterance.pitch = 1.08;
+    utterance.rate = 1.08;
+    utterance.pitch = 1.0;
 
     const preferredVoice = getPreferredBritishFemaleVoice();
     if (preferredVoice) {
