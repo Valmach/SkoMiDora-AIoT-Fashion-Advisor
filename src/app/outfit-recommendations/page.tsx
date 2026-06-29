@@ -31,6 +31,7 @@ export default function OutfitRecommendationsPage() {
   const [isPending, startTransition] = useTransition();
   const [dataLoaded, setDataLoaded] = useState(false);
   const [targetEvent, setTargetEvent] = useState<string | null>(null);
+  const [refreshSeed, setRefreshSeed] = useState<number>(() => Date.now());
   const [targetWeather, setTargetWeather] = useState<string | null>(null);
 
   useEffect(() => {
@@ -71,7 +72,12 @@ export default function OutfitRecommendationsPage() {
 
       startTransition(async () => {
         try {
-          const recs = await getDailyOutfitsAction(items, eventParam || "", weatherParam || "");
+          const recs = await getDailyOutfitsAction(
+            items,
+            eventParam || "",
+            weatherParam || "",
+            String(refreshSeed)
+          );
           setRecommendations(recs);
         } catch (error) {
           console.error("Failed to fetch outfits:", error);
@@ -82,7 +88,7 @@ export default function OutfitRecommendationsPage() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [refreshSeed]);
 
   return (
     <div className="min-h-screen bg-black text-white px-4 pb-8 pt-28 md:px-8 lg:px-16 lg:pb-16 lg:pt-32">
@@ -114,7 +120,11 @@ export default function OutfitRecommendationsPage() {
           </div>
 
           <Button
-            onClick={() => window.location.reload()}
+            onClick={() => {
+              setDataLoaded(false);
+              setRecommendations([]);
+              setRefreshSeed(Date.now());
+            }}
             variant="outline"
             className="rounded-none h-14 px-8 border-zinc-700 bg-black text-white hover:bg-zinc-900 uppercase font-bold tracking-wider text-xs shrink-0"
           >

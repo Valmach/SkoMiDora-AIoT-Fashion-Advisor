@@ -225,6 +225,12 @@ const CITY_CONFIG = [
 ====================================================== */
 
 
+function rotateArray(items: any[], seed: number) {
+  if (!items.length) return items;
+  const offset = Math.abs(seed) % items.length;
+  return [...items.slice(offset), ...items.slice(0, offset)];
+}
+
 function pickUnusedItem(items: any[], usedNames: Set<string>) {
   return items.find((item) => {
     const name = cleanText(item?.itemName).toLowerCase();
@@ -236,7 +242,8 @@ function buildDeterministicFallbackOutfits(
   recommendationPool: any[],
   eventContext: string,
   weatherContext: string,
-  climate: { tier: string; tempC: number | null }
+  climate: { tier: string; tempC: number | null },
+  refreshSeed: string = ''
 ) {
   const targetEvent = cleanText(eventContext) || "Summer Style Curation";
   const targetLocation = inferLocation(targetEvent);
@@ -248,8 +255,9 @@ function buildDeterministicFallbackOutfits(
       : recommendationPool;
 
   const safePool = pool.length ? pool : recommendationPool;
-  const clothingPool = safePool.filter(isClothing);
-  const footwearPool = safePool.filter(isFootwear);
+  const seedNumber = Number(refreshSeed || String(Date.now()).slice(-6));
+  const clothingPool = rotateArray(safePool.filter(isClothing), seedNumber);
+  const footwearPool = rotateArray(safePool.filter(isFootwear), seedNumber + 7);
 
   const usedNames = new Set<string>();
 
@@ -307,7 +315,8 @@ function buildDeterministicFallbackOutfits(
 export async function getDailyOutfitsAction(
   closetItems: any[],
   eventContext: string = '',
-  weatherContext: string = ''
+  weatherContext: string = '',
+  refreshSeed: string = ''
 ) {
   const climate = getClimate(weatherContext);
 
@@ -350,7 +359,7 @@ export async function getDailyOutfitsAction(
 
   const options: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
   const dateString = new Date().toLocaleDateString('en-US', options);
-  const uniqueRequestID = Date.now(); 
+  const uniqueRequestID = refreshSeed || String(Date.now()); 
 
   const shuffledCloset = shuffleArray(recommendationPool);
 
@@ -384,6 +393,7 @@ You are an avant-garde luxury personal fashion stylist for the high-end SkoMiDor
 CURRENT TIME CONTEXT:
 Today is ${dateString}. The season context is June 2026 / Summer.
 System Reference Code: ${uniqueRequestID}
+Refresh seed directive: Use this seed to produce a different closet combination from the previous run.
 
 EVENT CONTEXT:
 ${targetEvent}
@@ -436,14 +446,14 @@ Return exactly 3 highly differentiated luxury looks for the selected event.
     });
   } catch (error) {
     console.error("Daily outfit AI generation failed. Using deterministic closet fallback:", error);
-    return buildDeterministicFallbackOutfits(recommendationPool, eventContext, weatherContext, climate);
+    return buildDeterministicFallbackOutfits(recommendationPool, eventContext, weatherContext, climate, refreshSeed);
   }
 
   const aiRecommendations = result?.object?.recommendations || [];
 
   if (!aiRecommendations.length) {
     console.error("Daily outfit AI returned no recommendations. Using deterministic closet fallback.");
-    return buildDeterministicFallbackOutfits(recommendationPool, eventContext, weatherContext, climate);
+    return buildDeterministicFallbackOutfits(recommendationPool, eventContext, weatherContext, climate, refreshSeed);
   }
 
   const fixedNames = aiRecommendations.map(rec => ({
