@@ -1,5 +1,38 @@
 'use client';
 
+function getPreferredBritishFemaleVoice() {
+  if (typeof window === "undefined" || !window.speechSynthesis) return null;
+
+  const voices = window.speechSynthesis.getVoices();
+
+  const preferredVoiceNames = [
+    "Google UK English Female",
+    "Microsoft Sonia Online",
+    "Microsoft Sonia",
+    "Serena",
+    "Kate",
+    "Susan",
+    "Hazel",
+    "Emma",
+  ];
+
+  return (
+    voices.find((voice) =>
+      preferredVoiceNames.some((name) =>
+        voice.name.toLowerCase().includes(name.toLowerCase())
+      )
+    ) ||
+    voices.find((voice) =>
+      voice.lang?.toLowerCase() === "en-gb" &&
+      /female|sonia|serena|kate|susan|hazel|emma/i.test(voice.name)
+    ) ||
+    voices.find((voice) => voice.lang?.toLowerCase() === "en-gb") ||
+    null
+  );
+}
+
+
+
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { MapPin, Calendar, CloudSun, Volume2, Square, ArrowRight, Sparkles } from 'lucide-react';
@@ -103,8 +136,14 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
     synth.cancel();
 
     const utterance = new SpeechSynthesisUtterance(cleanTextToRead);
+    utterance.lang = "en-GB";
     utterance.rate = 0.92;
-    utterance.pitch = 1;
+    utterance.pitch = 1.08;
+
+    const preferredVoice = getPreferredBritishFemaleVoice();
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
     utterance.volume = 1;
 
     utterance.onend = () => setIsSpeaking(false);

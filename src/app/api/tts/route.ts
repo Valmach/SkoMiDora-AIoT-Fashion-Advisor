@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 
 // FIXED: Mapped to verified, ultra-premium Google Cloud TTS models
-const voiceMap: Record<string, { languageCode: string, name: string }> = {
-  'en': { languageCode: 'en-US', name: 'en-US-Journey-F' },   // The ultra-premium warm US Female voice
+const voiceMap: Record<string, { languageCode: string, name?: string, ssmlGender?: string }> = {
+  'en': { languageCode: 'en-GB', ssmlGender: 'FEMALE' },   // British English female voice
   'fr': { languageCode: 'fr-FR', name: 'fr-FR-Neural2-A' },   // Premium French Female
   'es': { languageCode: 'es-ES', name: 'es-ES-Neural2-A' },   // Premium Spanish Female
   'it': { languageCode: 'it-IT', name: 'it-IT-Neural2-A' },   // Premium Italian Female

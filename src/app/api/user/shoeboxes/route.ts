@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     const requestPayload = {
       input: { text: text },
       // 'Journey' voices are Google's newest, hyper-realistic premium tier
-      voice: { languageCode: 'en-GB', name: 'en-GB-Journey-F' }, 
+      voice: { languageCode: 'en-GB', ssmlGender: 'FEMALE' }, 
       audioConfig: { audioEncoding: 'MP3' as const },
     };
 
