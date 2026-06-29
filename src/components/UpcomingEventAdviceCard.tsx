@@ -164,14 +164,17 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
       if (started) return;
       started = true;
 
-      const voices = synth.getVoices();
-      const preferredVoice =
-        voices.find((voice) => /google us english|microsoft.*english|samantha|alex/i.test(voice.name)) ||
-        voices.find((voice) => voice.lang?.toLowerCase().startsWith("en")) ||
-        voices[0];
+      const preferredVoice = getPreferredBritishFemaleVoice();
 
       if (preferredVoice) {
         utterance.voice = preferredVoice;
+        console.log("SkoMiDora selected UK voice:", {
+          name: preferredVoice.name,
+          lang: preferredVoice.lang,
+          localService: preferredVoice.localService,
+        });
+      } else {
+        console.warn("SkoMiDora: no UK female browser voice found. Using browser en-GB fallback.");
       }
 
       synth.speak(utterance);
