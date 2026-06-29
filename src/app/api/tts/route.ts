@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Text is required' }, { status: 400 });
     }
 
-    const apiKey = process.env.GOOGLE_TTS_API_KEY_V2 || process.env.GOOGLE_TTS_API_KEY;
+    const apiKey = process.env.GOOGLE_TTS_API_KEY;
 
     if (!apiKey) {
       throw new Error('Missing GOOGLE_TTS_API_KEY in environment variables');
@@ -93,8 +93,7 @@ export async function POST(request: Request) {
       {
         error: 'Failed to generate audio',
         message: error?.message || String(error),
-        hasApiKey: Boolean(process.env.GOOGLE_TTS_API_KEY_V2 || process.env.GOOGLE_TTS_API_KEY),
-        hasV2Key: Boolean(process.env.GOOGLE_TTS_API_KEY_V2),
+        hasApiKey: Boolean(process.env.GOOGLE_TTS_API_KEY),
       },
       { status: 500 }
     );
