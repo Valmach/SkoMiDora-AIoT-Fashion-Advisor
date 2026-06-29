@@ -5,16 +5,8 @@
 import OutfitCard from '@/components/OutfitCard';
 
 import { useState, useEffect, useTransition } from 'react';
-import {
-  collection,
-  onSnapshot,
-  query,
-  orderBy,
-  Timestamp,
-} from 'firebase/firestore';
 import { Dancing_Script } from 'next/font/google'; 
 
-import { firestore as db } from '@/lib/firebase';
 import { getDailyOutfitsAction } from '@/app/actions/get-daily-outfits';
 
 import { Loader2, Sparkles, RefreshCcw, MapPin } from 'lucide-react'; 
@@ -35,7 +27,6 @@ export default function OutfitRecommendationsPage() {
   const [targetWeather, setTargetWeather] = useState<string | null>(null);
 
   useEffect(() => {
-    // 1. Safely grab the URL parameter (the "address") without breaking the Next.js build
     const params = new URLSearchParams(window.location.search);
     const eventParam = params.get('event');
     const weatherParam = params.get('weather');
@@ -48,46 +39,65 @@ export default function OutfitRecommendationsPage() {
       setTargetWeather(weatherParam);
     }
 
-    if (!db) return;
+    let cancelled = false;
 
-    const q = query(
-      collection(db, 'publicWardrobeItems'),
-      orderBy('createdAt', 'desc')
-    );
+    const loadClosetAndOutfits = async () => {
+      try {
+        const response = await fetch("/api/publicWardrobeItems", {
+          cache: "no-store",
+        });
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const items = snapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          createdAt:
-            data.createdAt instanceof Timestamp
-              ? data.createdAt.toMillis()
-              : Date.now(),
-        };
-      });
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
 
-      setCloset(items);
+        const payload = await response.json();
+        const items = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload.items)
+            ? payload.items
+            : [];
 
-      startTransition(async () => {
-        try {
-          const recs = await getDailyOutfitsAction(
-            items,
-            eventParam || "",
-            weatherParam || "",
-            String(refreshSeed)
-          );
-          setRecommendations(recs);
-        } catch (error) {
-          console.error("Failed to fetch outfits:", error);
-        } finally {
+        if (cancelled) return;
+
+        setCloset(items);
+
+        startTransition(async () => {
+          try {
+            const recs = await getDailyOutfitsAction(
+              items,
+              eventParam || "",
+              weatherParam || "",
+              String(refreshSeed)
+            );
+
+            if (!cancelled) {
+              setRecommendations(recs);
+            }
+          } catch (error) {
+            console.error("Failed to fetch outfits:", error);
+          } finally {
+            if (!cancelled) {
+              setDataLoaded(true);
+            }
+          }
+        });
+      } catch (error) {
+        console.error("Failed to load closet:", error);
+
+        if (!cancelled) {
+          setCloset([]);
+          setRecommendations([]);
           setDataLoaded(true);
         }
-      });
-    });
+      }
+    };
 
-    return () => unsubscribe();
+    loadClosetAndOutfits();
+
+    return () => {
+      cancelled = true;
+    };
   }, [refreshSeed]);
 
   return (
