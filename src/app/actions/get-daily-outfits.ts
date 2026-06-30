@@ -247,22 +247,52 @@ function pickOneOfEach(resolvedNames: string[], closetItems: any[]) {
 ====================================================== */
 
 const CITY_CONFIG = [
-  { 
-    city: 'Paris',   
+  {
+    city: 'Paris',
     weatherHint: 'Warm, sunny summer. Breathable chic layers featuring luxury tailoring, shorts, or light dresses.',
     bgUrl: 'https://images.pexels.com/photos/4184571/pexels-photo-4184571.jpeg?auto=compress&cs=tinysrgb&w=800'
   },
-  { 
-    city: 'Rome',    
+  {
+    city: 'Rome',
     weatherHint: 'Hot Mediterranean summer. Lightweight linen components, swimwear/resort layers, high-end shorts, breathable fabrics, and refined sandals.',
     bgUrl: 'https://images.pexels.com/photos/18602876/pexels-photo-18602876.jpeg?auto=compress&cs=tinysrgb&w=800'
   },
-  { 
-    city: 'Oslo',    
+  {
+    city: 'Oslo',
     weatherHint: 'Pleasant, bright Nordic summer. Crisp transitional tailoring, luxury shorts, or trousers paired with a light layer.',
     bgUrl: 'https://images.pexels.com/photos/18170373/pexels-photo-18170373.jpeg?auto=compress&cs=tinysrgb&w=800'
   },
+  {
+    city: 'London',
+    weatherHint: 'Polished city layers with refined tailoring and travel-ready texture.',
+    bgUrl: 'https://images.pexels.com/photos/672532/pexels-photo-672532.jpeg?auto=compress&cs=tinysrgb&w=800'
+  },
+  {
+    city: 'New York',
+    weatherHint: 'Metropolitan polish with strong lines, expressive accessories, and practical day-to-evening styling.',
+    bgUrl: 'https://images.pexels.com/photos/466685/pexels-photo-466685.jpeg?auto=compress&cs=tinysrgb&w=800'
+  },
+  {
+    city: 'Tokyo',
+    weatherHint: 'Modern city styling with sharp silhouettes, texture contrast, and refined minimalism.',
+    bgUrl: 'https://images.pexels.com/photos/2506923/pexels-photo-2506923.jpeg?auto=compress&cs=tinysrgb&w=800'
+  },
+  {
+    city: 'Milan',
+    weatherHint: 'Italian fashion polish with elegant tailoring, designer texture, and understated drama.',
+    bgUrl: 'https://images.pexels.com/photos/2662116/pexels-photo-2662116.jpeg?auto=compress&cs=tinysrgb&w=800'
+  },
 ];
+
+function getDestinationConfig(destinationName: string, fallbackIndex: number = 0) {
+  const shortName = shortDestinationName(destinationName).toLowerCase();
+
+  return (
+    CITY_CONFIG.find((cfg) => shortName.includes(cfg.city.toLowerCase())) ||
+    CITY_CONFIG[fallbackIndex % CITY_CONFIG.length] ||
+    CITY_CONFIG[0]
+  );
+}
 
 /* ======================================================
    SERVER ACTION
@@ -332,7 +362,7 @@ function buildDeterministicFallbackOutfits(
       footwear?.itemName,
     ].filter(Boolean);
 
-    const cfg = CITY_CONFIG[index] || CITY_CONFIG[0];
+    const cfg = getDestinationConfig(destinationName, index);
 
     return {
       eventName: targetEvent,
@@ -548,7 +578,7 @@ Return exactly 3 highly differentiated luxury looks for the selected event.
       footwear?.itemName,
     ].filter(Boolean);
 
-    const cfg = CITY_CONFIG[index] || CITY_CONFIG[0];
+    const cfg = getDestinationConfig(destinationName, index);
 
     return {
       ...rec,
