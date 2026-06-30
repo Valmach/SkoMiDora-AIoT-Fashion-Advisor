@@ -19,6 +19,10 @@ const schema = z.object({
       eventName: z.string(),
       eventTime: z.string(),
       location: z.string(),
+      destinationName: z.string().optional(),
+      destinationImageQuery: z.string().optional(),
+      destinationReason: z.string().optional(),
+      weatherTag: z.string().optional(),
       weather: z.string(),
       outfitIdea: z.string(),
       reasoning: z.string(),
@@ -104,14 +108,54 @@ function isWarmWeatherItem(item: any): boolean {
   return /\b(linen|cotton|silk|dress|shirtdress|shirt|blouse|tank|tee|t-shirt|shorts|skirt|sandal|sandals|mule|mules|slide|slides|loafer|loafers|pump|pumps|swim|swimwear|swimsuit|bikini|resort|lightweight|sleeveless|halter)\b/.test(itemText(item));
 }
 
-function inferLocation(eventContext: string): string {
-  const text = cleanText(eventContext).toLowerCase();
-  if (text.includes('paris') || text.includes('france')) return 'Paris';
-  if (text.includes('rome') || text.includes('italy')) return 'Rome';
-  if (text.includes('oslo') || text.includes('norway')) return 'Oslo';
-  if (text.includes('london') || text.includes('uk')) return 'London';
-  if (text.includes('new york') || text.includes('nyc')) return 'New York';
-  return 'Global Destination';
+function inferLocation(eventContext: string, weatherContext: string = ''): string {
+  const text = `${cleanText(eventContext)} ${cleanText(weatherContext)}`.toLowerCase();
+
+  const knownDestinations = [
+    { keys: ['paris', 'france'], label: 'Paris, France' },
+    { keys: ['rome', 'italy'], label: 'Rome, Italy' },
+    { keys: ['oslo', 'norway'], label: 'Oslo, Norway' },
+    { keys: ['london', 'uk', 'england'], label: 'London, United Kingdom' },
+    { keys: ['new york', 'nyc', 'manhattan'], label: 'New York, USA' },
+    { keys: ['tokyo', 'japan'], label: 'Tokyo, Japan' },
+    { keys: ['milan', 'milano'], label: 'Milan, Italy' },
+    { keys: ['copenhagen', 'denmark'], label: 'Copenhagen, Denmark' },
+    { keys: ['barcelona', 'spain'], label: 'Barcelona, Spain' },
+    { keys: ['lisbon', 'portugal'], label: 'Lisbon, Portugal' },
+  ];
+
+  const matched = knownDestinations.find((dest) =>
+    dest.keys.some((key) => text.includes(key))
+  );
+
+  if (matched) return matched.label;
+
+  const inMatch = cleanText(eventContext).match(/(?:in|for|at)\s+([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){0,2})(?:\b|,)/);
+  if (inMatch?.[1]) return inMatch[1].trim();
+
+  return cleanText(eventContext) || 'Current Destination';
+}
+
+function shortDestinationName(destination: string): string {
+  return cleanText(destination).split(',')[0].trim() || 'Current Destination';
+}
+
+function buildDestinationImageQuery(destination: string, eventContext: string, weatherContext: string): string {
+  const shortName = shortDestinationName(destination);
+  const eventText = cleanText(eventContext);
+  const weatherText = cleanText(weatherContext);
+
+  return [
+    shortName,
+    eventText && eventText !== shortName ? eventText : '',
+    weatherText,
+    'luxury street style destination editorial'
+  ].filter(Boolean).join(' ');
+}
+
+function buildWeatherTag(climate: { tier: string; tempC: number | null }, weatherContext: string): string {
+  if (climate.tempC !== null) return `${climate.tier} • ${climate.tempC}°C`;
+  return cleanText(weatherContext) || climate.tier;
 }
 
 function isFootwear(item: any): boolean {
@@ -246,8 +290,11 @@ function buildDeterministicFallbackOutfits(
   refreshSeed: string = ''
 ) {
   const targetEvent = cleanText(eventContext) || "Summer Style Curation";
-  const targetLocation = inferLocation(targetEvent);
+  const targetLocation = inferLocation(targetEvent, weatherContext);
   const liveWeatherContext = cleanText(weatherContext) || "Warm summer weather";
+  const destinationName = targetLocation;
+  const destinationImageQuery = buildDestinationImageQuery(destinationName, targetEvent, liveWeatherContext);
+  const weatherTag = buildWeatherTag(climate, liveWeatherContext);
 
   const pool =
     climate.tier === "hot"
@@ -290,7 +337,11 @@ function buildDeterministicFallbackOutfits(
     return {
       eventName: targetEvent,
       eventTime: "Now",
-      location: targetLocation,
+      location: destinationName,
+      destinationName,
+      destinationImageQuery,
+      destinationReason: `Grounded from event and weather context for ${destinationName}.`,
+      weatherTag,
       weather: liveWeatherContext,
       outfitIdea: archetype,
       reasoning:
@@ -299,7 +350,7 @@ function buildDeterministicFallbackOutfits(
           : "Fallback closet curation used because the AI outfit generator failed. This look uses available closet pieces while preserving event and weather context.",
       items: finalItems,
       colorPalette: "Closet-led palette",
-      city: targetLocation,
+      city: shortDestinationName(destinationName),
       temp: climate.tempC !== null ? `${climate.tempC}°C` : "--",
       cityBg: cfg.bgUrl,
 
@@ -342,6 +393,10 @@ export async function getDailyOutfitsAction(
       eventName: "Closet Empty",
       eventTime: "Now",
       location: "Home",
+      destinationName: "Home",
+      destinationImageQuery: "home closet wardrobe styling",
+      destinationReason: "No closet metadata is available yet.",
+      weatherTag: "N/A",
       weather: "N/A",
       outfitIdea: "Add Items First",
       reasoning: "Please add valid apparel items to your closet to get real AI suggestions.",
@@ -372,7 +427,13 @@ export async function getDailyOutfitsAction(
         item.designer ? `Designer: ${item.designer}` : null,
         item.detailedSpecifications ? `Specs: ${item.detailedSpecifications}` : null,
         item.narrativeDescription ? `Editorial Note: ${item.narrativeDescription}` : null,
-        item.styleKeywords && item.styleKeywords.length > 0 ? `Aesthetics: ${item.styleKeywords.join(', ')}` : null
+        item.styleKeywords && item.styleKeywords.length > 0 ? `Aesthetics: ${item.styleKeywords.join(', ')}` : null,
+        item.season ? `Season: ${item.season}` : null,
+        item.eventCategory ? `Event Category: ${Array.isArray(item.eventCategory) ? item.eventCategory.join(', ') : item.eventCategory}` : null,
+        item.weatherSuitability ? `Weather Suitability: ${Array.isArray(item.weatherSuitability) ? item.weatherSuitability.join(', ') : item.weatherSuitability}` : null,
+        item.formality ? `Formality: ${item.formality}` : null,
+        item.locationWorn ? `Previously Worn Location: ${item.locationWorn}` : null,
+        item.tags && item.tags.length > 0 ? `Tags: ${item.tags.join(', ')}` : null
       ].filter(Boolean).join(', ');
 
       return `- "${item.itemName}" [${details}]`;
@@ -380,8 +441,11 @@ export async function getDailyOutfitsAction(
     .join('\n');
 
   const targetEvent = cleanText(eventContext) || 'Summer Style Curation';
-  const targetLocation = inferLocation(targetEvent);
+  const targetLocation = inferLocation(targetEvent, weatherContext);
   const liveWeatherContext = cleanText(weatherContext) || 'Warm summer weather';
+  const destinationName = targetLocation;
+  const destinationImageQuery = buildDestinationImageQuery(destinationName, targetEvent, liveWeatherContext);
+  const weatherTag = buildWeatherTag(climate, liveWeatherContext);
 
   const hardWeatherRule = climate.tier === 'hot'
     ? 'HARD WEATHER BAN: Do not use boots, heavy coats, cashmere wraps, wool coats, alpaca, thermal layers, fleece, fur, heavy knitwear, parkas, or winter outerwear. Prefer sandals, mules, pumps, loafers, silk, linen, cotton, lightweight dresses, skirts, shirts, shorts, swim/resort pieces, and breathable tailoring.'
@@ -398,8 +462,9 @@ Refresh seed directive: Use this seed to produce a different closet combination 
 EVENT CONTEXT:
 ${targetEvent}
 
-LOCATION:
-${targetLocation}
+DESTINATION CONTEXT:
+Destination Name: ${destinationName}
+Destination Image Query: ${destinationImageQuery}
 
 LIVE WEATHER CONTEXT:
 ${liveWeatherContext}
@@ -431,6 +496,12 @@ CRITICAL INVENTORY EXPLORATION DIRECTIVES:
 
 WARDROBE INVENTORY:
 ${closetText}
+
+Each recommendation must include:
+- destinationName: the real destination label, exactly "${destinationName}"
+- destinationImageQuery: a specific image/search phrase grounded in the destination, event, and weather
+- destinationReason: a short explanation of why this destination context applies
+- weatherTag: exactly "${weatherTag}"
 
 Return exactly 3 highly differentiated luxury looks for the selected event.
 `;
@@ -482,8 +553,12 @@ Return exactly 3 highly differentiated luxury looks for the selected event.
     return {
       ...rec,
       eventName: targetEvent,
-      city: targetLocation,
-      location: targetLocation,
+      city: shortDestinationName(destinationName),
+      location: destinationName,
+      destinationName,
+      destinationImageQuery: rec.destinationImageQuery || destinationImageQuery,
+      destinationReason: rec.destinationReason || `Grounded from event and weather context for ${destinationName}.`,
+      weatherTag: rec.weatherTag || weatherTag,
       weather: liveWeatherContext,
       items: finalItems.length > 0 ? finalItems : rec.items,
 
