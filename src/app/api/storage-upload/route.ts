@@ -6,6 +6,7 @@ import os from "os";
 import path from "path";
 import fs from "fs/promises";
 import crypto from "crypto";
+import { normalizeWardrobeMetadata } from "@/lib/wardrobeMetadata";
 
 export const runtime = "nodejs";
 
@@ -128,6 +129,47 @@ export async function POST(req: NextRequest) {
     const imageBase64 = body.imageBase64 as string | undefined;
     const fileName = body.fileName as string | undefined;
 
+    const commercialMetadata = {
+      itemName: body.itemName,
+      productTitle: body.productTitle,
+      title: body.title,
+      name: body.name,
+      description: body.description,
+      productDescription: body.productDescription,
+      brand: body.brand,
+      brandName: body.brandName,
+      designer: body.designer,
+      designerName: body.designerName,
+      color: body.color,
+      colour: body.colour,
+      material: body.material,
+      fabric: body.fabric,
+      composition: body.composition,
+      category: body.category,
+      productType: body.productType,
+      price: body.price,
+      currentPrice: body.currentPrice,
+      salePrice: body.salePrice,
+      originalPrice: body.originalPrice,
+      currency: body.currency,
+      sourceUrl: body.sourceUrl,
+      productUrl: body.productUrl,
+      url: body.url,
+      pageUrl: body.pageUrl,
+      canonicalUrl: body.canonicalUrl,
+      styleKeywords: body.styleKeywords,
+      keywords: body.keywords,
+      tags: body.tags,
+      season: body.season,
+      weatherSuitability: body.weatherSuitability,
+      eventCategory: body.eventCategory,
+      formality: body.formality,
+      ...(body.metadata && typeof body.metadata === "object" && !Array.isArray(body.metadata) ? body.metadata : {}),
+      ...(body.productMetadata && typeof body.productMetadata === "object" && !Array.isArray(body.productMetadata) ? body.productMetadata : {}),
+      ...(body.commercialMetadata && typeof body.commercialMetadata === "object" && !Array.isArray(body.commercialMetadata) ? body.commercialMetadata : {}),
+      ...(body.awesomeScreenshotMetadata && typeof body.awesomeScreenshotMetadata === "object" && !Array.isArray(body.awesomeScreenshotMetadata) ? body.awesomeScreenshotMetadata : {}),
+    };
+
     if (!imageBase64) {
       return NextResponse.json({ error: "Missing imageBase64" }, { status: 400 });
     }
@@ -165,7 +207,10 @@ export async function POST(req: NextRequest) {
     const imageUrl = publicStorageUrl(BUCKET_NAME, imagePath);
 
     const db = getFirestore();
-    const metadata = inferLensMetadata(originalName);
+    const metadata = normalizeWardrobeMetadata(
+      inferLensMetadata(originalName),
+      commercialMetadata
+    );
 
     const docRef = await db.collection("publicWardrobeItems").add({
       itemName: metadata.itemName,
@@ -184,6 +229,21 @@ export async function POST(req: NextRequest) {
       detailedSpecifications: metadata.detailedSpecifications,
       narrativeDescription: metadata.narrativeDescription,
       styleKeywords: metadata.styleKeywords,
+
+      season: metadata.season,
+      weatherSuitability: metadata.weatherSuitability,
+      eventCategory: metadata.eventCategory,
+      formality: metadata.formality,
+      tags: metadata.tags,
+
+      sourceUrl: metadata.sourceUrl,
+      productUrl: metadata.productUrl,
+      sourceDomain: metadata.sourceDomain,
+      price: metadata.price,
+      priceText: metadata.priceText,
+      currency: metadata.currency,
+      metadataSource: metadata.metadataSource,
+      metadataConfidence: metadata.metadataConfidence,
 
       imageUrl,
       imagePath,
