@@ -149,7 +149,7 @@ function buildDestinationImageQuery(destination: string, eventContext: string, w
     shortName,
     eventText && eventText !== shortName ? eventText : '',
     weatherText,
-    'luxury street style destination editorial'
+    'bright luxury fashion editorial resort street style boutique wardrobe'
   ].filter(Boolean).join(' ');
 }
 
@@ -249,38 +249,38 @@ function pickOneOfEach(resolvedNames: string[], closetItems: any[]) {
 const CITY_CONFIG = [
   {
     city: 'Paris',
-    weatherHint: 'Warm, sunny summer. Breathable chic layers featuring luxury tailoring, shorts, or light dresses.',
-    bgUrl: 'https://images.pexels.com/photos/4184571/pexels-photo-4184571.jpeg?auto=compress&cs=tinysrgb&w=800'
+    weatherHint: 'Warm, sunny summer. Breathable chic layers, light dresses, polished tailoring, and editorial city styling.',
+    bgUrl: 'https://images.pexels.com/photos/33320737/pexels-photo-33320737.jpeg?auto=compress&cs=tinysrgb&w=1000'
   },
   {
     city: 'Rome',
-    weatherHint: 'Hot Mediterranean summer. Lightweight linen components, swimwear/resort layers, high-end shorts, breathable fabrics, and refined sandals.',
-    bgUrl: 'https://images.pexels.com/photos/18602876/pexels-photo-18602876.jpeg?auto=compress&cs=tinysrgb&w=800'
+    weatherHint: 'Hot Mediterranean summer. Linen, resort layers, refined sandals, and sunlit luxury travel styling.',
+    bgUrl: 'https://images.pexels.com/photos/5659303/pexels-photo-5659303.jpeg?auto=compress&cs=tinysrgb&w=1000'
   },
   {
     city: 'Oslo',
-    weatherHint: 'Pleasant, bright Nordic summer. Crisp transitional tailoring, luxury shorts, or trousers paired with a light layer.',
-    bgUrl: 'https://images.pexels.com/photos/18170373/pexels-photo-18170373.jpeg?auto=compress&cs=tinysrgb&w=800'
+    weatherHint: 'Bright Nordic summer. Crisp transitional pieces, clean texture, and relaxed luxury layers.',
+    bgUrl: 'https://images.pexels.com/photos/33377313/pexels-photo-33377313.jpeg?auto=compress&cs=tinysrgb&w=1000'
   },
   {
     city: 'London',
-    weatherHint: 'Polished city layers with refined tailoring and travel-ready texture.',
-    bgUrl: 'https://images.pexels.com/photos/672532/pexels-photo-672532.jpeg?auto=compress&cs=tinysrgb&w=800'
+    weatherHint: 'Polished city styling with refined tailoring, boutique texture, and day-to-evening versatility.',
+    bgUrl: 'https://images.pexels.com/photos/30297579/pexels-photo-30297579.jpeg?auto=compress&cs=tinysrgb&w=1000'
   },
   {
     city: 'New York',
-    weatherHint: 'Metropolitan polish with strong lines, expressive accessories, and practical day-to-evening styling.',
-    bgUrl: 'https://images.pexels.com/photos/466685/pexels-photo-466685.jpeg?auto=compress&cs=tinysrgb&w=800'
+    weatherHint: 'Metropolitan fashion polish with expressive accessories, clean lines, and editorial street styling.',
+    bgUrl: 'https://images.pexels.com/photos/33008929/pexels-photo-33008929.jpeg?auto=compress&cs=tinysrgb&w=1000'
   },
   {
     city: 'Tokyo',
     weatherHint: 'Modern city styling with sharp silhouettes, texture contrast, and refined minimalism.',
-    bgUrl: 'https://images.pexels.com/photos/2506923/pexels-photo-2506923.jpeg?auto=compress&cs=tinysrgb&w=800'
+    bgUrl: 'https://images.pexels.com/photos/19549105/pexels-photo-19549105.jpeg?auto=compress&cs=tinysrgb&w=1000'
   },
   {
     city: 'Milan',
     weatherHint: 'Italian fashion polish with elegant tailoring, designer texture, and understated drama.',
-    bgUrl: 'https://images.pexels.com/photos/2662116/pexels-photo-2662116.jpeg?auto=compress&cs=tinysrgb&w=800'
+    bgUrl: 'https://images.pexels.com/photos/33320737/pexels-photo-33320737.jpeg?auto=compress&cs=tinysrgb&w=1000'
   },
 ];
 
@@ -438,7 +438,7 @@ export async function getDailyOutfitsAction(
       footwearImageUrl: null,
       city: "Home",
       temp: '--',
-      cityBg: "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?auto=format&fit=crop&w=1200&h=800&q=80",
+      cityBg: "https://images.pexels.com/photos/33320737/pexels-photo-33320737.jpeg?auto=compress&cs=tinysrgb&w=1000",
     }];
   }
 

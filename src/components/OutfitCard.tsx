@@ -56,34 +56,34 @@ interface OutfitCardProps {
 
 const CITY_GALLERIES: Record<string, string[]> = {
   'oslo': [
-    "https://images.pexels.com/photos/18170373/pexels-photo-18170373.jpeg?auto=compress&cs=tinysrgb&w=800", 
-    "https://images.pexels.com/photos/33377313/pexels-photo-33377313.jpeg?auto=compress&cs=tinysrgb&w=800", 
-    "https://images.pexels.com/photos/19549105/pexels-photo-19549105.jpeg?auto=compress&cs=tinysrgb&w=800"  
+    "https://images.pexels.com/photos/33377313/pexels-photo-33377313.jpeg?auto=compress&cs=tinysrgb&w=1000",
+    "https://images.pexels.com/photos/19549105/pexels-photo-19549105.jpeg?auto=compress&cs=tinysrgb&w=1000",
+    "https://images.pexels.com/photos/30297579/pexels-photo-30297579.jpeg?auto=compress&cs=tinysrgb&w=1000"
   ],
   'paris': [
-    "https://images.pexels.com/photos/4184571/pexels-photo-4184571.jpeg?auto=compress&cs=tinysrgb&w=800", 
-    "https://images.pexels.com/photos/30297579/pexels-photo-30297579.jpeg?auto=compress&cs=tinysrgb&w=800", 
-    "https://images.pexels.com/photos/33320737/pexels-photo-33320737.jpeg?auto=compress&cs=tinysrgb&w=800"  
+    "https://images.pexels.com/photos/33320737/pexels-photo-33320737.jpeg?auto=compress&cs=tinysrgb&w=1000",
+    "https://images.pexels.com/photos/30297579/pexels-photo-30297579.jpeg?auto=compress&cs=tinysrgb&w=1000",
+    "https://images.pexels.com/photos/5659303/pexels-photo-5659303.jpeg?auto=compress&cs=tinysrgb&w=1000"
   ],
   'rome': [
-    "https://images.pexels.com/photos/18602876/pexels-photo-18602876.jpeg?auto=compress&cs=tinysrgb&w=800", 
-    "https://images.pexels.com/photos/33008929/pexels-photo-33008929.jpeg?auto=compress&cs=tinysrgb&w=800", 
-    "https://images.pexels.com/photos/5659303/pexels-photo-5659303.jpeg?auto=compress&cs=tinysrgb&w=800"    
+    "https://images.pexels.com/photos/5659303/pexels-photo-5659303.jpeg?auto=compress&cs=tinysrgb&w=1000",
+    "https://images.pexels.com/photos/33008929/pexels-photo-33008929.jpeg?auto=compress&cs=tinysrgb&w=1000",
+    "https://images.pexels.com/photos/33320737/pexels-photo-33320737.jpeg?auto=compress&cs=tinysrgb&w=1000"
   ],
   'london': [
-    "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&q=80&w=800",
-    "https://images.unsplash.com/photo-1520939817895-060bdaf4fe1b?auto=format&fit=crop&q=80&w=800",
-    "https://images.unsplash.com/photo-1529655683826-aba9b3e77383?auto=format&fit=crop&q=80&w=800"
+    "https://images.pexels.com/photos/30297579/pexels-photo-30297579.jpeg?auto=compress&cs=tinysrgb&w=1000",
+    "https://images.pexels.com/photos/33320737/pexels-photo-33320737.jpeg?auto=compress&cs=tinysrgb&w=1000",
+    "https://images.pexels.com/photos/19549105/pexels-photo-19549105.jpeg?auto=compress&cs=tinysrgb&w=1000"
   ],
   'new york': [
-    "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?auto=format&fit=crop&q=80&w=800",
-    "https://images.unsplash.com/photo-1485871981521-5b1fd3805eee?auto=format&fit=crop&q=80&w=800",
-    "https://images.unsplash.com/photo-1500916434205-0c77489c6cf7?auto=format&fit=crop&q=80&w=800"
+    "https://images.pexels.com/photos/33008929/pexels-photo-33008929.jpeg?auto=compress&cs=tinysrgb&w=1000",
+    "https://images.pexels.com/photos/33320737/pexels-photo-33320737.jpeg?auto=compress&cs=tinysrgb&w=1000",
+    "https://images.pexels.com/photos/30297579/pexels-photo-30297579.jpeg?auto=compress&cs=tinysrgb&w=1000"
   ],
   'default': [
-    "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=800", 
-    "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=800", 
-    "https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?auto=format&fit=crop&q=80&w=800"  
+    "https://images.pexels.com/photos/33320737/pexels-photo-33320737.jpeg?auto=compress&cs=tinysrgb&w=1000",
+    "https://images.pexels.com/photos/5659303/pexels-photo-5659303.jpeg?auto=compress&cs=tinysrgb&w=1000",
+    "https://images.pexels.com/photos/30297579/pexels-photo-30297579.jpeg?auto=compress&cs=tinysrgb&w=1000"
   ]
 };
 
