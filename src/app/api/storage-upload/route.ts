@@ -7,6 +7,7 @@ import path from "path";
 import fs from "fs/promises";
 import crypto from "crypto";
 import { normalizeWardrobeMetadata } from "@/lib/wardrobeMetadata";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const runtime = "nodejs";
 
@@ -42,6 +43,82 @@ function titleFromFileName(name: string) {
 function publicStorageUrl(bucket: string, objectPath: string) {
   const encodedPath = objectPath.split("/").map(encodeURIComponent).join("/");
   return `https://storage.googleapis.com/${bucket}/${encodedPath}`;
+}
+
+function extractJson(text: string) {
+  const cleaned = text.replace(/```json\n?|```/g, "").trim();
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+
+  if (start === -1 || end === -1 || end <= start) return {};
+
+  try {
+    return JSON.parse(cleaned.slice(start, end + 1));
+  } catch {
+    return {};
+  }
+}
+
+async function analyzeImageMetadata(imageBase64: string, mimeType: string, fileName: string) {
+  const apiKey =
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
+    process.env.GOOGLE_API_KEY ||
+    "";
+
+  if (!apiKey) return {};
+
+  try {
+    const base64Data = imageBase64.includes(",")
+      ? imageBase64.split(",")[1]
+      : imageBase64;
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    const prompt = [
+      "Analyze this fashion or footwear image for SkoMiDora.",
+      "Return ONLY valid JSON with:",
+      "{",
+      "\"itemName\": \"specific product-style name\",",
+      "\"brand\": \"brand if visible or recognizable, otherwise Unknown\",",
+      "\"brandName\": \"same as brand\",",
+      "\"designer\": \"designer or fashion house if visible or recognizable, otherwise Unknown\",",
+      "\"designerName\": \"same as designer\",",
+      "\"itemType\": \"Shoes | Sandal | Ankle Boot | Dress | Top | Bottom | Outerwear | Accessory | Uncategorized\",",
+      "\"category\": \"general category\",",
+      "\"color\": \"dominant color\",",
+      "\"material\": \"likely material\",",
+      "\"generalMaterial\": \"likely material\",",
+      "\"narrativeDescription\": \"one polished sentence\",",
+      "\"styleKeywords\": [\"3 to 8 keywords\"],",
+      "\"tags\": [\"searchable tags\"],",
+      "\"season\": [\"spring\",\"summer\",\"fall\",\"winter\",\"all-season\"],",
+      "\"weatherSuitability\": [\"hot\",\"warm\",\"mild\",\"cool\",\"cold\",\"rain\",\"indoor\",\"dry\"],",
+      "\"eventCategory\": [\"city\",\"casual\",\"evening\",\"cocktail\",\"business-casual\",\"travel\",\"resort\"],",
+      "\"formality\": \"casual | smart-casual | business-casual | cocktail | formal\",",
+      "\"metadataConfidence\": 0.75",
+      "}",
+      "Do not guess luxury brands without visible evidence.",
+      "Original filename: " + fileName
+    ].join("\n");
+
+    const result = await model.generateContent([
+      prompt,
+      {
+        inlineData: {
+          data: base64Data,
+          mimeType,
+        },
+      },
+    ]);
+
+    const parsed = extractJson(result.response.text());
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch (error) {
+    console.warn("SkoMiDora upload image metadata analysis skipped:", error);
+    return {};
+  }
 }
 
 function inferLensMetadata(fileName: string) {
@@ -207,25 +284,58 @@ export async function POST(req: NextRequest) {
     const imageUrl = publicStorageUrl(BUCKET_NAME, imagePath);
 
     const db = getFirestore();
+
+    const aiMetadata = await analyzeImageMetadata(imageBase64, contentType, originalName);
+
     const metadata = normalizeWardrobeMetadata(
       inferLensMetadata(originalName),
-      commercialMetadata
+      {
+        ...aiMetadata,
+        ...commercialMetadata,
+      }
     );
+
+    const displayBrand =
+      metadata.brandName ||
+      metadata.brand ||
+      metadata.designerName ||
+      "Unknown";
+
+    const displayDesigner =
+      metadata.designerName ||
+      metadata.designer ||
+      displayBrand ||
+      "Unknown";
+
+    const displayMaterial =
+      metadata.generalMaterial ||
+      metadata.material ||
+      metadata.materials ||
+      "Unknown";
+
+    const aiAnalyzed = Object.keys(aiMetadata).length > 0;
 
     const docRef = await db.collection("publicWardrobeItems").add({
       itemName: metadata.itemName,
       name: metadata.itemName,
+      title: metadata.itemName,
+      displayName: metadata.itemName,
+      aiFriendlyName: metadata.itemName,
 
       itemType: metadata.itemType,
       type: metadata.itemType,
       category: metadata.itemType,
 
-      designer: metadata.designerName,
-      designerName: metadata.designerName,
-      brand: metadata.designerName,
+      designer: displayDesigner,
+      designerName: displayDesigner,
+      brand: displayBrand,
+      brandName: displayBrand,
+      manufacturer: displayBrand,
 
       color: metadata.color,
-      generalMaterial: metadata.generalMaterial,
+      generalMaterial: displayMaterial,
+      material: displayMaterial,
+      materials: displayMaterial,
       detailedSpecifications: metadata.detailedSpecifications,
       narrativeDescription: metadata.narrativeDescription,
       styleKeywords: metadata.styleKeywords,
@@ -242,8 +352,11 @@ export async function POST(req: NextRequest) {
       price: metadata.price,
       priceText: metadata.priceText,
       currency: metadata.currency,
-      metadataSource: metadata.metadataSource,
-      metadataConfidence: metadata.metadataConfidence,
+      metadataSource: aiAnalyzed ? "Gemini Vision Upload Analysis" : metadata.metadataSource,
+      metadataConfidence: aiAnalyzed
+        ? Math.max(Number(metadata.metadataConfidence || 0), Number((aiMetadata as any).metadataConfidence || 0.75))
+        : metadata.metadataConfidence,
+      aiMetadata,
 
       imageUrl,
       imagePath,
@@ -251,7 +364,7 @@ export async function POST(req: NextRequest) {
       source: "SkoMiDora Lens",
       imageStatus: "available",
       uploadStatus: "uploaded",
-      aiAnalyzed: false,
+      aiAnalyzed,
 
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
