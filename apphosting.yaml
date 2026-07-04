@@ -59,6 +59,9 @@ env:
     availability: [BUILD, RUNTIME]
     
   # --- Other Secrets ---
+  - variable: SKOMIDORA_IOT_DEVICE_SECRET
+    secret: SKOMIDORA_IOT_DEVICE_SECRET
+    availability: [RUNTIME]
   - variable: WEATHER_API_KEY
     secret: WEATHER_API_KEY
     availability: [BUILD, RUNTIME]
