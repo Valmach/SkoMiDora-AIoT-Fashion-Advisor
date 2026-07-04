@@ -99,7 +99,7 @@ async function analyzeImageMetadata(imageBase64: string, mimeType: string, fileN
       "\"formality\": \"casual | smart-casual | business-casual | cocktail | formal\",",
       "\"metadataConfidence\": 0.75",
       "}",
-      "Do not guess luxury brands without visible evidence.",
+      "For footwear, apparel, handbags, and luxury fashion, the designer house is normally also the brand. When only the designer is identifiable, return that designer name in both the brand and designer fields. When only the brand is identifiable, return it in both fields. Preserve different values when the image clearly represents a collaboration, custom maker, atelier, diffusion label, or licensed brand. Do not guess luxury brands without visible evidence.",
       "Original filename: " + fileName
     ].join("\n");
 
@@ -313,6 +313,67 @@ export async function POST(req: NextRequest) {
       metadata.materials ||
       "Unknown";
 
+    const meaningfulFashionLabel = (value: unknown): string | null => {
+      if (value === null || value === undefined) return null;
+
+      const cleaned = String(value).replace(/\s+/g, " ").trim();
+
+      if (!cleaned) return null;
+
+      const normalized = cleaned.toLowerCase();
+
+      const invalidValues = new Set([
+        "unknown",
+        "unknown brand",
+        "unknown designer",
+        "n/a",
+        "na",
+        "none",
+        "null",
+        "undefined",
+        "not available",
+        "not identified",
+        "not visible",
+        "unbranded",
+        "generic"
+      ]);
+
+      return invalidValues.has(normalized) ? null : cleaned;
+    };
+
+    const detectedBrand =
+      meaningfulFashionLabel(metadata.brand) ||
+      meaningfulFashionLabel(metadata.brandName) ||
+      meaningfulFashionLabel(metadata.manufacturer) ||
+      meaningfulFashionLabel(displayBrand);
+
+    const detectedDesigner =
+      meaningfulFashionLabel(metadata.designer) ||
+      meaningfulFashionLabel(metadata.designerName) ||
+      meaningfulFashionLabel(metadata.fashionHouse) ||
+      meaningfulFashionLabel(displayDesigner);
+
+    // The brand and designer are commonly identical for footwear and fashion.
+    // Only use the opposite field as a fallback when one value is missing.
+    const resolvedBrand =
+      detectedBrand ||
+      detectedDesigner ||
+      "Unknown";
+
+    const resolvedDesigner =
+      detectedDesigner ||
+      detectedBrand ||
+      "Unknown";
+
+    const brandResolutionSource =
+      detectedBrand && detectedDesigner
+        ? "brand-and-designer-detected"
+        : detectedBrand
+          ? "brand-detected-designer-copied"
+          : detectedDesigner
+            ? "designer-detected-brand-copied"
+            : "unresolved";
+
     const aiAnalyzed = Object.keys(aiMetadata).length > 0;
 
     const docRef = await db.collection("publicWardrobeItems").add({
@@ -326,11 +387,17 @@ export async function POST(req: NextRequest) {
       type: metadata.itemType,
       category: metadata.itemType,
 
-      designer: displayDesigner,
-      designerName: displayDesigner,
-      brand: displayBrand,
-      brandName: displayBrand,
-      manufacturer: displayBrand,
+      designer: resolvedDesigner,
+      designerName: resolvedDesigner,
+      brand: resolvedBrand,
+      brandName: resolvedBrand,
+      manufacturer: resolvedBrand,
+      label: resolvedBrand,
+      fashionHouse: resolvedDesigner,
+      detectedBrand: resolvedBrand,
+      detectedDesigner: resolvedDesigner,
+      brandDesignerResolved: resolvedBrand !== "Unknown",
+      brandResolutionSource,
 
       color: metadata.color,
       generalMaterial: displayMaterial,
