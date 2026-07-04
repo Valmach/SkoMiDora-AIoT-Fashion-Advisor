@@ -30,6 +30,26 @@ const VALID_EVENTS = new Set([
   "slot-changed",
 ]);
 
+const VALID_CONDITION_EVENTS = new Set([
+  "new",
+  "worn",
+  "cleaned",
+  "repaired",
+  "resoled",
+  "scuffed",
+  "oxidized",
+  "humidity-exposure",
+  "temperature-exposure",
+  "photo-added",
+  "condition-inspected",
+  "stored",
+  "removed",
+  "returned",
+  "authenticated",
+  "valued",
+  "listed-for-resale",
+]);
+
 function cleanText(value: unknown): string | null {
   if (value === null || value === undefined) return null;
   const cleaned = String(value).replace(/\s+/g, " ").trim();
@@ -48,6 +68,32 @@ function cleanNumber(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function cleanStringArray(value: unknown, limit = 20): string[] {
+  if (!value) return [];
+
+  const raw = Array.isArray(value)
+    ? value
+    : String(value).split(/[,;|]/);
+
+  const seen = new Set<string>();
+  const out: string[] = [];
+
+  for (const entry of raw) {
+    const cleaned = cleanText(entry);
+    if (!cleaned) continue;
+
+    const key = cleaned.toLowerCase();
+    if (seen.has(key)) continue;
+
+    seen.add(key);
+    out.push(cleaned);
+
+    if (out.length >= limit) break;
+  }
+
+  return out;
+}
+
 function physicalStatus(eventType: string, fallback: string | null) {
   if (eventType === "box-removed") return "removed";
   if (eventType === "box-returned") return "stored";
@@ -57,11 +103,122 @@ function physicalStatus(eventType: string, fallback: string | null) {
   return fallback || "online";
 }
 
+function autoConditionEventFromSensors(eventType: string, humidityPct: number | null, temperatureC: number | null) {
+  if (eventType === "humidity-high") return "humidity-exposure";
+  if (eventType === "temperature-high") return "temperature-exposure";
+
+  if (humidityPct !== null && humidityPct >= 70) return "humidity-exposure";
+  if (temperatureC !== null && temperatureC >= 32) return "temperature-exposure";
+
+  return null;
+}
+
+function severityFromSensors(
+  conditionEventType: string | null,
+  humidityPct: number | null,
+  temperatureC: number | null,
+  fallback: string | null
+) {
+  if (fallback) return fallback;
+
+  if (conditionEventType === "humidity-exposure") {
+    if (humidityPct !== null && humidityPct >= 80) return "high";
+    if (humidityPct !== null && humidityPct >= 70) return "medium";
+    return "low";
+  }
+
+  if (conditionEventType === "temperature-exposure") {
+    if (temperatureC !== null && temperatureC >= 36) return "high";
+    if (temperatureC !== null && temperatureC >= 32) return "medium";
+    return "low";
+  }
+
+  return "low";
+}
+
+function conditionSummaryPatch(conditionEventType: string, eventTime: FirebaseFirestore.FieldValue) {
+  const patch: Record<string, unknown> = {
+    conditionUpdatedAt: eventTime,
+  };
+
+  if (conditionEventType === "new") {
+    patch.conditionStatus = "new";
+    patch.lastConditionStatusAt = eventTime;
+  }
+
+  if (conditionEventType === "worn") {
+    patch.conditionStatus = "worn";
+    patch.lastWornAt = eventTime;
+    patch.wearCount = FieldValue.increment(1);
+  }
+
+  if (conditionEventType === "cleaned") {
+    patch.conditionStatus = "cleaned";
+    patch.lastCleanedAt = eventTime;
+    patch.cleanCount = FieldValue.increment(1);
+  }
+
+  if (conditionEventType === "repaired") {
+    patch.conditionStatus = "repaired";
+    patch.lastRepairedAt = eventTime;
+    patch.repairCount = FieldValue.increment(1);
+  }
+
+  if (conditionEventType === "resoled") {
+    patch.conditionStatus = "resoled";
+    patch.lastResoledAt = eventTime;
+    patch.resoleCount = FieldValue.increment(1);
+  }
+
+  if (conditionEventType === "scuffed") {
+    patch.conditionStatus = "scuffed";
+    patch.lastScuffedAt = eventTime;
+    patch.scuffCount = FieldValue.increment(1);
+  }
+
+  if (conditionEventType === "oxidized") {
+    patch.conditionStatus = "oxidized";
+    patch.lastOxidizedAt = eventTime;
+    patch.oxidationCount = FieldValue.increment(1);
+  }
+
+  if (conditionEventType === "humidity-exposure") {
+    patch.conditionStatus = "humidity-exposed";
+    patch.lastHumidityExposureAt = eventTime;
+    patch.humidityExposureCount = FieldValue.increment(1);
+  }
+
+  if (conditionEventType === "temperature-exposure") {
+    patch.conditionStatus = "temperature-exposed";
+    patch.lastTemperatureExposureAt = eventTime;
+    patch.temperatureExposureCount = FieldValue.increment(1);
+  }
+
+  if (conditionEventType === "photo-added") {
+    patch.lastConditionPhotoAt = eventTime;
+    patch.photoHistoryCount = FieldValue.increment(1);
+  }
+
+  if (conditionEventType === "condition-inspected") {
+    patch.lastConditionInspectionAt = eventTime;
+    patch.conditionInspectionCount = FieldValue.increment(1);
+  }
+
+  return patch;
+}
+
 export async function GET() {
   return NextResponse.json({
     ok: true,
     service: "SkoMiDora IoT Telemetry",
     route: "/api/iot/telemetry",
+    supports: {
+      iotDeviceEvents: true,
+      smartShoeboxes: true,
+      smartShelves: true,
+      publicWardrobeItems: true,
+      conditionLedger: true,
+    },
   });
 }
 
@@ -113,7 +270,37 @@ export async function POST(req: NextRequest) {
     const itemId = cleanId(body.itemId);
     const shelfId = cleanId(body.shelfId);
     const slotId = cleanId(body.slotId);
+
+    const batteryLevel = cleanNumber(body.batteryLevel);
+    const temperatureC = cleanNumber(body.temperatureC);
+    const humidityPct = cleanNumber(body.humidityPct);
+    const exposureMinutes = cleanNumber(body.exposureMinutes);
+
     const currentPhysicalStatus = physicalStatus(eventType, cleanText(body.status));
+
+    const explicitConditionEventType = cleanText(body.conditionEventType);
+    const autoConditionEventType = autoConditionEventFromSensors(eventType, humidityPct, temperatureC);
+    const conditionEventType = explicitConditionEventType || autoConditionEventType;
+
+    if (conditionEventType && !VALID_CONDITION_EVENTS.has(conditionEventType)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `Invalid conditionEventType: ${conditionEventType}`,
+          validConditionEventTypes: Array.from(VALID_CONDITION_EVENTS),
+        },
+        { status: 400 }
+      );
+    }
+
+    const severity = severityFromSensors(
+      conditionEventType,
+      humidityPct,
+      temperatureC,
+      cleanText(body.severity)
+    );
+
+    const photoUrls = cleanStringArray(body.photoUrls || body.photos || body.conditionPhotoUrls, 12);
 
     const telemetry = {
       userId: cleanText(body.userId),
@@ -135,11 +322,20 @@ export async function POST(req: NextRequest) {
       rfidTag: cleanText(body.rfidTag),
       nfcTag: cleanText(body.nfcTag),
 
-      batteryLevel: cleanNumber(body.batteryLevel),
+      batteryLevel,
       chargingStatus: cleanText(body.chargingStatus),
-      temperatureC: cleanNumber(body.temperatureC),
-      humidityPct: cleanNumber(body.humidityPct),
+      temperatureC,
+      humidityPct,
       signalStrength: cleanNumber(body.signalStrength),
+
+      conditionEventType,
+      conditionBefore: cleanText(body.conditionBefore),
+      conditionAfter: cleanText(body.conditionAfter),
+      conditionGrade: cleanText(body.conditionGrade),
+      severity,
+      exposureMinutes,
+      notes: cleanText(body.notes),
+      photoUrls,
 
       firmwareVersion: cleanText(body.firmwareVersion),
       source: cleanText(body.source) || "SkoMiDora Smart Box",
@@ -180,6 +376,7 @@ export async function POST(req: NextRequest) {
         signalStrength: telemetry.signalStrength,
         firmwareVersion: telemetry.firmwareVersion,
         lastEventType: eventType,
+        lastConditionEventType: conditionEventType || null,
         lastEventId: eventRef.id,
         lastHeartbeatAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
@@ -213,6 +410,50 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    let conditionLedgerId: string | null = null;
+
+    if (conditionEventType && itemId) {
+      const ledgerRef = db.collection("conditionLedger").doc();
+      conditionLedgerId = ledgerRef.id;
+
+      batch.set(ledgerRef, {
+        userId: telemetry.userId,
+        itemId,
+        boxId,
+        deviceId,
+        iotDeviceEventId: eventRef.id,
+
+        eventType: conditionEventType,
+        conditionBefore: telemetry.conditionBefore,
+        conditionAfter: telemetry.conditionAfter,
+        conditionGrade: telemetry.conditionGrade,
+        severity,
+        confidence: telemetry.confidence,
+        notes: telemetry.notes,
+        source: telemetry.source,
+
+        photos: photoUrls.map((url, index) => ({
+          imageUrl: url,
+          angle: index === 0 ? "primary" : `photo-${index + 1}`,
+          source: telemetry.source,
+        })),
+
+        sensorSnapshot: {
+          temperatureC,
+          humidityPct,
+          batteryLevel,
+          exposureMinutes,
+          signalStrength: telemetry.signalStrength,
+        },
+
+        serviceProvider: cleanText(body.serviceProvider),
+        repairCost: cleanNumber(body.repairCost),
+        currency: cleanText(body.currency),
+
+        createdAt: FieldValue.serverTimestamp(),
+      });
+    }
+
     if (itemId) {
       const wardrobeRef = db.collection("publicWardrobeItems").doc(itemId);
 
@@ -241,6 +482,40 @@ export async function POST(req: NextRequest) {
         wardrobeUpdate.lastReturnedAt = FieldValue.serverTimestamp();
       }
 
+      if (humidityPct !== null) {
+        wardrobeUpdate.lastHumidityPct = humidityPct;
+        wardrobeUpdate.worstHumidityPct = humidityPct;
+      }
+
+      if (temperatureC !== null) {
+        wardrobeUpdate.lastTemperatureC = temperatureC;
+        wardrobeUpdate.maxTemperatureC = temperatureC;
+      }
+
+      if (conditionEventType) {
+        Object.assign(
+          wardrobeUpdate,
+          conditionSummaryPatch(conditionEventType, FieldValue.serverTimestamp())
+        );
+
+        wardrobeUpdate.conditionLedgerLatestEventId = conditionLedgerId;
+        wardrobeUpdate.lastConditionEventType = conditionEventType;
+        wardrobeUpdate.lastConditionSeverity = severity;
+
+        if (telemetry.conditionGrade) {
+          wardrobeUpdate.conditionGrade = telemetry.conditionGrade;
+        }
+
+        const conditionTags = [
+          conditionEventType,
+          severity ? `${severity}-severity` : null,
+          humidityPct !== null && humidityPct >= 70 ? "humidity-monitored" : null,
+          temperatureC !== null && temperatureC >= 32 ? "temperature-monitored" : null,
+        ].filter(Boolean);
+
+        wardrobeUpdate.conditionTags = FieldValue.arrayUnion(...conditionTags);
+      }
+
       batch.set(wardrobeRef, wardrobeUpdate, { merge: true });
     }
 
@@ -249,15 +524,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       eventId: eventRef.id,
+      conditionLedgerId,
       boxId,
       deviceId,
       itemId,
       eventType,
+      conditionEventType,
       collectionsUpdated: {
         iotDeviceEvents: true,
         smartShoeboxes: true,
         smartShelves: Boolean(shelfId),
         publicWardrobeItems: Boolean(itemId),
+        conditionLedger: Boolean(conditionLedgerId),
       },
     });
   } catch (error: any) {
