@@ -1,12 +1,10 @@
 'use server';
 
 import { google } from 'googleapis';
-import { getFirebaseAdmin } from '@/lib/firebase-admin';
+import { adminDb } from '@/lib/firebase-admin';
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
-// Initialize the database using your new lazy-loaded function
-const { db: adminDb } = getFirebaseAdmin();
 
 // 1. UNIVERSAL FASHION SCHEMA (Matches your Firebase Database exactly)
 const FashionItemSchema = z.object({
