@@ -1,7 +1,17 @@
-import { createHmac, randomUUID } from "crypto";
+import {
+  FieldValue,
+  Timestamp,
+} from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import { google } from "googleapis";
 
+import { adminDb } from "@/lib/firebase-admin";
+import {
+  CALENDAR_READONLY_SCOPE,
+  createSignedOAuthState,
+  GoogleCalendarConfigError,
+  requireEnvironmentVariable,
+} from "@/lib/server/google-calendar-oauth";
 import {
   FirebaseBearerAuthError,
   requireFirebaseUser,
@@ -10,52 +20,10 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const CALENDAR_READONLY_SCOPE =
-  "https://www.googleapis.com/auth/calendar.readonly";
-
-class GoogleCalendarConfigError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "GoogleCalendarConfigError";
-  }
-}
-
-function requireEnvironmentVariable(name: string): string {
-  const value = process.env[name]?.trim();
-
-  if (!value) {
-    throw new GoogleCalendarConfigError(
-      `${name} is not configured.`,
-    );
-  }
-
-  return value;
-}
-
-function createSignedOAuthState(
-  uid: string,
-  signingSecret: string,
-): string {
-  const payload = {
-    uid,
-    nonce: randomUUID(),
-    expiresAt: Date.now() + 10 * 60 * 1000,
-  };
-
-  const encodedPayload = Buffer.from(
-    JSON.stringify(payload),
-  ).toString("base64url");
-
-  const signature = createHmac("sha256", signingSecret)
-    .update(encodedPayload)
-    .digest("base64url");
-
-  return `${encodedPayload}.${signature}`;
-}
-
 export async function GET(request: Request) {
   try {
-    const firebaseUser = await requireFirebaseUser(request);
+    const firebaseUser =
+      await requireFirebaseUser(request);
 
     const clientId = requireEnvironmentVariable(
       "GOOGLE_CLIENT_ID",
@@ -73,10 +41,24 @@ export async function GET(request: Request) {
       redirectUri,
     );
 
-    const state = createSignedOAuthState(
-      firebaseUser.uid,
-      clientSecret,
-    );
+    const { state, payload } =
+      createSignedOAuthState(
+        firebaseUser.uid,
+        clientSecret,
+      );
+
+    await adminDb
+      .collection("oauthStates")
+      .doc(payload.nonce)
+      .set({
+        uid: payload.uid,
+        provider: "googleCalendar",
+        expiresAt: Timestamp.fromMillis(
+          payload.expiresAt,
+        ),
+        createdAt: FieldValue.serverTimestamp(),
+        consumedAt: null,
+      });
 
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: "offline",
@@ -97,7 +79,9 @@ export async function GET(request: Request) {
       );
     }
 
-    if (error instanceof GoogleCalendarConfigError) {
+    if (
+      error instanceof GoogleCalendarConfigError
+    ) {
       console.warn(
         "Google Calendar OAuth configuration is incomplete:",
         error.message,
