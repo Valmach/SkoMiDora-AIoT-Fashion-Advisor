@@ -73,7 +73,12 @@ export default function CalendarConnectButton() {
   };
 
   return (
-    <Button onClick={handleConnect} disabled={loading}>
+    <Button
+        onClick={handleConnect}
+        disabled={loading}
+        variant="outline"
+        className="h-9 shrink-0 rounded-none border-white/70 bg-black px-4 text-[10px] font-medium uppercase tracking-[0.2em] text-white transition-colors duration-200 hover:border-[#9A1B22] hover:bg-[#9A1B22] hover:text-white"
+      >
       <CalendarDays className="h-4 w-4 mr-2" />
       {loading ? "Connecting…" : "Connect Google Calendar"}
     </Button>
