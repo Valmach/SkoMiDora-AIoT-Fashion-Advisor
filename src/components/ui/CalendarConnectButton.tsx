@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { CalendarDays } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { auth } from "@/lib/firebase";
 import { useState } from "react";
 
 export default function CalendarConnectButton() {
@@ -12,18 +13,58 @@ export default function CalendarConnectButton() {
   const handleConnect = async () => {
     try {
       setLoading(true);
+
+      const user = auth.currentUser;
+
+      if (!user) {
+        throw new Error(
+          "Please sign in before connecting Google Calendar.",
+        );
+      }
+
       toast({
         title: "Connecting to Google…",
-        description: "Redirecting to Google Calendar login...",
+        description: "Preparing secure Google Calendar authorization...",
       });
 
-      const res = await fetch("/api/google-calendar/auth");
-      const { authUrl } = await res.json();
-      window.location.href = authUrl;
+      const idToken = await user.getIdToken();
+
+      const res = await fetch("/api/google-calendar/auth", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+        cache: "no-store",
+      });
+
+      const payload = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(
+          payload?.error ||
+            `Google Calendar authorization failed with status ${res.status}.`,
+        );
+      }
+
+      if (
+        typeof payload?.authUrl !== "string" ||
+        !payload.authUrl.startsWith("https://")
+      ) {
+        throw new Error(
+          "Google Calendar authorization URL was not returned.",
+        );
+      }
+
+      window.location.assign(payload.authUrl);
     } catch (err) {
+      console.error("Google Calendar connection failed:", err);
+
       toast({
         title: "Connection Failed",
-        description: "Could not connect to Google Calendar.",
+        description:
+          err instanceof Error
+            ? err.message
+            : "Could not connect to Google Calendar.",
         variant: "destructive",
       });
     } finally {
