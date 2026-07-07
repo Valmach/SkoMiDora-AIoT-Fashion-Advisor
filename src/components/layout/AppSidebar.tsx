@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import CalendarConnectButton from "@/components/ui/CalendarConnectButton";
 import { Bonheur_Royale } from 'next/font/google';
 import { 
   LayoutDashboard, 
@@ -137,6 +138,11 @@ export default function Sidebar() {
         {/* UTILITY FOOTER */}
         <div className="p-4 border-t border-zinc-900/50 flex flex-col gap-2 shrink-0">
           
+          {/* Google Calendar Connection */}
+          <CalendarConnectButton
+            compact={isCollapsed && !isMobileOpen}
+          />
+
           {/* Settings */}
           <Link 
             href="/settings"

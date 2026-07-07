@@ -6,7 +6,13 @@ import { useToast } from "@/hooks/use-toast";
 import { auth } from "@/lib/firebase";
 import { useState } from "react";
 
-export default function CalendarConnectButton() {
+type CalendarConnectButtonProps = {
+  compact?: boolean;
+};
+
+export default function CalendarConnectButton({
+  compact = false,
+}: CalendarConnectButtonProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
@@ -74,13 +80,23 @@ export default function CalendarConnectButton() {
 
   return (
     <Button
-        onClick={handleConnect}
-        disabled={loading}
-        variant="outline"
-        className="h-9 shrink-0 rounded-none border-white/70 bg-black px-4 text-[10px] font-medium uppercase tracking-[0.2em] text-white transition-colors duration-200 hover:border-[#9A1B22] hover:bg-[#9A1B22] hover:text-white"
-      >
-      <CalendarDays className="h-4 w-4 mr-2" />
-      {loading ? "Connecting…" : "Connect Google Calendar"}
+      onClick={handleConnect}
+      disabled={loading}
+      variant="outline"
+      title="Connect Google Calendar"
+      className={`h-12 w-full rounded-sm border border-zinc-900 bg-transparent text-[9px] font-semibold uppercase tracking-[0.18em] text-zinc-500 transition-all duration-300 hover:border-[#9A1B22]/40 hover:bg-[#9A1B22]/10 hover:text-white ${
+        compact ? "justify-center px-0" : "justify-start px-5"
+      }`}
+    >
+      <CalendarDays
+        className={`h-4 w-4 shrink-0 ${
+          compact ? "" : "mr-3"
+        }`}
+      />
+      {!compact &&
+        (loading
+          ? "Connecting…"
+          : "Connect Calendar")}
     </Button>
   );
 }

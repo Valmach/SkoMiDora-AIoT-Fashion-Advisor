@@ -6,7 +6,6 @@ import { getUpcomingEventsStyleAdviceAction } from '@/app/actions/get-calendar-d
 import UpcomingEventAdviceCard from '@/components/UpcomingEventAdviceCard';
 import { collection, getDocs } from 'firebase/firestore';
 import { auth, firestore } from '@/lib/firebase';
-import CalendarConnectButton from '@/components/ui/CalendarConnectButton';
 import { Loader2, Calendar, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
@@ -112,8 +111,6 @@ export default function UpcomingEventsPage() {
         </div>
        
         <div className="flex flex-col sm:flex-row gap-2">
-          <CalendarConnectButton />
-
           <Button
           onClick={fetchData}
           variant="outline"
