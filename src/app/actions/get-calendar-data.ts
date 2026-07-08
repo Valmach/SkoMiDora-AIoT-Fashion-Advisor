@@ -3,15 +3,32 @@
 import { getWeatherForLocation } from './get-weather';
 
 // Helper to find the best item from the closet based on multiple keyword matches
-function findBestItems(items: any[], keywords: string[], limit: number = 3) {
-  const scored = items.map(item => {
-    let score = 0;
-    const itemData = JSON.stringify(item).toLowerCase();
-    keywords.forEach(kw => {
-      if (itemData.includes(kw.toLowerCase())) score++;
+function findBestItems(
+  items: any[],
+  keywords: string[],
+  limit: number = 3,
+  excludedKeywords: string[] = [],
+) {
+  const scored = items
+    .filter(item => {
+      const itemData = JSON.stringify(item).toLowerCase();
+
+      return !excludedKeywords.some(keyword =>
+        itemData.includes(keyword.toLowerCase())
+      );
+    })
+    .map(item => {
+      let score = 0;
+      const itemData = JSON.stringify(item).toLowerCase();
+
+      keywords.forEach(keyword => {
+        if (itemData.includes(keyword.toLowerCase())) {
+          score++;
+        }
+      });
+
+      return { ...item, score };
     });
-    return { ...item, score };
-  });
 
   return scored
     .filter(item => item.score > 0)
@@ -36,16 +53,16 @@ export async function getUpcomingEventsStyleAdviceAction(closetItems: any[]) {
   // 2. Define specific city "Vibe" keywords with EXPLICIT Landmark Backgrounds
   const cityConfigs = [
     {
-      name: "Paris Fashion Week",
+      name: "Paris Summer Fashion Event",
       city: "Paris, France",
       date: formatDate(now, "9:00 AM"), 
       keywords: ["leather", "wide-leg", "silk", "chic", "tweed", "square-toe", "beret", "foulard"],
-      reasoning: "Paris spring fashion is embracing 'Sporty Chic' with wide-leg silhouettes. Layering a light tweed blazer over silk is essential for transitioning from brisk mornings to clear afternoon skies.",
+      reasoning: "Paris summer styling should prioritize breathable city polish: silk, cotton, linen, lightweight tailoring, dresses, skirts, loafers, flats, mules, refined sneakers, and event-appropriate heels. Avoid winter layers and swimwear for ordinary city events.",
       // Iconic Eiffel Tower 
       cityBg: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?q=80&w=1200&auto=format&fit=crop"
     },
     {
-      name: "Oslo Spring Summit",
+      name: "Oslo Summer Summit",
       city: "Oslo, Norway",
       date: formatDate(tomorrow, "11:30 AM"), 
       keywords: ["linen", "cotton", "silk", "shirt", "blouse", "trousers", "skirt", "sandal", "loafer", "mule", "lightweight", "tailored"],
@@ -57,7 +74,7 @@ export async function getUpcomingEventsStyleAdviceAction(closetItems: any[]) {
       name: "Rome Cultural Tour",
       city: "Rome, Italy",
       date: formatDate(weekend, "6:00 PM"), 
-      keywords: ["linen", "silk", "dress", "skirt", "shorts", "swimwear", "resort", "sandal", "mule", "slide", "sleeveless", "halter"],
+      keywords: ["linen", "silk", "dress", "skirt", "shorts", "tailored", "sandal", "mule", "loafer", "flat", "sleeveless", "halter"],
       reasoning: "Rome is being styled for hot Mediterranean summer. Prioritize linen, silk, lightweight dresses, skirts, refined shorts, resort pieces, sandals, mules, and breathable evening polish. Avoid boots, trenches, heavy knits, and winter-weight layering in high heat.",
       // The Colosseum
       cityBg: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?q=80&w=1200&auto=format&fit=crop"
@@ -74,7 +91,25 @@ export async function getUpcomingEventsStyleAdviceAction(closetItems: any[]) {
       liveWeatherString = `${weatherData.current.temp_c}°C (${weatherData.current.temp_f}°F) | ${weatherData.current.condition}`;
     }
 
-    const recommendations = findBestItems(closetItems, config.keywords, 1);
+    const cityEventExclusions = [
+      "bikini",
+      "swimwear",
+      "swimsuit",
+      "swim suit",
+      "bathing suit",
+      "beachwear",
+      "poolwear",
+      "pool wear",
+      "cover-up",
+      "coverup",
+    ];
+
+    const recommendations = findBestItems(
+      closetItems,
+      config.keywords,
+      1,
+      cityEventExclusions,
+    );
     const topItem = recommendations[0];
 
     return {
