@@ -116,7 +116,7 @@ export default function SkomiDoraLens() {
         type="button"
         onClick={openPicker}
         disabled={isProcessing}
-        className="w-full sm:w-auto flex items-center justify-center gap-3 bg-[#9A1B22] text-white hover:bg-[#7A151B] px-8 py-6 rounded-none uppercase tracking-[0.2em] text-xs font-bold transition-all disabled:opacity-50 shadow-lg group-hover:shadow-[0_0_20px_rgba(154,27,34,0.3)] border border-[#9A1B22]"
+        className="w-auto flex items-center justify-center gap-2 bg-black text-white hover:bg-[#9A1B22] px-5 py-2.5 rounded-none uppercase tracking-[0.12em] text-[9px] font-medium transition-colors duration-200 disabled:opacity-50 border border-[#9A1B22]"
       >
         {isProcessing ? (
           <>
@@ -128,7 +128,7 @@ export default function SkomiDoraLens() {
           </>
         ) : (
           <>
-            <Camera size={16} /> Use SkoMiDora Lens Backend
+            <Camera size={14} /> SkoMiDora Lens Backend
           </>
         )}
       </button>
