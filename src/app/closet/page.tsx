@@ -17,6 +17,7 @@ import {
 
 import { useFirebase } from "@/firebase/provider";
 import SkomiDoraLens from "@/components/SkomiDoraLens";
+import { WARDROBE_TYPES } from "@/lib/wardrobe-taxonomy";
 
 const bonheur = Bonheur_Royale({ subsets: ['latin'], weight: ['400'] });
 const playfair = Playfair_Display({ subsets: ['latin'], weight: ['400', '600', '700'] });
@@ -145,8 +146,38 @@ export default function ClosetPage() {
     );
   }
 
-  const uniqueCategories = ["All", ...Array.from(new Set(items.map(item => item.itemType || "Uncategorized")))];
-  const filteredItems = activeFilter === "All" ? items : items.filter(item => (item.itemType || "Uncategorized") === activeFilter);
+  // Canonical wardrobe taxonomy shared across Digital Closet, AI Stylist,
+  // recommendations, and other wardrobe-aware features.
+  //
+  // Legacy Firestore itemType values are kept visible temporarily so no
+  // existing closet items disappear before the normalization migration runs.
+  const observedCategories = Array.from(
+    new Set(items.map((item) => item.itemType?.trim() || "Uncategorized"))
+  );
+
+  const canonicalTypeSet = new Set<string>(WARDROBE_TYPES);
+
+  const legacyCategories = observedCategories
+    .filter(
+      (category) =>
+        category !== "Uncategorized" && !canonicalTypeSet.has(category)
+    )
+    .sort((a, b) => a.localeCompare(b));
+
+  const uniqueCategories = [
+    "All",
+    ...WARDROBE_TYPES,
+    ...legacyCategories,
+    ...(observedCategories.includes("Uncategorized") ? ["Uncategorized"] : []),
+  ];
+
+  const filteredItems =
+    activeFilter === "All"
+      ? items
+      : items.filter(
+          (item) =>
+            (item.itemType?.trim() || "Uncategorized") === activeFilter
+        );
 
   return (
     <div className={`container mx-auto space-y-6 pb-12 h-[85vh] overflow-y-auto scrollbar-hide bg-black text-zinc-100 ${inter.className} px-4 pt-4`}>
