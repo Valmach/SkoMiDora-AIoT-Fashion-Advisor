@@ -68,12 +68,13 @@ export default function UpcomingEventsPage() {
         }
       }
 
-      if (calendarEvents.length > 0) {
-        setEvents(calendarEvents);
-      } else {
-        const advice = await getUpcomingEventsStyleAdviceAction(items);
-        setEvents(advice || []);
-      }
+      const advice =
+        await getUpcomingEventsStyleAdviceAction(
+          items,
+          calendarEvents,
+        );
+
+      setEvents(advice || []);
      
     } catch (error) {
       console.error("Error loading events:", error);
