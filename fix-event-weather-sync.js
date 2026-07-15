@@ -1118,17 +1118,31 @@ try {
   console.log('Wrote event enrichment action.');
   console.log('Wired Calendar events through enrichment.');
 
-  const obsoleteCheck = run('grep', [
-    '-nE',
-    'data/2\\.5/weather|live June|config\\.reasoning',
-    weatherPath,
-    calendarPath,
-  ]);
+  const obsoleteCheck = spawnSync(
+    'grep',
+    [
+      '-nE',
+      'data/2\\.5/weather|live June|config\\.reasoning',
+      weatherPath,
+      calendarPath,
+    ],
+    {
+      cwd: root,
+      encoding: 'utf8',
+    },
+  );
 
-  if (obsoleteCheck.trim()) {
+  if (obsoleteCheck.status === 0) {
     throw new Error(
       'Obsolete hardcoded logic remains:\n' +
-        obsoleteCheck,
+        (obsoleteCheck.stdout || ''),
+    );
+  }
+
+  if (obsoleteCheck.status !== 1) {
+    throw new Error(
+      'Unable to verify obsolete weather logic:\n' +
+        (obsoleteCheck.stderr || ''),
     );
   }
 } catch (error) {
