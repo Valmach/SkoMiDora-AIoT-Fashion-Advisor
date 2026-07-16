@@ -7,6 +7,7 @@ import path from "path";
 import fs from "fs/promises";
 import crypto from "crypto";
 import { normalizeWardrobeMetadata } from "@/lib/wardrobeMetadata";
+import { WARDROBE_TYPES, type WardrobeType } from "@/lib/wardrobe-taxonomy";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const runtime = "nodejs";
@@ -22,6 +23,59 @@ if (!getApps().length) {
 const BUCKET_NAME =
   process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
   "styleai-footwear.firebasestorage.app";
+
+
+type IngestWardrobeType = WardrobeType | "Uncategorized";
+
+function cleanText(value: unknown): string {
+  return String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function canonicalizeWardrobeType(value: unknown): IngestWardrobeType {
+  const raw = cleanText(value);
+  if (!raw) return "Uncategorized";
+
+  const compact = raw.toLowerCase();
+
+  const directMatch = WARDROBE_TYPES.find(
+    (type) => type.toLowerCase() === compact
+  );
+  if (directMatch) return directMatch;
+
+  if (/\b(dress|dresses|gown|gowns)\b/.test(compact)) return "Dress";
+
+  if (/\b(t-shirt|t-shirts|tshirt|tshirts|tee|tees|sweatshirt|sweatshirts|sweats)\b/.test(compact)) {
+    return "T-Shirt";
+  }
+
+  if (/\b(shirt|shirts|blouse|blouses|tank top|tank tops|top|tops|bustier|bustiers)\b/.test(compact)) {
+    return "Shirt";
+  }
+
+  if (/\b(blazer|blazers)\b/.test(compact)) return "Blazer";
+  if (/\b(suit|suits)\b/.test(compact)) return "Suit";
+  if (/\b(coat|coats|parka|parkas|trench|trenches)\b/.test(compact)) return "Coat";
+  if (/\b(jacket|jackets|outerwear)\b/.test(compact)) return "Jacket";
+  if (/\b(jean|jeans|denim)\b/.test(compact)) return "Jeans";
+  if (/\b(trouser|trousers|pant|pants|slack|slacks)\b/.test(compact)) return "Trousers";
+  if (/\b(short|shorts)\b/.test(compact)) return "Shorts";
+  if (/\b(skirt|skirts)\b/.test(compact)) return "Skirt";
+  if (/\b(sneaker|sneakers|trainer|trainers)\b/.test(compact)) return "Sneakers";
+  if (/\b(boot|boots|ankle boot|ankle boots)\b/.test(compact)) return "Boots";
+  if (/\b(heel|heels|stiletto|stilettos|pump|pumps)\b/.test(compact)) return "Heels";
+  if (/\b(flat|flats|loafer|loafers|mule|mules|slipper|slippers)\b/.test(compact)) return "Flats";
+  if (/\b(sandal|sandals)\b/.test(compact)) return "Sandals";
+  if (/\b(handbag|handbags|bag|bags|tote|totes|clutch|clutches)\b/.test(compact)) return "Bag";
+  if (/\b(jewelry|jewellery|jewel|jewels)\b/.test(compact)) return "Jewelry";
+  if (/\b(scarf|scarves|wrap|wraps)\b/.test(compact)) return "Scarf";
+  if (/\b(hat|hats|cap|caps)\b/.test(compact)) return "Hat";
+  if (/\b(watch|watches)\b/.test(compact)) return "Watch";
+  if (/\b(belt|belts)\b/.test(compact)) return "Belt";
+
+  return "Uncategorized";
+}
 
 function cleanFileName(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]/g, "-");
@@ -76,31 +130,34 @@ async function analyzeImageMetadata(imageBase64: string, mimeType: string, fileN
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
+    const promptExample = {
+      itemName: "specific product-style name",
+      brand: "brand if visible or recognizable, otherwise Unknown",
+      brandName: "same as brand",
+      designer: "designer or fashion house if visible or recognizable, otherwise Unknown",
+      designerName: "same as designer",
+      itemType: `one of: ${[...WARDROBE_TYPES, "Uncategorized"].join(" | ")}`,
+      category: "same canonical value as itemType",
+      color: "dominant color",
+      material: "likely material",
+      generalMaterial: "likely material",
+      narrativeDescription: "one polished sentence",
+      styleKeywords: ["3 to 8 keywords"],
+      tags: ["searchable tags"],
+      season: ["spring", "summer", "fall", "winter", "all-season"],
+      weatherSuitability: ["hot", "warm", "mild", "cool", "cold", "rain", "indoor", "dry"],
+      eventCategory: ["city", "casual", "evening", "cocktail", "business-casual", "travel", "resort"],
+      formality: "casual | smart-casual | business-casual | cocktail | formal",
+      metadataConfidence: 0.75,
+    };
+
     const prompt = [
       "Analyze this fashion or footwear image for SkoMiDora.",
-      "Return ONLY valid JSON with:",
-      "{",
-      "\"itemName\": \"specific product-style name\",",
-      "\"brand\": \"brand if visible or recognizable, otherwise Unknown\",",
-      "\"brandName\": \"same as brand\",",
-      "\"designer\": \"designer or fashion house if visible or recognizable, otherwise Unknown\",",
-      "\"designerName\": \"same as designer\",",
-      "\"itemType\": \"Shoes | Sandal | Ankle Boot | Dress | Top | Bottom | Outerwear | Accessory | Uncategorized\",",
-      "\"category\": \"general category\",",
-      "\"color\": \"dominant color\",",
-      "\"material\": \"likely material\",",
-      "\"generalMaterial\": \"likely material\",",
-      "\"narrativeDescription\": \"one polished sentence\",",
-      "\"styleKeywords\": [\"3 to 8 keywords\"],",
-      "\"tags\": [\"searchable tags\"],",
-      "\"season\": [\"spring\",\"summer\",\"fall\",\"winter\",\"all-season\"],",
-      "\"weatherSuitability\": [\"hot\",\"warm\",\"mild\",\"cool\",\"cold\",\"rain\",\"indoor\",\"dry\"],",
-      "\"eventCategory\": [\"city\",\"casual\",\"evening\",\"cocktail\",\"business-casual\",\"travel\",\"resort\"],",
-      "\"formality\": \"casual | smart-casual | business-casual | cocktail | formal\",",
-      "\"metadataConfidence\": 0.75",
-      "}",
+      "Return ONLY valid JSON matching this shape:",
+      JSON.stringify(promptExample, null, 2),
+      "itemType must be exactly one value from the supplied canonical wardrobe taxonomy. Use Uncategorized only when the item cannot be classified reliably.",
       "For footwear, apparel, handbags, and luxury fashion, the designer house is normally also the brand. When only the designer is identifiable, return that designer name in both the brand and designer fields. When only the brand is identifiable, return it in both fields. Preserve different values when the image clearly represents a collaboration, custom maker, atelier, diffusion label, or licensed brand. Do not guess luxury brands without visible evidence.",
-      "Original filename: " + fileName
+      "Original filename: " + fileName,
     ].join("\n");
 
     const result = await model.generateContent([
@@ -138,17 +195,29 @@ function inferLensMetadata(fileName: string) {
   else if (lower.includes("miu miu")) designerName = "Miu Miu";
   else if (lower.includes("ferragamo")) designerName = "Ferragamo";
 
-  let itemType = "Uncategorized";
+  let itemType: IngestWardrobeType = "Uncategorized";
   if (lower.includes("dress") || lower.includes("gown")) itemType = "Dress";
+  else if (lower.includes("t-shirt") || lower.includes("tshirt") || lower.includes(" tee ")) itemType = "T-Shirt";
+  else if (lower.includes("blouse") || lower.includes("shirt") || lower.includes("tank top") || lower.includes("bustier") || lower.includes("top")) itemType = "Shirt";
+  else if (lower.includes("blazer")) itemType = "Blazer";
+  else if (lower.includes("suit")) itemType = "Suit";
+  else if (lower.includes("coat") || lower.includes("trench") || lower.includes("parka")) itemType = "Coat";
+  else if (lower.includes("jacket") || lower.includes("outerwear")) itemType = "Jacket";
+  else if (lower.includes("jean") || lower.includes("denim")) itemType = "Jeans";
+  else if (lower.includes("trouser") || lower.includes("pant") || lower.includes("slack")) itemType = "Trousers";
+  else if (lower.includes("short")) itemType = "Shorts";
   else if (lower.includes("skirt")) itemType = "Skirt";
-  else if (lower.includes("sandal")) itemType = "Sandal";
-  else if (lower.includes("mule")) itemType = "Shoes";
-  else if (lower.includes("slipper")) itemType = "Slippers";
-  else if (lower.includes("boot")) itemType = "Ankle Boot";
-  else if (lower.includes("heel") || lower.includes("stiletto") || lower.includes("pump")) itemType = "Stiletto";
-  else if (lower.includes("coat") || lower.includes("jacket") || lower.includes("blazer")) itemType = "Outerwear";
-  else if (lower.includes("bag") || lower.includes("belt")) itemType = "Accessory";
-  else if (lower.includes("top") || lower.includes("blouse") || lower.includes("bustier")) itemType = "Top";
+  else if (lower.includes("sneaker") || lower.includes("trainer")) itemType = "Sneakers";
+  else if (lower.includes("boot")) itemType = "Boots";
+  else if (lower.includes("heel") || lower.includes("stiletto") || lower.includes("pump")) itemType = "Heels";
+  else if (lower.includes("flat") || lower.includes("loafer") || lower.includes("mule") || lower.includes("slipper")) itemType = "Flats";
+  else if (lower.includes("sandal")) itemType = "Sandals";
+  else if (lower.includes("handbag") || lower.includes("bag") || lower.includes("tote") || lower.includes("clutch")) itemType = "Bag";
+  else if (lower.includes("jewelry") || lower.includes("jewellery")) itemType = "Jewelry";
+  else if (lower.includes("scarf")) itemType = "Scarf";
+  else if (lower.includes("hat")) itemType = "Hat";
+  else if (lower.includes("watch")) itemType = "Watch";
+  else if (lower.includes("belt")) itemType = "Belt";
 
   const colors = [
     "yellow", "blue", "black", "white", "green", "red", "pink", "orange",
@@ -286,6 +355,8 @@ export async function POST(req: NextRequest) {
     const db = getFirestore();
 
     const aiMetadata = await analyzeImageMetadata(imageBase64, contentType, originalName);
+    const aiRecord = aiMetadata as Record<string, unknown>;
+    const commercialRecord = commercialMetadata as Record<string, unknown>;
 
     const metadata = normalizeWardrobeMetadata(
       inferLensMetadata(originalName),
@@ -295,22 +366,39 @@ export async function POST(req: NextRequest) {
       }
     );
 
+    // Canonicalize only after filename inference, Gemini metadata, and
+    // commercial metadata have been merged.
+    const canonicalItemType = canonicalizeWardrobeType(
+      metadata.itemType ||
+      aiRecord["itemType"] ||
+      aiRecord["category"] ||
+      commercialRecord["productType"] ||
+      commercialRecord["category"]
+    );
+
     const displayBrand =
-      metadata.brandName ||
-      metadata.brand ||
+      cleanText(commercialRecord["brandName"]) ||
+      cleanText(commercialRecord["brand"]) ||
+      cleanText(aiRecord["brandName"]) ||
+      cleanText(aiRecord["brand"]) ||
       metadata.designerName ||
       "Unknown";
 
     const displayDesigner =
+      cleanText(commercialRecord["designerName"]) ||
+      cleanText(commercialRecord["designer"]) ||
+      cleanText(aiRecord["designerName"]) ||
+      cleanText(aiRecord["designer"]) ||
       metadata.designerName ||
-      metadata.designer ||
       displayBrand ||
       "Unknown";
 
     const displayMaterial =
       metadata.generalMaterial ||
-      metadata.material ||
-      metadata.materials ||
+      cleanText(commercialRecord["material"]) ||
+      cleanText(commercialRecord["fabric"]) ||
+      cleanText(aiRecord["generalMaterial"]) ||
+      cleanText(aiRecord["material"]) ||
       "Unknown";
 
     const meaningfulFashionLabel = (value: unknown): string | null => {
@@ -342,15 +430,19 @@ export async function POST(req: NextRequest) {
     };
 
     const detectedBrand =
-      meaningfulFashionLabel(metadata.brand) ||
-      meaningfulFashionLabel(metadata.brandName) ||
-      meaningfulFashionLabel(metadata.manufacturer) ||
+      meaningfulFashionLabel(commercialRecord["brand"]) ||
+      meaningfulFashionLabel(commercialRecord["brandName"]) ||
+      meaningfulFashionLabel(aiRecord["brand"]) ||
+      meaningfulFashionLabel(aiRecord["brandName"]) ||
       meaningfulFashionLabel(displayBrand);
 
     const detectedDesigner =
-      meaningfulFashionLabel(metadata.designer) ||
+      meaningfulFashionLabel(commercialRecord["designer"]) ||
+      meaningfulFashionLabel(commercialRecord["designerName"]) ||
+      meaningfulFashionLabel(aiRecord["designer"]) ||
+      meaningfulFashionLabel(aiRecord["designerName"]) ||
+      meaningfulFashionLabel(aiRecord["fashionHouse"]) ||
       meaningfulFashionLabel(metadata.designerName) ||
-      meaningfulFashionLabel(metadata.fashionHouse) ||
       meaningfulFashionLabel(displayDesigner);
 
     // The brand and designer are commonly identical for footwear and fashion.
@@ -383,9 +475,9 @@ export async function POST(req: NextRequest) {
       displayName: metadata.itemName,
       aiFriendlyName: metadata.itemName,
 
-      itemType: metadata.itemType,
-      type: metadata.itemType,
-      category: metadata.itemType,
+      itemType: canonicalItemType,
+      type: canonicalItemType,
+      category: canonicalItemType,
 
       designer: resolvedDesigner,
       designerName: resolvedDesigner,
@@ -443,7 +535,12 @@ export async function POST(req: NextRequest) {
       imagePath,
       imageUrl,
       firestoreId: docRef.id,
-      metadata,
+      metadata: {
+        ...metadata,
+        itemType: canonicalItemType,
+        type: canonicalItemType,
+        category: canonicalItemType,
+      },
     });
   } catch (error: any) {
     console.error("Storage upload API error:", error);
