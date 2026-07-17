@@ -1,13 +1,38 @@
 /**
  * SkoMiDora Canonical Wardrobe Taxonomy
  *
- * category = broad navigation/filter group shared by
- *            Digital Closet, AI Stylist and Recommendations
+ * DATA MODEL
+ * ----------
+ * category = broad navigation / filter group shared by:
+ *   - Digital Closet
+ *   - AI Consultant / Stylist
+ *   - Recommendations
+ *   - Lens upload pipeline
  *
- * itemType = specific garment/product subtype
+ * itemType = specific garment or product subtype.
+ *
+ * Examples:
+ *
+ * category: "Bottoms"
+ * itemType: "Trousers"
+ *
+ * category: "Footwear"
+ * itemType: "Trainers"
+ *
+ * category: "Sleepwear & Loungewear"
+ * itemType: "Pajama Set"
+ *
+ * IMPORTANT:
+ * "Bottom" is NOT a valid itemType.
+ * Pants are canonicalized as "Trousers".
  */
 
-export const WARDROBE_CATEGORIES = [
+
+/* =========================================================
+   TOP-LEVEL WARDROBE CATEGORIES
+   ========================================================= */
+
+   export const WARDROBE_CATEGORIES = [
     "Tops",
     "Bottoms",
     "Dresses",
@@ -28,12 +53,10 @@ export const WARDROBE_CATEGORIES = [
     (typeof WARDROBE_CATEGORIES)[number];
   
   
-  /**
-   * Keep this export name because several existing
-   * application files already import WARDROBE_TYPES.
-   *
-   * These are SUBTYPES, not top-level categories.
-   */
+  /* =========================================================
+     SPECIFIC WARDROBE ITEM TYPES
+     ========================================================= */
+  
   export const WARDROBE_TYPES = [
     // Tops
     "Top",
@@ -46,9 +69,8 @@ export const WARDROBE_CATEGORIES = [
     "Bodysuit",
   
     // Bottoms
-    "Bottom",
-    "Jeans",
     "Trousers",
+    "Jeans",
     "Shorts",
     "Skirt",
     "Leggings",
@@ -140,154 +162,398 @@ export const WARDROBE_CATEGORIES = [
     (typeof WARDROBE_TYPES)[number];
   
   
-  /**
-   * Canonical itemType -> category mapping.
-   *
-   * This is the ONE mapping used by:
-   * - Digital Closet
-   * - AI Stylist
-   * - Lens backend
-   * - Recommendations
-   */
+  /* =========================================================
+     ITEM TYPE → TOP-LEVEL CATEGORY MAPPING
+     ========================================================= */
+  
   export const WARDROBE_TYPE_TO_CATEGORY: Record<
     WardrobeType,
     WardrobeCategory
   > = {
-    // Tops
-    "Top": "Tops",
+    /* -------------------------
+       Tops
+       ------------------------- */
+  
+    Top: "Tops",
     "Sleeveless Top": "Tops",
-    "Shirt": "Tops",
+    Shirt: "Tops",
     "T-Shirt": "Tops",
-    "Blouse": "Tops",
-    "Camisole": "Tops",
+    Blouse: "Tops",
+    Camisole: "Tops",
     "Crop Top": "Tops",
-    "Bodysuit": "Tops",
+    Bodysuit: "Tops",
   
-    // Bottoms
-    "Bottom": "Bottoms",
-    "Jeans": "Bottoms",
-    "Trousers": "Bottoms",
-    "Shorts": "Bottoms",
-    "Skirt": "Bottoms",
-    "Leggings": "Bottoms",
+    /* -------------------------
+       Bottoms
+       ------------------------- */
   
-    // Dresses
-    "Dress": "Dresses",
+    Trousers: "Bottoms",
+    Jeans: "Bottoms",
+    Shorts: "Bottoms",
+    Skirt: "Bottoms",
+    Leggings: "Bottoms",
+  
+    /* -------------------------
+       Dresses
+       ------------------------- */
+  
+    Dress: "Dresses",
     "Maxi Dress": "Dresses",
     "Midi Dress": "Dresses",
     "Mini Dress": "Dresses",
     "Slip Dress": "Dresses",
-    "Gown": "Dresses",
+    Gown: "Dresses",
   
-    // Jumpsuits & Rompers
-    "Jumpsuit": "Jumpsuits & Rompers",
-    "Romper": "Jumpsuits & Rompers",
+    /* -------------------------
+       Jumpsuits & Rompers
+       ------------------------- */
   
-    // Suits & Sets
-    "Suit": "Suits & Sets",
-    "Set": "Suits & Sets",
+    Jumpsuit: "Jumpsuits & Rompers",
+    Romper: "Jumpsuits & Rompers",
   
-    // Outerwear
-    "Outerwear": "Outerwear",
-    "Blazer": "Outerwear",
-    "Jacket": "Outerwear",
-    "Coat": "Outerwear",
+    /* -------------------------
+       Suits & Sets
+       ------------------------- */
+  
+    Suit: "Suits & Sets",
+    Set: "Suits & Sets",
+  
+    /* -------------------------
+       Outerwear
+       ------------------------- */
+  
+    Outerwear: "Outerwear",
+    Blazer: "Outerwear",
+    Jacket: "Outerwear",
+    Coat: "Outerwear",
     "Trench Coat": "Outerwear",
-    "Cape": "Outerwear",
-    "Parka": "Outerwear",
+    Cape: "Outerwear",
+    Parka: "Outerwear",
   
-    // Knitwear
-    "Cardigan": "Knitwear",
-    "Sweater": "Knitwear",
-    "Knitwear": "Knitwear",
+    /* -------------------------
+       Knitwear
+       ------------------------- */
   
-    // Sleepwear & Loungewear
+    Cardigan: "Knitwear",
+    Sweater: "Knitwear",
+    Knitwear: "Knitwear",
+  
+    /* -------------------------
+       Sleepwear & Loungewear
+       ------------------------- */
+  
     "Pajama Set": "Sleepwear & Loungewear",
-    "Sleepwear": "Sleepwear & Loungewear",
-    "Robe": "Sleepwear & Loungewear",
-    "Loungewear": "Sleepwear & Loungewear",
+    Sleepwear: "Sleepwear & Loungewear",
+    Robe: "Sleepwear & Loungewear",
+    Loungewear: "Sleepwear & Loungewear",
   
-    // Activewear
-    "Activewear": "Activewear",
+    /* -------------------------
+       Activewear
+       ------------------------- */
   
-    // Swimwear
-    "Swimwear": "Swimwear",
-    "Swimsuit": "Swimwear",
-    "Bikini": "Swimwear",
+    Activewear: "Activewear",
   
-    // Footwear
-    "Shoes": "Footwear",
-    "Trainers": "Footwear",
-    "Sneakers": "Footwear",
-    "Boots": "Footwear",
+    /* -------------------------
+       Swimwear
+       ------------------------- */
+  
+    Swimwear: "Swimwear",
+    Swimsuit: "Swimwear",
+    Bikini: "Swimwear",
+  
+    /* -------------------------
+       Footwear
+       ------------------------- */
+  
+    Shoes: "Footwear",
+    Trainers: "Footwear",
+    Sneakers: "Footwear",
+    Boots: "Footwear",
     "Ankle Boots": "Footwear",
-    "Booties": "Footwear",
-    "Heels": "Footwear",
-    "Stilettos": "Footwear",
-    "Pumps": "Footwear",
-    "Mules": "Footwear",
-    "Sandals": "Footwear",
-    "Loafers": "Footwear",
-    "Flats": "Footwear",
-    "Slippers": "Footwear",
+    Booties: "Footwear",
+    Heels: "Footwear",
+    Stilettos: "Footwear",
+    Pumps: "Footwear",
+    Mules: "Footwear",
+    Sandals: "Footwear",
+    Loafers: "Footwear",
+    Flats: "Footwear",
+    Slippers: "Footwear",
   
-    // Handbags
-    "Bag": "Handbags",
-    "Handbag": "Handbags",
-    "Tote": "Handbags",
-    "Clutch": "Handbags",
+    /* -------------------------
+       Handbags
+       ------------------------- */
+  
+    Bag: "Handbags",
+    Handbag: "Handbags",
+    Tote: "Handbags",
+    Clutch: "Handbags",
     "Shoulder Bag": "Handbags",
   
-    // Jewelry
-    "Jewelry": "Jewelry",
-    "Earrings": "Jewelry",
-    "Ring": "Jewelry",
-    "Necklace": "Jewelry",
-    "Bracelet": "Jewelry",
+    /* -------------------------
+       Jewelry
+       ------------------------- */
   
-    // Accessories
-    "Accessory": "Accessories",
-    "Scarf": "Accessories",
-    "Hat": "Accessories",
-    "Watch": "Accessories",
-    "Belt": "Accessories",
-    "Eyewear": "Accessories",
+    Jewelry: "Jewelry",
+    Earrings: "Jewelry",
+    Ring: "Jewelry",
+    Necklace: "Jewelry",
+    Bracelet: "Jewelry",
+  
+    /* -------------------------
+       Accessories
+       ------------------------- */
+  
+    Accessory: "Accessories",
+    Scarf: "Accessories",
+    Hat: "Accessories",
+    Watch: "Accessories",
+    Belt: "Accessories",
+    Eyewear: "Accessories",
   };
   
   
-  /**
-   * Resolve the broad category for an item.
+  /* =========================================================
+     LEGACY / ALTERNATIVE ITEM TYPE ALIASES
+     =========================================================
    *
-   * Prefer an already-valid canonical category from Firestore.
-   * Fall back to mapping itemType.
+   * These values should NOT be written as canonical itemType
+   * values. They exist only to understand older Firestore data
+   * and incoming metadata.
    */
-  export function getWardrobeCategory(
-    category?: string | null,
-    itemType?: string | null,
-  ): WardrobeCategory | null {
-    const existingCategory =
-      WARDROBE_CATEGORIES.find(
-        (value) =>
-          value.toLowerCase() ===
-          category?.trim().toLowerCase(),
-      );
   
-    if (existingCategory) {
-      return existingCategory;
+  const WARDROBE_TYPE_ALIASES: Record<
+    string,
+    WardrobeType
+  > = {
+    // Bottoms
+    bottom: "Trousers",
+    bottoms: "Trousers",
+    pant: "Trousers",
+    pants: "Trousers",
+    trouser: "Trousers",
+    trousers: "Trousers",
+  
+    jean: "Jeans",
+    jeans: "Jeans",
+  
+    short: "Shorts",
+    shorts: "Shorts",
+  
+    skirt: "Skirt",
+    skirts: "Skirt",
+  
+    // Tops
+    top: "Top",
+    tops: "Top",
+    "tank top": "Sleeveless Top",
+    tank: "Sleeveless Top",
+  
+    shirt: "Shirt",
+    blouse: "Blouse",
+    bodysuit: "Bodysuit",
+  
+    // Dresses
+    dress: "Dress",
+    dresses: "Dress",
+  
+    // Jumpsuits
+    jumpsuit: "Jumpsuit",
+    jumpsuits: "Jumpsuit",
+    romper: "Romper",
+    rompers: "Romper",
+  
+    // Sleepwear
+    pajamas: "Pajama Set",
+    pyjamas: "Pajama Set",
+    pajama: "Pajama Set",
+    pyjama: "Pajama Set",
+    "pajama set": "Pajama Set",
+    "pyjama set": "Pajama Set",
+  
+    // Footwear
+    trainer: "Trainers",
+    trainers: "Trainers",
+  
+    sneaker: "Sneakers",
+    sneakers: "Sneakers",
+  
+    boot: "Boots",
+    boots: "Boots",
+  
+    "ankle boot": "Ankle Boots",
+    "ankle boots": "Ankle Boots",
+  
+    bootie: "Booties",
+    booties: "Booties",
+  
+    heel: "Heels",
+    heels: "Heels",
+  
+    stiletto: "Stilettos",
+    stilettos: "Stilettos",
+  
+    pump: "Pumps",
+    pumps: "Pumps",
+  
+    mule: "Mules",
+    mules: "Mules",
+  
+    sandal: "Sandals",
+    sandals: "Sandals",
+  
+    loafer: "Loafers",
+    loafers: "Loafers",
+  
+    flat: "Flats",
+    flats: "Flats",
+  
+    slipper: "Slippers",
+    slippers: "Slippers",
+  
+    // Bags
+    bag: "Bag",
+    bags: "Bag",
+    handbag: "Handbag",
+    handbags: "Handbag",
+  
+    // Jewelry
+    earring: "Earrings",
+    earrings: "Earrings",
+  
+    ring: "Ring",
+    rings: "Ring",
+  
+    necklace: "Necklace",
+    necklaces: "Necklace",
+  
+    bracelet: "Bracelet",
+    bracelets: "Bracelet",
+  
+    // Accessories
+    scarf: "Scarf",
+    scarves: "Scarf",
+  
+    hat: "Hat",
+    hats: "Hat",
+  
+    watch: "Watch",
+    watches: "Watch",
+  
+    belt: "Belt",
+    belts: "Belt",
+  
+    eyewear: "Eyewear",
+  };
+  
+  
+  /* =========================================================
+     INTERNAL NORMALIZATION HELPERS
+     ========================================================= */
+  
+  function normalizeTaxonomyValue(
+    value: unknown
+  ): string {
+    if (typeof value !== "string") {
+      return "";
     }
   
-    const canonicalType =
-      WARDROBE_TYPES.find(
-        (value) =>
-          value.toLowerCase() ===
-          itemType?.trim().toLowerCase(),
-      );
+    return value.trim();
+  }
   
-    if (!canonicalType) {
+  
+  function findCanonicalCategory(
+    value: unknown
+  ): WardrobeCategory | null {
+    const normalized =
+      normalizeTaxonomyValue(value).toLowerCase();
+  
+    if (!normalized) {
       return null;
     }
   
-    return WARDROBE_TYPE_TO_CATEGORY[
-      canonicalType
-    ];
+    return (
+      WARDROBE_CATEGORIES.find(
+        (category) =>
+          category.toLowerCase() === normalized
+      ) || null
+    );
+  }
+  
+  
+  function findCanonicalWardrobeType(
+    value: unknown
+  ): WardrobeType | null {
+    const normalized =
+      normalizeTaxonomyValue(value);
+  
+    if (!normalized) {
+      return null;
+    }
+  
+    const directMatch =
+      WARDROBE_TYPES.find(
+        (type) =>
+          type.toLowerCase() ===
+          normalized.toLowerCase()
+      );
+  
+    if (directMatch) {
+      return directMatch;
+    }
+  
+    return (
+      WARDROBE_TYPE_ALIASES[
+        normalized.toLowerCase()
+      ] || null
+    );
+  }
+  
+  
+  /* =========================================================
+     PUBLIC CATEGORY RESOLVER
+     =========================================================
+   *
+   * Resolution order:
+   *
+   * 1. Trust a valid canonical broad category.
+   * 2. If category contains an old item type such as
+   *    "Trousers", "Pants", "Trainers", etc., resolve it.
+   * 3. Resolve from itemType.
+   * 4. Return null when no safe category can be determined.
+   */
+  
+  export function getWardrobeCategory(
+    category?: string | null,
+    itemType?: string | null
+  ): WardrobeCategory | null {
+    // 1. Already a valid broad category
+    const canonicalCategory =
+      findCanonicalCategory(category);
+  
+    if (canonicalCategory) {
+      return canonicalCategory;
+    }
+  
+    // 2. Legacy category may actually contain an itemType
+    const categoryAsItemType =
+      findCanonicalWardrobeType(category);
+  
+    if (categoryAsItemType) {
+      return WARDROBE_TYPE_TO_CATEGORY[
+        categoryAsItemType
+      ];
+    }
+  
+    // 3. Resolve from specific itemType
+    const canonicalItemType =
+      findCanonicalWardrobeType(itemType);
+  
+    if (canonicalItemType) {
+      return WARDROBE_TYPE_TO_CATEGORY[
+        canonicalItemType
+      ];
+    }
+  
+    return null;
   }
