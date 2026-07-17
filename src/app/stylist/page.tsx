@@ -41,7 +41,7 @@ const greatVibes = Great_Vibes({
  * Every garment category comes from the same taxonomy used
  * throughout Digital Closet and other wardrobe-aware features.
  */
-const CATEGORIES = ["Any Missing Piece", ...WARDROBE_TYPES];
+const CATEGORIES = ["Any Missing Piece", ...WARDROBE_CATEGORIES];
 
 function StylistContent() {
   const { toast } = useToast();
@@ -175,11 +175,10 @@ function StylistContent() {
               <button
                 key={category}
                 onClick={() => setActiveCategory(category)}
-                className={`px-5 py-2.5 text-[11px] font-semibold tracking-widest uppercase transition-all ${
-                  activeCategory === category
+                className={`px-5 py-2.5 text-[11px] font-semibold tracking-widest uppercase transition-all ${activeCategory === category
                     ? "bg-[#9A1B22] text-white shadow-md"
                     : "bg-black text-zinc-500 border border-zinc-800 hover:border-zinc-500 hover:text-white"
-                }`}
+                  }`}
               >
                 {category}
               </button>
