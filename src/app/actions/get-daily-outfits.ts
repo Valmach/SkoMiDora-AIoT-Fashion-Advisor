@@ -108,6 +108,76 @@ function isWarmWeatherItem(item: any): boolean {
   return /\b(linen|cotton|silk|dress|shirtdress|shirt|blouse|tank|tee|t-shirt|shorts|skirt|sandal|sandals|mule|mules|slide|slides|loafer|loafers|pump|pumps|swim|swimwear|swimsuit|bikini|resort|lightweight|sleeveless|halter)\b/.test(itemText(item));
 }
 
+function isFootwearWeatherEligible(
+  item: any,
+  weatherContext: string = '',
+  eventContext: string = ''
+): boolean {
+  if (!isFootwear(item)) return true;
+
+  const itemData = itemText(item).toLowerCase();
+  const weather = cleanText(weatherContext).toLowerCase();
+  const event = cleanText(eventContext).toLowerCase();
+
+  const isHot =
+    /\b(hot|heat|humid|summer)\b/.test(weather) ||
+    (parseTempC(weatherContext) ?? -999) >= 24;
+
+  const isCold =
+    /\b(cold|freezing|winter)\b/.test(weather) ||
+    ((parseTempC(weatherContext) ?? 999) <= 12);
+
+  const isRain =
+    /\b(rain|rainy|showers|storm|thunderstorm|downpour|wet)\b/.test(weather);
+
+  const isSnowOrIce =
+    /\b(snow|snowy|ice|icy|sleet|freezing rain|blizzard)\b/.test(weather);
+
+  const isWalkingHeavy =
+    /\b(walking|walking tour|city tour|sightseeing|touring|hiking)\b/.test(event);
+
+  const isBeachOrPool =
+    /\b(beach|pool|swim|spa|resort|yacht|cruise|water activity)\b/.test(event);
+
+  const isBoot =
+    /\b(boot|boots|ankle boot|knee boot|combat boot|snow boot)\b/.test(itemData);
+
+  const isOpenFootwear =
+    /\b(sandal|sandals|slide|slides|mule|mules|open toe|open-toe|peep toe|peep-toe)\b/.test(itemData);
+
+  const isPumpOrStiletto =
+    /\b(pump|pumps|stiletto|stilettos|high heel|high heels)\b/.test(itemData);
+
+  const isDelicateWetMaterial =
+    /\b(suede|satin|velvet)\b/.test(itemData);
+
+  if (isHot && isBoot) {
+    return false;
+  }
+
+  if (isCold && isOpenFootwear) {
+    return false;
+  }
+
+  if (isRain && (isOpenFootwear || isDelicateWetMaterial)) {
+    return false;
+  }
+
+  if (isSnowOrIce && (isOpenFootwear || isPumpOrStiletto)) {
+    return false;
+  }
+
+  if (isWalkingHeavy && isPumpOrStiletto) {
+    return false;
+  }
+
+  if (isBeachOrPool && isPumpOrStiletto) {
+    return false;
+  }
+
+  return true;
+}
+
 function inferLocation(eventContext: string, weatherContext: string = ''): string {
   const text = `${cleanText(eventContext)} ${cleanText(weatherContext)}`.toLowerCase();
 
@@ -223,20 +293,48 @@ function correctItemNames(generatedItems: string[], realCloset: any[]) {
    PICK EXACTLY ONE FOOTWEAR + ONE CLOTHING
 ====================================================== */
 
-function pickOneOfEach(resolvedNames: string[], closetItems: any[]) {
+function pickOneOfEach(
+  resolvedNames: string[],
+  closetItems: any[],
+  weatherContext: string = '',
+  eventContext: string = ''
+) {
   const byName = resolvedNames
-    .map(name => closetItems.find(c => String(c.itemName || '').toLowerCase() === String(name || '').toLowerCase()))
+    .map(name =>
+      closetItems.find(
+        c =>
+          String(c.itemName || '').toLowerCase() ===
+          String(name || '').toLowerCase()
+      )
+    )
     .filter(Boolean);
 
-  let footwear = byName.find(isFootwear) || closetItems.find(isFootwear) || null;
-  let clothing = byName.find(isClothing) || closetItems.find(isClothing) || null;
+  const weatherSafeFootwear = closetItems.filter(
+    item =>
+      isFootwear(item) &&
+      isFootwearWeatherEligible(item, weatherContext, eventContext)
+  );
+
+  let footwear =
+    byName.find(
+      item =>
+        isFootwear(item) &&
+        isFootwearWeatherEligible(item, weatherContext, eventContext)
+    ) ||
+    weatherSafeFootwear[0] ||
+    null;
+
+  let clothing =
+    byName.find(isClothing) ||
+    closetItems.find(isClothing) ||
+    null;
 
   if (footwear && clothing && footwear === clothing) {
-    const altClothing = closetItems.find(i => i !== footwear && isClothing(i));
-    if (altClothing) clothing = altClothing;
+    const altClothing = closetItems.find(
+      item => item !== footwear && isClothing(item)
+    );
 
-    const altFootwear = closetItems.find(i => i !== clothing && isFootwear(i));
-    if (altFootwear) footwear = altFootwear;
+    if (altClothing) clothing = altClothing;
   }
 
   return { footwear, clothing };
@@ -334,7 +432,14 @@ function buildDeterministicFallbackOutfits(
   const safePool = pool.length ? pool : recommendationPool;
   const seedNumber = Number(refreshSeed || String(Date.now()).slice(-6));
   const clothingPool = rotateArray(safePool.filter(isClothing), seedNumber);
-  const footwearPool = rotateArray(safePool.filter(isFootwear), seedNumber + 7);
+  const footwearPool = rotateArray(
+    safePool.filter(
+      item =>
+        isFootwear(item) &&
+        isFootwearWeatherEligible(item, weatherContext, eventContext)
+    ),
+    seedNumber + 7
+  );
 
   const usedNames = new Set<string>();
 
@@ -345,7 +450,7 @@ function buildDeterministicFallbackOutfits(
   ];
 
   return archetypes.map((archetype, index) => {
-    const clothing = pickUnusedItem(clothingPool, usedNames) || pickUnusedItem(safePool, usedNames);
+    const clothing = pickUnusedItem(clothingPool, usedNames);
 
     if (clothing?.itemName) {
       usedNames.add(cleanText(clothing.itemName).toLowerCase());
@@ -410,13 +515,21 @@ export async function getDailyOutfitsAction(
   });
 
   const weatherEligible = validApparel.filter(item => {
+    if (
+      isFootwear(item) &&
+      !isFootwearWeatherEligible(item, weatherContext, eventContext)
+    ) {
+      return false;
+    }
+
     if (climate.tier === 'hot') {
       return !isHeavyColdItem(item) || isWarmWeatherItem(item);
     }
+
     return true;
   });
 
-  const recommendationPool = weatherEligible.length >= 4 ? weatherEligible : validApparel;
+  const recommendationPool = weatherEligible;
 
   if (!recommendationPool || recommendationPool.length === 0) {
     return [{
@@ -568,7 +681,12 @@ Return exactly 3 highly differentiated luxury looks for the selected event.
     const availablePool = recommendationPool.filter(item => !usedNames.has(cleanText(item.itemName).toLowerCase()));
     const poolForLook = availablePool.length >= 2 ? availablePool : recommendationPool;
 
-    const { footwear, clothing } = pickOneOfEach(rec.items, poolForLook);
+    const { footwear, clothing } = pickOneOfEach(
+      rec.items,
+      poolForLook,
+      weatherContext,
+      eventContext
+    );
 
     if (clothing?.itemName) usedNames.add(cleanText(clothing.itemName).toLowerCase());
     if (footwear?.itemName) usedNames.add(cleanText(footwear.itemName).toLowerCase());
