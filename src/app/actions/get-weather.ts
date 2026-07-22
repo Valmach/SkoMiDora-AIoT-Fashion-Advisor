@@ -82,9 +82,21 @@ function closestForecast(
   });
 }
 
+function destinationDateKey(
+  timestampMs: number,
+  timezoneOffsetSeconds: number,
+): string {
+  return new Date(
+    timestampMs + timezoneOffsetSeconds * 1000,
+  )
+    .toISOString()
+    .slice(0, 10);
+}
+
 function targetIsInsideForecastWindow(
   entries: ForecastEntry[],
   targetDate: Date,
+  timezoneOffsetSeconds: number,
 ): boolean {
   const forecastTimes = entries
     .map(entry => entry.dt * 1000)
@@ -97,9 +109,32 @@ function targetIsInsideForecastWindow(
   const allowance = 6 * 60 * 60 * 1000;
   const targetTime = targetDate.getTime();
 
-  return (
+  const exactTimestampIsAvailable =
     targetTime >= firstForecast - allowance &&
-    targetTime <= lastForecast + allowance
+    targetTime <= lastForecast + allowance;
+
+  const targetDay = destinationDateKey(
+    targetTime,
+    timezoneOffsetSeconds,
+  );
+
+  const firstForecastDay = destinationDateKey(
+    firstForecast,
+    timezoneOffsetSeconds,
+  );
+
+  const lastForecastDay = destinationDateKey(
+    lastForecast,
+    timezoneOffsetSeconds,
+  );
+
+  const destinationDayIsAvailable =
+    targetDay >= firstForecastDay &&
+    targetDay <= lastForecastDay;
+
+  return (
+    exactTimestampIsAvailable ||
+    destinationDayIsAvailable
   );
 }
 
@@ -147,9 +182,7 @@ export async function getWeatherForLocation(
       '&units=metric';
 
     const response = await fetch(url, {
-      next: {
-        revalidate: 1800,
-      },
+      cache: 'no-store',
     });
 
     if (!response.ok) {
@@ -175,6 +208,7 @@ export async function getWeatherForLocation(
       !targetIsInsideForecastWindow(
         data.list,
         eventDate,
+        data.city?.timezone ?? 0,
       )
     ) {
       return {

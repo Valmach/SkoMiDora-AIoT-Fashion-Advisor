@@ -111,6 +111,32 @@ function createEventDate(
   return eventDate;
 }
 
+function createUpcomingEventDate(
+  sourceDate: Date,
+  hour: number,
+  minute: number,
+  minimumLeadHours: number = 2,
+): Date {
+  const scheduledEvent =
+    createEventDate(
+      sourceDate,
+      hour,
+      minute,
+    );
+
+  const earliestEventTime =
+    sourceDate.getTime() +
+    minimumLeadHours *
+      60 *
+      60 *
+      1000;
+
+  return scheduledEvent.getTime() >=
+    earliestEventTime
+    ? scheduledEvent
+    : new Date(earliestEventTime);
+}
+
 function fallbackEvents(): NormalizedEvent[] {
   const now = new Date();
 
@@ -126,7 +152,11 @@ function fallbackEvents(): NormalizedEvent[] {
       name: 'Paris Summer Fashion Event',
       description: '',
       city: 'Paris, France',
-      eventDate: createEventDate(now, 9, 0),
+      eventDate: createUpcomingEventDate(
+        now,
+        9,
+        0,
+      ),
       eventType: 'fashion',
       keywords: [
         'silk',
@@ -583,10 +613,15 @@ export async function getUpcomingEventsStyleAdviceAction(
 
   return Promise.all(
     sourceEvents.map(async event => {
+      const weatherTargetDate =
+        event.eventDate.getTime() < Date.now()
+          ? new Date()
+          : event.eventDate;
+
       const weather =
         await getWeatherForLocation(
           event.city,
-          event.eventDate,
+          weatherTargetDate,
         );
 
       if (!weather.success) {

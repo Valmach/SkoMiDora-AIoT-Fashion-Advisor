@@ -21,7 +21,6 @@ import { Inter, Great_Vibes } from "next/font/google";
 
 import {
   WARDROBE_CATEGORIES,
-  WARDROBE_TYPES,
 } from "@/lib/wardrobe-taxonomy";
 
 const inter = Inter({

@@ -13,6 +13,7 @@ import {
   type WardrobeCategory,
   type WardrobeType,
 } from '@/lib/wardrobe-taxonomy';
+import { scanWardrobeInventory } from '@/lib/server/wardrobe-inventory-scan';
 
 delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
@@ -682,23 +683,17 @@ export async function generateShoppingRecommendations(
     /*
      * Read the live Digital Closet.
      */
-    const snapshot =
-      await db
-        .collection(
-          'publicWardrobeItems'
-        )
-        .limit(300)
-        .get();
+    const inventory = await scanWardrobeInventory(db, {
+      pageSize: 250,
+      sampleSize: 600,
+      seed: `consultant|${eventContext}|${weatherContext}|${targetCategory}`,
+    });
 
     console.log(
-      `📦 Found ${snapshot.size} items in publicWardrobeItems`
+      `📦 Scanned ${inventory.scannedCount} closet items across ${inventory.pageCount} page(s); retained ${inventory.items.length} representative profile items.`
     );
 
-    const closetItems =
-      snapshot.docs.map(
-        (doc) =>
-          doc.data()
-      );
+    const closetItems = inventory.items;
 
     /*
      * ---------------------------------------------------------
@@ -1416,21 +1411,13 @@ Return only structured JSON matching the schema.
       const db =
         getAdminDb();
 
-      const fallbackSnapshot =
-        await db
-          .collection(
-            'publicWardrobeItems'
-          )
-          .limit(
-            120
-          )
-          .get();
+      const fallbackInventory = await scanWardrobeInventory(db, {
+        pageSize: 250,
+        sampleSize: 300,
+        seed: `consultant-fallback|${eventContext}|${weatherContext}|${targetCategory}`,
+      });
 
-      const fallbackClosetItems =
-        fallbackSnapshot.docs.map(
-          (doc) =>
-            doc.data()
-        );
+      const fallbackClosetItems = fallbackInventory.items;
 
       const fallbackDesigners =
         topValues(
