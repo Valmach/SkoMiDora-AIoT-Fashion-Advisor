@@ -42,8 +42,26 @@ export default function Sidebar() {
   }, [pathname]);
 
   const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    setIsMobileOpen(false); // Instant close on scroll
+    setIsMobileOpen(false);
+
+    window.requestAnimationFrame(() => {
+      const options: ScrollToOptions = {
+        top: 0,
+        left: 0,
+        behavior: "smooth",
+      };
+
+      window.scrollTo(options);
+      document.scrollingElement?.scrollTo(options);
+
+      document
+        .querySelectorAll<HTMLElement>("main")
+        .forEach((element) => {
+          if (element.scrollTop > 0) {
+            element.scrollTo(options);
+          }
+        });
+    });
   };
 
   return (
@@ -66,7 +84,7 @@ export default function Sidebar() {
 
       {/* SIDEBAR ARCHITECTURE */}
       <aside 
-        className={`h-screen bg-[#050505] border-r border-zinc-900/80 flex flex-col transition-all duration-500 ease-in-out shrink-0 z-50
+        className={`h-[100dvh] max-h-[100dvh] md:h-screen md:max-h-none bg-[#050505] border-r border-zinc-900/80 flex flex-col transition-all duration-500 ease-in-out shrink-0 z-50
           fixed md:relative top-0 left-0
           ${isMobileOpen ? "translate-x-0 w-[260px]" : "-translate-x-full w-[260px]"}
           md:translate-x-0 ${isCollapsed ? "md:w-[80px]" : "md:w-[240px]"}
@@ -92,7 +110,44 @@ export default function Sidebar() {
         </div>
 
         {/* NAVIGATION ARCHITECTURE */}
-        <nav className="flex-1 overflow-y-auto py-8 scrollbar-hide flex flex-col gap-2 px-3">
+        <nav className="min-h-0 flex-1 overflow-y-auto py-5 md:py-8 scrollbar-hide flex flex-col gap-2 px-3">
+          {/* Mobile utilities remain visible near the top. */}
+          <div className="mb-4 flex flex-col gap-2 border-b border-zinc-900/50 pb-4 md:hidden">
+            <Link
+              href="/settings"
+              onClick={() => setIsMobileOpen(false)}
+              className={`group relative flex h-12 items-center overflow-hidden rounded-sm px-5 transition-all duration-300
+                ${pathname === "/settings" ? "bg-zinc-900/40" : "hover:bg-zinc-900/20"}
+              `}
+            >
+              <div
+                className={`absolute left-0 top-0 h-full w-[3px] bg-[#9A1B22] transition-transform duration-500
+                  ${pathname === "/settings" ? "translate-y-0" : "-translate-y-full group-hover:translate-y-0"}
+                `}
+              />
+              <Settings
+                className={`h-4 w-4 shrink-0 transition-all duration-500
+                  ${pathname === "/settings" ? "text-[#9A1B22]" : "text-zinc-600 group-hover:text-zinc-300"}
+                `}
+              />
+              <span className="ml-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500 group-hover:text-zinc-200">
+                Settings
+              </span>
+            </Link>
+
+            <button
+              type="button"
+              onClick={scrollToTop}
+              className="group flex h-12 items-center rounded-sm px-5 transition-all duration-300 hover:bg-[#9A1B22]/10"
+              aria-label="Scroll page to top"
+            >
+              <ChevronUp className="h-4 w-4 shrink-0 text-zinc-600 transition-all duration-500 group-hover:-translate-y-1 group-hover:text-[#9A1B22]" />
+              <span className="ml-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500 transition-colors group-hover:text-[#9A1B22]">
+                Scroll Top
+              </span>
+            </button>
+          </div>
+
           {MENU_ITEMS.map((item) => {
             const isActive = pathname === item.href;
 
@@ -141,7 +196,7 @@ export default function Sidebar() {
           <Link 
             href="/settings"
             onClick={() => setIsMobileOpen(false)} // INSTANT CLOSE FIX
-            className={`group flex items-center h-12 rounded-sm transition-all duration-300 hover:bg-zinc-900/20
+            className={`hidden md:flex group items-center h-12 rounded-sm transition-all duration-300 hover:bg-zinc-900/20
               ${isCollapsed && !isMobileOpen ? "justify-center" : "px-5"}
             `}
           >
@@ -156,7 +211,7 @@ export default function Sidebar() {
           {/* Scroll To Top Elevator */}
           <button 
             onClick={scrollToTop}
-            className={`group flex items-center h-12 rounded-sm transition-all duration-300 hover:bg-[#9A1B22]/10
+            className={`hidden md:flex group items-center h-12 rounded-sm transition-all duration-300 hover:bg-[#9A1B22]/10
               ${isCollapsed && !isMobileOpen ? "justify-center" : "px-5"}
             `}
             title="Return to Top"
