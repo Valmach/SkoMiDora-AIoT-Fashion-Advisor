@@ -42,26 +42,31 @@ export default function Sidebar() {
   }, [pathname]);
 
   const scrollToTop = () => {
-    setIsMobileOpen(false);
+    const scrolledElements = Array.from(
+      document.querySelectorAll<HTMLElement>("*"),
+    ).filter(element => element.scrollTop > 0);
 
-    window.requestAnimationFrame(() => {
-      const options: ScrollToOptions = {
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: "auto",
+    });
+
+    document.scrollingElement?.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: "auto",
+    });
+
+    scrolledElements.forEach(element => {
+      element.scrollTo({
         top: 0,
         left: 0,
-        behavior: "smooth",
-      };
-
-      window.scrollTo(options);
-      document.scrollingElement?.scrollTo(options);
-
-      document
-        .querySelectorAll<HTMLElement>("main")
-        .forEach((element) => {
-          if (element.scrollTop > 0) {
-            element.scrollTo(options);
-          }
-        });
+        behavior: "auto",
+      });
     });
+
+    setIsMobileOpen(false);
   };
 
   return (
