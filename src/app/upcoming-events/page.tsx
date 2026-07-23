@@ -70,7 +70,7 @@ export default function UpcomingEventsPage() {
 
       const advice =
         await getUpcomingEventsStyleAdviceAction(
-          items,
+          [],
           calendarEvents,
         );
 

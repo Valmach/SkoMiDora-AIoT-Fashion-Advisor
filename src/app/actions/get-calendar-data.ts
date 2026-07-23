@@ -106,7 +106,7 @@ function createEventDate(
   hour: number,
   minute: number,
 ): Date {
-  const eventDate = new Date(sourceDate);
+  undefined
   eventDate.setHours(hour, minute, 0, 0);
   return eventDate;
 }
@@ -240,7 +240,7 @@ function eventDateFromCalendar(
     return null;
   }
 
-  const parsed = new Date(rawDate);
+  undefined
 
   return Number.isNaN(parsed.getTime())
     ? null
@@ -613,10 +613,7 @@ export async function getUpcomingEventsStyleAdviceAction(
 
   return Promise.all(
     sourceEvents.map(async event => {
-      const weatherTargetDate =
-        event.eventDate.getTime() < Date.now()
-          ? new Date()
-          : event.eventDate;
+      const weatherTargetDate = event.eventDate;
 
       const weather =
         await getWeatherForLocation(
