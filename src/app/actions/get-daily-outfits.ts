@@ -1,32 +1,19 @@
+// app/actions/get-daily-outfits.ts
 'use server';
 
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { generateObject } from 'ai';
 import { z } from 'zod';
-import { getApps, initializeApp } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-import { scanWardrobeInventory } from '@/lib/server/wardrobe-inventory-scan';
 
 const google = createGoogleGenerativeAI({
-  apiKey:
-    process.env.GEMINI_API_KEY ||
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
-    process.env.GOOGLE_API_KEY,
+  apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY,
 });
 
-function getAdminDb() {
-  if (!getApps().length) {
-    initializeApp({
-      projectId:
-        process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ||
-        'styleai-footwear',
-    });
-  }
+/* ======================================================
+   SCHEMA
+====================================================== */
 
-  return getFirestore();
-}
-
-const recommendationSchema = z.object({
+const schema = z.object({
   recommendations: z.array(
     z.object({
       eventName: z.string(),
@@ -39,142 +26,41 @@ const recommendationSchema = z.object({
       weather: z.string(),
       outfitIdea: z.string(),
       reasoning: z.string(),
-      itemIds: z.array(z.string()).min(2).max(4),
+      items: z.array(z.string()),
       colorPalette: z.string(),
-    }),
+    })
   ),
 });
 
-type Climate = {
-  tier: 'hot' | 'warm' | 'cold';
-  tempC: number | null;
-};
-
-type ItemRole =
-  | 'footwear'
-  | 'one-piece'
-  | 'top'
-  | 'bottom'
-  | 'layer'
-  | 'accessory'
-  | 'other';
-
-type LookLane = {
-  index: number;
-  items: any[];
-};
+/* ======================================================
+   TYPE CLASSIFICATION
+====================================================== */
 
 const FOOTWEAR_TYPES = new Set([
-  'shoe',
-  'shoes',
-  'boot',
-  'boots',
-  'heel',
-  'heels',
-  'sandal',
-  'sandals',
-  'loafer',
-  'loafers',
-  'pump',
-  'pumps',
-  'sneaker',
-  'sneakers',
-  'mule',
-  'mules',
-  'flat',
-  'flats',
+  'shoe', 'shoes', 'boot', 'boots', 'heel', 'heels', 'sandal', 'sandals',
+  'loafer', 'loafers', 'pump', 'pumps', 'sneaker', 'sneakers', 'mule', 'mules'
 ]);
 
-const ONE_PIECE_TYPES = new Set([
-  'dress',
-  'jumpsuit',
-  'romper',
-  'suit',
-  'swimwear',
-  'swimsuit',
+const CLOTHING_TYPES = new Set([
+  'dress', 'coat', 'jacket', 'blazer', 'top', 'shirt', 'blouse',
+  'pant', 'pants', 'trouser', 'trousers', 'skirt', 'suit', 'jumpsuit',
+  'sweater', 'cardigan', 'outerwear', 'shorts', 'swim', 'swimwear', 'swimsuit', 'bikini' // ✅ Swimwear integrated
 ]);
 
-const TOP_TYPES = new Set([
-  'shirt',
-  't-shirt',
-  'tshirt',
-  'tee',
-  'blouse',
-  'top',
-  'tank top',
-  'tank',
-  'sweater',
-]);
-
-const BOTTOM_TYPES = new Set([
-  'jeans',
-  'trousers',
-  'pants',
-  'shorts',
-  'skirt',
-]);
-
-const LAYER_TYPES = new Set([
-  'blazer',
-  'jacket',
-  'coat',
-  'cardigan',
-  'outerwear',
-]);
-
-const ACCESSORY_TYPES = new Set([
-  'jewelry',
-  'scarf',
-  'hat',
-  'watch',
-  'belt',
-]);
+function normalizeType(t: any): string {
+  return String(t || '').trim().toLowerCase();
+}
 
 function cleanText(value: any): string {
-  return String(value ?? '').replace(/\s+/g, ' ').trim();
-}
-
-function normalizeType(value: any): string {
-  return cleanText(value).toLowerCase();
-}
-
-function itemId(item: any): string {
-  return cleanText(
-    item?.id ||
-      item?.documentId ||
-      item?.itemId,
-  );
-}
-
-function itemName(item: any): string {
-  return cleanText(
-    item?.itemName ||
-      item?.title ||
-      item?.displayName ||
-      item?.aiFriendlyName ||
-      item?.name,
-  );
-}
-
-function itemType(item: any): string {
-  const values = [
-    item?.itemType,
-    item?.type,
-    item?.category,
-  ];
-
-  for (const value of values) {
-    const normalized = normalizeType(value);
-    if (normalized) return normalized;
-  }
-
-  return '';
+  return String(value || '').replace(/\s+/g, ' ').trim();
 }
 
 function itemText(item: any): string {
   return [
-    itemName(item),
-    itemType(item),
+    item?.itemName,
+    item?.itemType,
+    item?.type,
+    item?.category,
     item?.color,
     item?.generalMaterial,
     item?.materials,
@@ -183,192 +69,53 @@ function itemText(item: any): string {
     item?.brand,
     item?.detailedSpecifications,
     item?.narrativeDescription,
-    item?.season,
-    item?.formality,
-    Array.isArray(item?.styleKeywords)
-      ? item.styleKeywords.join(' ')
-      : item?.styleKeywords,
-    Array.isArray(item?.eventCategory)
-      ? item.eventCategory.join(' ')
-      : item?.eventCategory,
-    Array.isArray(item?.weatherSuitability)
-      ? item.weatherSuitability.join(' ')
-      : item?.weatherSuitability,
-    Array.isArray(item?.tags)
-      ? item.tags.join(' ')
-      : item?.tags,
-  ]
-    .map(cleanText)
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-}
-
-function classifyItem(item: any): ItemRole {
-  const type = itemType(item);
-  const text = itemText(item);
-
-  if (
-    FOOTWEAR_TYPES.has(type) ||
-    /\b(boot|boots|heel|heels|sandal|sandals|shoe|shoes|loafer|loafers|pump|pumps|sneaker|sneakers|mule|mules|flat|flats)\b/.test(
-      text,
-    )
-  ) {
-    return 'footwear';
-  }
-
-  if (
-    ONE_PIECE_TYPES.has(type) ||
-    /\b(dress|jumpsuit|romper|two-piece suit|pantsuit|swimsuit)\b/.test(
-      text,
-    )
-  ) {
-    return 'one-piece';
-  }
-
-  if (
-    BOTTOM_TYPES.has(type) ||
-    /\b(jeans|trousers|pants|shorts|skirt)\b/.test(text)
-  ) {
-    return 'bottom';
-  }
-
-  if (
-    LAYER_TYPES.has(type) ||
-    /\b(blazer|jacket|coat|cardigan|outerwear)\b/.test(text)
-  ) {
-    return 'layer';
-  }
-
-  if (
-    TOP_TYPES.has(type) ||
-    /\b(shirt|t-shirt|tshirt|tee|blouse|tank|sweater|top)\b/.test(
-      text,
-    )
-  ) {
-    return 'top';
-  }
-
-  if (
-    ACCESSORY_TYPES.has(type) ||
-    /\b(jewelry|earrings|necklace|bracelet|ring|scarf|hat|watch|belt)\b/.test(
-      text,
-    )
-  ) {
-    return 'accessory';
-  }
-
-  return 'other';
+    Array.isArray(item?.styleKeywords) ? item.styleKeywords.join(' ') : '',
+  ].map(cleanText).join(' ').toLowerCase();
 }
 
 function parseTempC(weatherContext: string): number | null {
   const weather = cleanText(weatherContext);
-  const cMatch = weather.match(/(-?\d+(?:\.\d+)?)\s*°?\s*C\b/i);
 
+  const cMatch = weather.match(/(-?\d+(?:\.\d+)?)\s*°?\s*C\b/i);
   if (cMatch) return Number(cMatch[1]);
 
   const fMatch = weather.match(/(-?\d+(?:\.\d+)?)\s*°?\s*F\b/i);
-
-  if (fMatch) {
-    return Math.round(
-      ((Number(fMatch[1]) - 32) * 5) / 9,
-    );
-  }
+  if (fMatch) return Math.round((Number(fMatch[1]) - 32) * 5 / 9);
 
   return null;
 }
 
-function getClimate(weatherContext: string): Climate {
+function getClimate(weatherContext: string) {
   const tempC = parseTempC(weatherContext);
   const text = cleanText(weatherContext).toLowerCase();
 
-  if (tempC !== null && tempC >= 24) {
-    return { tier: 'hot', tempC };
-  }
+  if (tempC !== null && tempC >= 24) return { tier: 'hot', tempC };
+  if (tempC !== null && tempC >= 18) return { tier: 'warm', tempC };
+  if (tempC !== null && tempC <= 12) return { tier: 'cold', tempC };
 
-  if (tempC !== null && tempC <= 12) {
-    return { tier: 'cold', tempC };
-  }
-
-  if (/\b(hot|heat|humid|summer|sunny)\b/.test(text)) {
-    return { tier: 'hot', tempC };
-  }
-
-  if (/\b(cold|snow|winter|freezing|icy)\b/.test(text)) {
-    return { tier: 'cold', tempC };
-  }
+  if (/\b(hot|heat|humid|summer|sunny|clear)\b/.test(text)) return { tier: 'hot', tempC };
+  if (/\b(warm|mild)\b/.test(text)) return { tier: 'warm', tempC };
+  if (/\b(cold|snow|winter|freezing)\b/.test(text)) return { tier: 'cold', tempC };
 
   return { tier: 'warm', tempC };
 }
 
 function isHeavyColdItem(item: any): boolean {
-  return /\b(boot|boots|puffer|parka|wool|cashmere|alpaca|thermal|fleece|fur|shearling|down|heavy|winter|snow|thick sweater)\b/.test(
-    itemText(item),
-  );
+  return /\b(boot|boots|coat|puffer|parka|wool|cashmere|alpaca|thermal|fleece|fur|shearling|down|heavy|winter|snow|knitwear|thick sweater|heavy sweater)\b/.test(itemText(item));
 }
 
 function isWarmWeatherItem(item: any): boolean {
-  return /\b(linen|cotton|silk|dress|shirt|blouse|tank|tee|t-shirt|shorts|skirt|sandal|sandals|mule|mules|slide|slides|loafer|loafers|pump|pumps|resort|lightweight|sleeveless|halter)\b/.test(
-    itemText(item),
-  );
+  return /\b(linen|cotton|silk|dress|shirtdress|shirt|blouse|tank|tee|t-shirt|shorts|skirt|sandal|sandals|mule|mules|slide|slides|loafer|loafers|pump|pumps|swim|swimwear|swimsuit|bikini|resort|lightweight|sleeveless|halter)\b/.test(itemText(item));
 }
 
-function isWeatherEligible(
-  item: any,
-  climate: Climate,
-  weatherContext: string,
-  eventContext: string,
-): boolean {
-  const role = classifyItem(item);
-  const text = itemText(item);
-  const weather = cleanText(weatherContext).toLowerCase();
-  const event = cleanText(eventContext).toLowerCase();
+function inferLocation(eventContext: string, weatherContext: string = ''): string {
+  const text = `${cleanText(eventContext)} ${cleanText(weatherContext)}`.toLowerCase();
 
-  if (
-    climate.tier === 'hot' &&
-    isHeavyColdItem(item) &&
-    !isWarmWeatherItem(item)
-  ) {
-    return false;
-  }
-
-  if (role !== 'footwear') return true;
-
-  const isOpen =
-    /\b(sandal|sandals|slide|slides|mule|mules|open toe|open-toe|peep toe|peep-toe)\b/.test(
-      text,
-    );
-  const isBoot = /\b(boot|boots)\b/.test(text);
-  const isStiletto =
-    /\b(stiletto|stilettos|high heel|high heels)\b/.test(text);
-  const isDelicate = /\b(suede|satin|velvet)\b/.test(text);
-  const rain = /\b(rain|showers|storm|wet)\b/.test(weather);
-  const snow = /\b(snow|ice|icy|sleet|blizzard)\b/.test(weather);
-  const walking =
-    /\b(walking|tour|sightseeing|hiking)\b/.test(event);
-
-  if (climate.tier === 'hot' && isBoot) return false;
-  if (climate.tier === 'cold' && isOpen) return false;
-  if (rain && (isOpen || isDelicate)) return false;
-  if (snow && (isOpen || isStiletto)) return false;
-  if (walking && isStiletto) return false;
-
-  return true;
-}
-
-function inferLocation(
-  eventContext: string,
-  weatherContext: string,
-): string {
-  const combined = `${cleanText(eventContext)} ${cleanText(
-    weatherContext,
-  )}`.toLowerCase();
-
-  const destinations = [
+  const knownDestinations = [
     { keys: ['paris', 'france'], label: 'Paris, France' },
     { keys: ['rome', 'italy'], label: 'Rome, Italy' },
     { keys: ['oslo', 'norway'], label: 'Oslo, Norway' },
-    { keys: ['london', 'england', 'united kingdom'], label: 'London, United Kingdom' },
+    { keys: ['london', 'uk', 'england'], label: 'London, United Kingdom' },
     { keys: ['new york', 'nyc', 'manhattan'], label: 'New York, USA' },
     { keys: ['tokyo', 'japan'], label: 'Tokyo, Japan' },
     { keys: ['milan', 'milano'], label: 'Milan, Italy' },
@@ -377,530 +124,484 @@ function inferLocation(
     { keys: ['lisbon', 'portugal'], label: 'Lisbon, Portugal' },
   ];
 
-  const match = destinations.find(destination =>
-    destination.keys.some(key => combined.includes(key)),
+  const matched = knownDestinations.find((dest) =>
+    dest.keys.some((key) => text.includes(key))
   );
 
-  if (match) return match.label;
+  if (matched) return matched.label;
+
+  const inMatch = cleanText(eventContext).match(/(?:in|for|at)\s+([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){0,2})(?:\b|,)/);
+  if (inMatch?.[1]) return inMatch[1].trim();
 
   return cleanText(eventContext) || 'Current Destination';
 }
 
-function hashString(value: string): number {
-  let hash = 2166136261;
-
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-
-  return hash >>> 0;
+function shortDestinationName(destination: string): string {
+  return cleanText(destination).split(',')[0].trim() || 'Current Destination';
 }
 
-function seededRandom(seed: number): () => number {
-  let state = seed >>> 0;
+function buildDestinationImageQuery(destination: string, eventContext: string, weatherContext: string): string {
+  const shortName = shortDestinationName(destination);
+  const eventText = cleanText(eventContext);
+  const weatherText = cleanText(weatherContext);
 
-  return () => {
-    state += 0x6d2b79f5;
-    let value = state;
-    value = Math.imul(value ^ (value >>> 15), value | 1);
-    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
-    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
-  };
+  return [
+    shortName,
+    eventText && eventText !== shortName ? eventText : '',
+    weatherText,
+    'bright luxury fashion editorial resort street style boutique wardrobe'
+  ].filter(Boolean).join(' ');
 }
 
-function seededShuffle(items: any[], seed: number): any[] {
-  const shuffled = [...items];
-  const random = seededRandom(seed);
+function buildWeatherTag(climate: { tier: string; tempC: number | null }, weatherContext: string): string {
+  if (climate.tempC !== null) return `${climate.tier} • ${climate.tempC}°C`;
+  return cleanText(weatherContext) || climate.tier;
+}
 
-  for (let index = shuffled.length - 1; index > 0; index -= 1) {
-    const target = Math.floor(random() * (index + 1));
-    [shuffled[index], shuffled[target]] = [
-      shuffled[target],
-      shuffled[index],
-    ];
+function isFootwear(item: any): boolean {
+  const t = normalizeType(item?.itemType);
+  if (FOOTWEAR_TYPES.has(t)) return true;
+
+  const n = String(item?.itemName || '').toLowerCase();
+  return /(boot|heel|sandal|shoe|loafer|pump|sneaker|mule)/.test(n);
+}
+
+function isClothing(item: any): boolean {
+  const t = normalizeType(item?.itemType);
+  if (CLOTHING_TYPES.has(t)) return true;
+
+  const n = String(item?.itemName || '').toLowerCase();
+  // ✅ Evaluation regex expanded to catch swimwear strings dynamically
+  return /(dress|coat|jacket|blazer|top|shirt|blouse|pant|trouser|skirt|suit|jumpsuit|sweater|cardigan|outerwear|shorts|swim|swimwear|swimsuit|bikini)/.test(n);
+}
+
+function resolveImage(item: any): string | null {
+  const primaryUrl = item?.imageUrl || item?.image || item?.url;
+  
+  if (!primaryUrl || item?.imageStatus === "missing" || item?.imageError) {
+    return "https://placehold.co/600x800/eeeeee/999999?text=Image+Unavailable"; 
   }
+  
+  return primaryUrl;
+}
 
+/* ======================================================
+   ARRAY SHUFFLER
+====================================================== */
+function shuffleArray(array: any[]) {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
   return shuffled;
 }
 
-function uniqueItems(items: any[]): any[] {
-  const seenIds = new Set<string>();
-  const seenNames = new Set<string>();
+/* ======================================================
+   NAME CORRECTION
+====================================================== */
 
-  return items.filter(item => {
-    const id = itemId(item);
-    const name = itemName(item).toLowerCase();
+function correctItemNames(generatedItems: string[], realCloset: any[]) {
+  return generatedItems.map((genName) => {
+    const g = String(genName || '').trim();
+    if (!g) return genName;
 
-    if (!id || !name) return false;
-    if (seenIds.has(id) || seenNames.has(name)) return false;
+    const exact = realCloset.find(i => String(i.itemName || '').trim() === g);
+    if (exact) return exact.itemName;
 
-    seenIds.add(id);
-    seenNames.add(name);
-    return true;
+    const gl = g.toLowerCase();
+    const fuzzy = realCloset.find(i => {
+      const rn = String(i.itemName || '').toLowerCase();
+      return rn && (gl.includes(rn) || rn.includes(gl));
+    });
+
+    return fuzzy ? fuzzy.itemName : genName;
   });
 }
 
-function distributeRole(
-  sourceItems: any[],
-  lanes: LookLane[],
-  seed: number,
-  perLane: number,
-): void {
-  const shuffled = seededShuffle(sourceItems, seed);
-  const counts = lanes.map(() => 0);
+/* ======================================================
+   PICK EXACTLY ONE FOOTWEAR + ONE CLOTHING
+====================================================== */
 
-  for (let index = 0; index < shuffled.length; index += 1) {
-    const laneIndex = index % lanes.length;
+function pickOneOfEach(resolvedNames: string[], closetItems: any[]) {
+  const byName = resolvedNames
+    .map(name => closetItems.find(c => String(c.itemName || '').toLowerCase() === String(name || '').toLowerCase()))
+    .filter(Boolean);
 
-    if (counts[laneIndex] >= perLane) continue;
+  let footwear = byName.find(isFootwear) || closetItems.find(isFootwear) || null;
+  let clothing = byName.find(isClothing) || closetItems.find(isClothing) || null;
 
-    lanes[laneIndex].items.push(shuffled[index]);
-    counts[laneIndex] += 1;
+  if (footwear && clothing && footwear === clothing) {
+    const altClothing = closetItems.find(i => i !== footwear && isClothing(i));
+    if (altClothing) clothing = altClothing;
+
+    const altFootwear = closetItems.find(i => i !== clothing && isFootwear(i));
+    if (altFootwear) footwear = altFootwear;
   }
+
+  return { footwear, clothing };
 }
 
-function buildLookLanes(
+/* ======================================================
+   WEATHER CONFIGURATION
+====================================================== */
+
+const CITY_CONFIG = [
+  {
+    city: 'Paris',
+    weatherHint: 'Warm, sunny summer. Breathable chic layers, light dresses, polished tailoring, and editorial city styling.',
+    bgUrl: 'https://images.pexels.com/photos/33320737/pexels-photo-33320737.jpeg?auto=compress&cs=tinysrgb&w=1000'
+  },
+  {
+    city: 'Rome',
+    weatherHint: 'Hot Mediterranean summer. Linen, resort layers, refined sandals, and sunlit luxury travel styling.',
+    bgUrl: 'https://images.pexels.com/photos/5659303/pexels-photo-5659303.jpeg?auto=compress&cs=tinysrgb&w=1000'
+  },
+  {
+    city: 'Oslo',
+    weatherHint: 'Bright Nordic summer. Crisp transitional pieces, clean texture, and relaxed luxury layers.',
+    bgUrl: 'https://images.pexels.com/photos/33377313/pexels-photo-33377313.jpeg?auto=compress&cs=tinysrgb&w=1000'
+  },
+  {
+    city: 'London',
+    weatherHint: 'Polished city styling with refined tailoring, boutique texture, and day-to-evening versatility.',
+    bgUrl: 'https://images.pexels.com/photos/30297579/pexels-photo-30297579.jpeg?auto=compress&cs=tinysrgb&w=1000'
+  },
+  {
+    city: 'New York',
+    weatherHint: 'Metropolitan fashion polish with expressive accessories, clean lines, and editorial street styling.',
+    bgUrl: 'https://images.pexels.com/photos/33008929/pexels-photo-33008929.jpeg?auto=compress&cs=tinysrgb&w=1000'
+  },
+  {
+    city: 'Tokyo',
+    weatherHint: 'Modern city styling with sharp silhouettes, texture contrast, and refined minimalism.',
+    bgUrl: 'https://images.pexels.com/photos/19549105/pexels-photo-19549105.jpeg?auto=compress&cs=tinysrgb&w=1000'
+  },
+  {
+    city: 'Milan',
+    weatherHint: 'Italian fashion polish with elegant tailoring, designer texture, and understated drama.',
+    bgUrl: 'https://images.pexels.com/photos/33320737/pexels-photo-33320737.jpeg?auto=compress&cs=tinysrgb&w=1000'
+  },
+];
+
+function getDestinationConfig(destinationName: string, fallbackIndex: number = 0) {
+  const shortName = shortDestinationName(destinationName).toLowerCase();
+
+  return (
+    CITY_CONFIG.find((cfg) => shortName.includes(cfg.city.toLowerCase())) ||
+    CITY_CONFIG[fallbackIndex % CITY_CONFIG.length] ||
+    CITY_CONFIG[0]
+  );
+}
+
+/* ======================================================
+   SERVER ACTION
+====================================================== */
+
+
+function rotateArray(items: any[], seed: number) {
+  if (!items.length) return items;
+  const offset = Math.abs(seed) % items.length;
+  return [...items.slice(offset), ...items.slice(0, offset)];
+}
+
+function pickUnusedItem(items: any[], usedNames: Set<string>) {
+  return items.find((item) => {
+    const name = cleanText(item?.itemName).toLowerCase();
+    return name && !usedNames.has(name);
+  }) || null;
+}
+
+function buildDeterministicFallbackOutfits(
   recommendationPool: any[],
   eventContext: string,
   weatherContext: string,
-  refreshSeed: string,
-  recentItemIds: string[],
-): LookLane[] {
-  const recent = new Set(
-    recentItemIds.map(cleanText).filter(Boolean),
-  );
-  const unique = uniqueItems(recommendationPool);
-  const fresh = unique.filter(item => !recent.has(itemId(item)));
-  const freshFootwear = fresh.filter(
-    item => classifyItem(item) === 'footwear',
-  );
-  const freshApparel = fresh.filter(item =>
-    ['one-piece', 'top', 'bottom', 'layer'].includes(
-      classifyItem(item),
-    ),
-  );
-  const base =
-    freshFootwear.length >= 3 && freshApparel.length >= 6
-      ? fresh
-      : unique;
-  const seed = hashString(
-    `${eventContext}|${weatherContext}|${refreshSeed}`,
-  );
-  const lanes: LookLane[] = [
-    { index: 0, items: [] },
-    { index: 1, items: [] },
-    { index: 2, items: [] },
+  climate: { tier: string; tempC: number | null },
+  refreshSeed: string = ''
+) {
+  const targetEvent = cleanText(eventContext) || "Summer Style Curation";
+  const targetLocation = inferLocation(targetEvent, weatherContext);
+  const liveWeatherContext = cleanText(weatherContext) || "Warm summer weather";
+  const destinationName = targetLocation;
+  const destinationImageQuery = buildDestinationImageQuery(destinationName, targetEvent, liveWeatherContext);
+  const weatherTag = buildWeatherTag(climate, liveWeatherContext);
+
+  const pool =
+    climate.tier === "hot"
+      ? recommendationPool.filter((item) => !isHeavyColdItem(item) || isWarmWeatherItem(item))
+      : recommendationPool;
+
+  const safePool = pool.length ? pool : recommendationPool;
+  const seedNumber = Number(refreshSeed || String(Date.now()).slice(-6));
+  const clothingPool = rotateArray(safePool.filter(isClothing), seedNumber);
+  const footwearPool = rotateArray(safePool.filter(isFootwear), seedNumber + 7);
+
+  const usedNames = new Set<string>();
+
+  const archetypes = [
+    "Breathable Tailoring & City Polish",
+    "Fluid Summer Texture & Color Movement",
+    "Evening Refinement & Lightweight Drama",
   ];
 
-  const roleLimits: Record<ItemRole, number> = {
-    footwear: 6,
-    'one-piece': 6,
-    top: 6,
-    bottom: 6,
-    layer: 3,
-    accessory: 3,
-    other: 0,
-  };
+  return archetypes.map((archetype, index) => {
+    const clothing = pickUnusedItem(clothingPool, usedNames) || pickUnusedItem(safePool, usedNames);
 
-  (
-    [
-      'footwear',
-      'one-piece',
-      'top',
-      'bottom',
-      'layer',
-      'accessory',
-    ] as ItemRole[]
-  ).forEach((role, roleIndex) => {
-    distributeRole(
-      base.filter(item => classifyItem(item) === role),
-      lanes,
-      seed + roleIndex * 977,
-      roleLimits[role],
-    );
-  });
-
-  return lanes.map(lane => ({
-    ...lane,
-    items: seededShuffle(
-      lane.items,
-      seed + lane.index * 3571,
-    ),
-  }));
-}
-
-function candidateDescription(item: any): string {
-  const metadata = [
-    item?.color && `color=${cleanText(item.color)}`,
-    item?.generalMaterial &&
-      `material=${cleanText(item.generalMaterial)}`,
-    item?.season && `season=${cleanText(item.season)}`,
-    item?.formality && `formality=${cleanText(item.formality)}`,
-    item?.eventCategory &&
-      `events=${cleanText(
-        Array.isArray(item.eventCategory)
-          ? item.eventCategory.join(', ')
-          : item.eventCategory,
-      )}`,
-    item?.styleKeywords &&
-      `style=${cleanText(
-        Array.isArray(item.styleKeywords)
-          ? item.styleKeywords.join(', ')
-          : item.styleKeywords,
-      )}`,
-  ]
-    .filter(Boolean)
-    .join('; ')
-    .slice(0, 320);
-
-  return `ID=${itemId(item)} | role=${classifyItem(
-    item,
-  )} | name=${itemName(item)}${
-    metadata ? ` | ${metadata}` : ''
-  }`;
-}
-
-function resolveCompleteLook(
-  requestedIds: string[],
-  laneItems: any[],
-  foundationMode: "one-piece" | "separates",
-): any[] {
-  const laneById = new Map(
-    laneItems.map(item => [itemId(item), item]),
-  );
-  const requested = requestedIds
-    .map(id => laneById.get(cleanText(id)))
-    .filter(Boolean) as any[];
-  const selected: any[] = [];
-  const selectedIds = new Set<string>();
-
-  const add = (item: any) => {
-    const id = itemId(item);
-    if (!id || selectedIds.has(id)) return;
-    selectedIds.add(id);
-    selected.push(item);
-  };
-
-  const firstRequested = (role: ItemRole) =>
-    requested.find(item => classifyItem(item) === role);
-  const firstLane = (role: ItemRole) =>
-    laneItems.find(item => classifyItem(item) === role);
-
-  const footwear =
-    firstRequested('footwear') || firstLane('footwear');
-  const onePiece =
-    foundationMode === "one-piece"
-      ? firstRequested('one-piece') ||
-        firstLane('one-piece')
-      : null;
-
-  if (onePiece) {
-    add(onePiece);
-
-    const layer = firstRequested('layer');
-    const accessory = firstRequested('accessory');
-    if (layer) add(layer);
-    if (accessory) add(accessory);
-  } else {
-    const top = firstRequested('top') || firstLane('top');
-    const bottom =
-      firstRequested('bottom') || firstLane('bottom');
-
-    if (top && bottom) {
-      add(top);
-      add(bottom);
-    } else {
-      const fallbackOnePiece = firstLane('one-piece');
-      if (fallbackOnePiece) add(fallbackOnePiece);
-      if (!fallbackOnePiece && top) add(top);
-      if (!fallbackOnePiece && bottom) add(bottom);
+    if (clothing?.itemName) {
+      usedNames.add(cleanText(clothing.itemName).toLowerCase());
     }
 
-    const layer = firstRequested('layer');
-    if (layer && selected.length < 3) add(layer);
-  }
+    const footwear = pickUnusedItem(footwearPool, usedNames);
 
-  if (footwear) add(footwear);
+    if (footwear?.itemName) {
+      usedNames.add(cleanText(footwear.itemName).toLowerCase());
+    }
 
-  return selected.slice(0, 4);
-}
+    const finalItems = [
+      clothing?.itemName,
+      footwear?.itemName,
+    ].filter(Boolean);
 
-function fallbackRecommendations(
-  lanes: LookLane[],
-  eventContext: string,
-  weatherContext: string,
-  climate: Climate,
-) {
-  const eventName =
-    cleanText(eventContext) || 'Style Curation';
-  const location = inferLocation(eventName, weatherContext);
-  const weather =
-    cleanText(weatherContext) || 'Weather unavailable';
-  const archetypes = [
-    'Closet Discovery: Refined Foundation',
-    'Closet Discovery: Texture and Proportion',
-    'Closet Discovery: Event-Ready Contrast',
-  ];
-
-  return lanes.map((lane, index) => {
-    const selected = resolveCompleteLook(
-      [],
-      lane.items,
-      index === 0 ? "one-piece" : "separates",
-    );
+    const cfg = getDestinationConfig(destinationName, index);
 
     return {
-      eventName,
-      eventTime: 'Now',
-      location,
-      destinationName: location,
-      destinationImageQuery: `${location} ${eventName} fashion`,
-      destinationReason:
-        'Built from the selected event and weather context.',
-      weatherTag:
-        climate.tempC === null
-          ? climate.tier
-          : `${climate.tier} • ${climate.tempC}°C`,
-      weather,
-      outfitIdea: archetypes[index],
+      eventName: targetEvent,
+      eventTime: "Now",
+      location: destinationName,
+      destinationName,
+      destinationImageQuery,
+      destinationReason: `Grounded from event and weather context for ${destinationName}.`,
+      weatherTag,
+      weather: liveWeatherContext,
+      outfitIdea: archetype,
       reasoning:
-        'A server-validated closet combination was used because AI generation was unavailable. Every displayed item is an exact Firestore wardrobe item selected from a separate candidate lane.',
-      itemIds: selected.map(itemId),
-      items: selected.map(itemName),
-      selectedItems: selected.map(item => ({
-        id: itemId(item),
-        itemName: itemName(item),
-        itemType: itemType(item),
-        imageUrl: item?.imageUrl || item?.image || item?.url || null,
-      })),
-      colorPalette: 'Closet-led palette',
-      clothingName:
-        itemName(
-          selected.find(item => classifyItem(item) !== 'footwear'),
-        ) || 'Wardrobe Item',
-      clothingImageUrl: null,
-      footwearName:
-        itemName(
-          selected.find(item => classifyItem(item) === 'footwear'),
-        ) || 'Footwear',
-      footwearImageUrl: null,
-      city: location.split(',')[0],
-      temp:
-        climate.tempC === null
-          ? '--'
-          : `${climate.tempC}°C`,
+        climate.tier === "hot"
+          ? "Fallback closet curation used because the AI outfit generator failed. This look avoids heavy coats, boots, wool, cashmere, alpaca, and winter-weight pieces for hot weather."
+          : "Fallback closet curation used because the AI outfit generator failed. This look uses available closet pieces while preserving event and weather context.",
+      items: finalItems,
+      colorPalette: "Closet-led palette",
+      city: shortDestinationName(destinationName),
+      temp: climate.tempC !== null ? `${climate.tempC}°C` : "--",
+      cityBg: cfg.bgUrl,
+
+      clothingName: clothing?.itemName || "Wardrobe Item",
+      clothingImageUrl: resolveImage(clothing),
+
+      footwearName: footwear?.itemName || "Footwear",
+      footwearImageUrl: resolveImage(footwear),
     };
-  });
+  }).filter((rec) => rec.items.length > 0);
 }
 
 export async function getDailyOutfitsAction(
+  closetItems: any[],
   eventContext: string = '',
   weatherContext: string = '',
-  refreshSeed: string = '',
-  recentItemIds: string[] = [],
+  refreshSeed: string = ''
 ) {
   const climate = getClimate(weatherContext);
-  const db = getAdminDb();
-  const inventory = await scanWardrobeInventory(db, {
-    pageSize: 250,
-    sampleSize: 900,
-    seed: `${eventContext}|${weatherContext}|${refreshSeed}`,
-  });
-  const closetItems = inventory.items;
 
-  console.log(
-    `Outfit inventory scan: ${inventory.scannedCount} documents across ${inventory.pageCount} page(s); ${closetItems.length} bounded candidates retained.`,
-  );
-
-  const validItems = closetItems.filter(item => {
-    const id = itemId(item);
-    const name = itemName(item);
-    const type = itemType(item);
-    const text = `${type} ${name}`.toLowerCase();
-    const isBag = /\b(bag|handbag|purse|clutch|tote)\b/.test(text);
-    const role = classifyItem(item);
-
-    return (
-      Boolean(id && name) &&
-      !isBag &&
-      role !== 'other' &&
-      isWeatherEligible(
-        item,
-        climate,
-        weatherContext,
-        eventContext,
-      )
-    );
+  // ✅ Prevent handbags from entering the AI context window completely
+  const validApparel = closetItems.filter(item => {
+    const type = (item.itemType || '').toLowerCase();
+    const name = (item.itemName || '').toLowerCase();
+    const isBag = type.includes('bag') || type.includes('purse') || name.includes('bag') || name.includes('purse');
+    return !isBag;
   });
 
-  if (validItems.length === 0) {
-    return [];
+  const weatherEligible = validApparel.filter(item => {
+    if (climate.tier === 'hot') {
+      return !isHeavyColdItem(item) || isWarmWeatherItem(item);
+    }
+    return true;
+  });
+
+  const recommendationPool = weatherEligible.length >= 4 ? weatherEligible : validApparel;
+
+  if (!recommendationPool || recommendationPool.length === 0) {
+    return [{
+      eventName: "Closet Empty",
+      eventTime: "Now",
+      location: "Home",
+      destinationName: "Home",
+      destinationImageQuery: "home closet wardrobe styling",
+      destinationReason: "No closet metadata is available yet.",
+      weatherTag: "N/A",
+      weather: "N/A",
+      outfitIdea: "Add Items First",
+      reasoning: "Please add valid apparel items to your closet to get real AI suggestions.",
+      items: ["No items found"],
+      colorPalette: "Gray",
+      clothingName: "None",
+      clothingImageUrl: null,
+      footwearName: "None",
+      footwearImageUrl: null,
+      city: "Home",
+      temp: '--',
+      cityBg: "https://images.pexels.com/photos/33320737/pexels-photo-33320737.jpeg?auto=compress&cs=tinysrgb&w=1000",
+    }];
   }
 
-  const eventName =
-    cleanText(eventContext) || 'Style Curation';
-  const weather =
-    cleanText(weatherContext) || 'Weather unavailable';
-  const location = inferLocation(eventName, weather);
-  const lanes = buildLookLanes(
-    validItems,
-    eventName,
-    weather,
-    refreshSeed || String(Date.now()),
-    recentItemIds,
-  );
+  const options: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+  const dateString = new Date().toLocaleDateString('en-US', options);
+  const uniqueRequestID = refreshSeed || String(Date.now()); 
 
-  if (
-    lanes.some(
-      lane =>
-        !lane.items.some(
-          item => classifyItem(item) === 'footwear',
-        ),
-    )
-  ) {
-    console.warn(
-      'One or more recommendation lanes do not contain footwear. The closet may not have three distinct eligible footwear items.',
-    );
-  }
+  const shuffledCloset = shuffleArray(recommendationPool);
 
-  const laneInventory = lanes
-    .map(
-      lane => `LOOK ${lane.index + 1} CANDIDATE LANE:\n${lane.items
-        .map(candidateDescription)
-        .join('\n')}`,
-    )
-    .join('\n\n');
-  const currentDate = new Date().toLocaleDateString(
-    'en-US',
-    {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    },
-  );
-  const weatherRule =
-    climate.tier === 'hot'
-      ? 'Do not select boots, heavy coats, wool, cashmere, alpaca, thermal layers, fleece, fur, parkas, or winter-weight pieces.'
-      : climate.tier === 'cold'
-        ? 'Do not select open sandals or other clearly cold-inappropriate pieces.'
-        : 'Choose pieces appropriate for the supplied weather.';
+  const closetText = shuffledCloset
+    .map((item) => {
+      const details = [
+        item.itemType ? `Type: ${item.itemType}` : null,
+        item.color ? `Color: ${item.color}` : null,
+        item.generalMaterial ? `Material: ${item.generalMaterial}` : null,
+        item.designer ? `Designer: ${item.designer}` : null,
+        item.detailedSpecifications ? `Specs: ${item.detailedSpecifications}` : null,
+        item.narrativeDescription ? `Editorial Note: ${item.narrativeDescription}` : null,
+        item.styleKeywords && item.styleKeywords.length > 0 ? `Aesthetics: ${item.styleKeywords.join(', ')}` : null,
+        item.season ? `Season: ${item.season}` : null,
+        item.eventCategory ? `Event Category: ${Array.isArray(item.eventCategory) ? item.eventCategory.join(', ') : item.eventCategory}` : null,
+        item.weatherSuitability ? `Weather Suitability: ${Array.isArray(item.weatherSuitability) ? item.weatherSuitability.join(', ') : item.weatherSuitability}` : null,
+        item.formality ? `Formality: ${item.formality}` : null,
+        item.locationWorn ? `Previously Worn Location: ${item.locationWorn}` : null,
+        item.tags && item.tags.length > 0 ? `Tags: ${item.tags.join(', ')}` : null
+      ].filter(Boolean).join(', ');
+
+      return `- "${item.itemName}" [${details}]`;
+    })
+    .join('\n');
+
+  const targetEvent = cleanText(eventContext) || 'Summer Style Curation';
+  const targetLocation = inferLocation(targetEvent, weatherContext);
+  const liveWeatherContext = cleanText(weatherContext) || 'Warm summer weather';
+  const destinationName = targetLocation;
+  const destinationImageQuery = buildDestinationImageQuery(destinationName, targetEvent, liveWeatherContext);
+  const weatherTag = buildWeatherTag(climate, liveWeatherContext);
+
+  const hardWeatherRule = climate.tier === 'hot'
+    ? 'HARD WEATHER BAN: Do not use boots, heavy coats, cashmere wraps, wool coats, alpaca, thermal layers, fleece, fur, heavy knitwear, parkas, or winter outerwear. Prefer sandals, mules, pumps, loafers, silk, linen, cotton, lightweight dresses, skirts, shirts, shorts, swim/resort pieces, and breathable tailoring.'
+    : 'Weather rule: choose climate-appropriate pieces. Avoid winter-weight garments unless the weather is cold.';
+
   const prompt = `
-You are the SkoMiDora luxury wardrobe recommendation engine.
+You are an avant-garde luxury personal fashion stylist for the high-end SkoMiDora styling app.
 
-DATE: ${currentDate}
-EVENT: ${eventName}
-LOCATION: ${location}
-VERIFIED WEATHER CONTEXT: ${weather}
-CLIMATE: ${climate.tier}${
-    climate.tempC === null ? '' : ` (${climate.tempC}°C)`
-  }
+CURRENT TIME CONTEXT:
+Today is ${dateString}. The season context is June 2026 / Summer.
+System Reference Code: ${uniqueRequestID}
+Refresh seed directive: Use this seed to produce a different closet combination from the previous run.
 
-${weatherRule}
+EVENT CONTEXT:
+${targetEvent}
 
-Return exactly three differentiated looks for this same event.
+DESTINATION CONTEXT:
+Destination Name: ${destinationName}
+Destination Image Query: ${destinationImageQuery}
 
-INVENTORY RULES:
-1. Look 1 may use IDs only from LOOK 1 CANDIDATE LANE.
-2. Look 2 may use IDs only from LOOK 2 CANDIDATE LANE.
-3. Look 3 may use IDs only from LOOK 3 CANDIDATE LANE.
-4. Return exact Firestore IDs in itemIds. Never return names in itemIds.
-5. Each look must contain two to four items and exactly one footwear item.
-6. Look 1 must use a dress, jumpsuit, suit, or other one-piece foundation.
-7. Look 2 must use one top plus one bottom and may not use a one-piece.
-8. Look 3 must use a different top plus a different bottom and may not use a one-piece.
-9. A weather-appropriate layer or accessory may be added when useful.
-10. Do not invent an item or move an item between lanes.
-11. Explain the event, weather, silhouette, color, and material logic.
+LIVE WEATHER CONTEXT:
+${liveWeatherContext}
 
-${laneInventory}
+TEMPERATURE CLASSIFICATION:
+${climate.tier}${climate.tempC !== null ? ` (${climate.tempC}°C)` : ''}
+
+${hardWeatherRule}
+
+RECOMMENDATION PARAMETERS:
+Return EXACTLY 3 recommendations for the SAME event and SAME weather context.
+They are 3 different outfit options, not 3 different cities.
+
+LOOK ARCHETYPES:
+1. Breathable Tailoring & City Polish
+2. Fluid Summer Texture & Color Movement
+3. Evening Refinement & Lightweight Drama
+
+CRITICAL INVENTORY EXPLORATION DIRECTIVES:
+1. MAXIMIZE CLOSET DEPTH: explore the full closet and avoid repeatedly using the same obvious hero item.
+2. COMPULSORY REPETITION BAN: a wardrobe item can appear in only one look.
+3. Use at least 6 completely distinct item names across the whole response.
+4. Each recommendation must include exactly:
+   - one footwear item name
+   - one clothing item name
+5. Use exact item names from the wardrobe inventory. Do not invent items.
+6. The reasoning must explain why the look fits the event and the live weather.
+7. For hot weather, never select boots or heavy coats.
+
+WARDROBE INVENTORY:
+${closetText}
+
+Each recommendation must include:
+- destinationName: the real destination label, exactly "${destinationName}"
+- destinationImageQuery: a specific image/search phrase grounded in the destination, event, and weather
+- destinationReason: a short explanation of why this destination context applies
+- weatherTag: exactly "${weatherTag}"
+
+Return exactly 3 highly differentiated luxury looks for the selected event.
 `;
 
-  let generated;
+  let result;
 
   try {
-    generated = await generateObject({
+    result = await generateObject({
       model: google('gemini-2.5-flash'),
-      schema: recommendationSchema,
+      schema,
       prompt,
-      temperature: 0.65,
+      temperature: 0.75,
     });
   } catch (error) {
-    console.error(
-      'Daily outfit generation failed; using validated closet fallback:',
-      error,
-    );
-
-    return fallbackRecommendations(
-      lanes,
-      eventName,
-      weather,
-      climate,
-    );
+    console.error("Daily outfit AI generation failed. Using deterministic closet fallback:", error);
+    return buildDeterministicFallbackOutfits(recommendationPool, eventContext, weatherContext, climate, refreshSeed);
   }
 
-  const aiRecommendations =
-    generated.object.recommendations.slice(0, 3);
+  const aiRecommendations = result?.object?.recommendations || [];
 
-  if (aiRecommendations.length !== 3) {
-    return fallbackRecommendations(
-      lanes,
-      eventName,
-      weather,
-      climate,
-    );
+  if (!aiRecommendations.length) {
+    console.error("Daily outfit AI returned no recommendations. Using deterministic closet fallback.");
+    return buildDeterministicFallbackOutfits(recommendationPool, eventContext, weatherContext, climate, refreshSeed);
   }
 
-  return aiRecommendations.map((recommendation, index) => {
-    const lane = lanes[index];
-    const selected = resolveCompleteLook(
-      recommendation.itemIds,
-      lane.items,
-      index === 0 ? "one-piece" : "separates",
-    );
+  const fixedNames = aiRecommendations.map(rec => ({
+    ...rec,
+    items: correctItemNames(rec.items, recommendationPool),
+  }));
+
+  const usedNames = new Set<string>();
+
+  const enriched = fixedNames.slice(0, 3).map((rec, index) => {
+    const availablePool = recommendationPool.filter(item => !usedNames.has(cleanText(item.itemName).toLowerCase()));
+    const poolForLook = availablePool.length >= 2 ? availablePool : recommendationPool;
+
+    const { footwear, clothing } = pickOneOfEach(rec.items, poolForLook);
+
+    if (clothing?.itemName) usedNames.add(cleanText(clothing.itemName).toLowerCase());
+    if (footwear?.itemName) usedNames.add(cleanText(footwear.itemName).toLowerCase());
+
+    const finalItems = [
+      clothing?.itemName,
+      footwear?.itemName,
+    ].filter(Boolean);
+
+    const cfg = getDestinationConfig(destinationName, index);
 
     return {
-      ...recommendation,
-      eventName,
-      eventTime: recommendation.eventTime || 'Now',
-      location,
-      destinationName: location,
-      destinationImageQuery:
-        recommendation.destinationImageQuery ||
-        `${location} ${eventName} fashion`,
-      destinationReason:
-        recommendation.destinationReason ||
-        'Built from the selected event and weather context.',
-      weatherTag:
-        recommendation.weatherTag ||
-        (climate.tempC === null
-          ? climate.tier
-          : `${climate.tier} • ${climate.tempC}°C`),
-      weather,
-      itemIds: selected.map(itemId),
-      items: selected.map(itemName),
-      selectedItems: selected.map(item => ({
-        id: itemId(item),
-        itemName: itemName(item),
-        itemType: itemType(item),
-        imageUrl: item?.imageUrl || item?.image || item?.url || null,
-      })),
-      clothingName:
-        itemName(
-          selected.find(item => classifyItem(item) !== 'footwear'),
-        ) || 'Wardrobe Item',
-      clothingImageUrl: null,
-      footwearName:
-        itemName(
-          selected.find(item => classifyItem(item) === 'footwear'),
-        ) || 'Footwear',
-      footwearImageUrl: null,
-      city: location.split(',')[0],
-      temp:
-        climate.tempC === null
-          ? '--'
-          : `${climate.tempC}°C`,
+      ...rec,
+      eventName: targetEvent,
+      city: shortDestinationName(destinationName),
+      location: destinationName,
+      destinationName,
+      destinationImageQuery: rec.destinationImageQuery || destinationImageQuery,
+      destinationReason: rec.destinationReason || `Grounded from event and weather context for ${destinationName}.`,
+      weatherTag: rec.weatherTag || weatherTag,
+      weather: liveWeatherContext,
+      items: finalItems.length > 0 ? finalItems : rec.items,
+
+      footwearName: footwear?.itemName || 'Footwear',
+      footwearImageUrl: resolveImage(footwear),
+
+      clothingName: clothing?.itemName || 'Wardrobe Item',
+      clothingImageUrl: resolveImage(clothing),
+
+      cityBg: cfg.bgUrl,
+      temp: climate.tempC !== null ? `${climate.tempC}°C` : '--',
     };
   });
+
+  return enriched;
 }

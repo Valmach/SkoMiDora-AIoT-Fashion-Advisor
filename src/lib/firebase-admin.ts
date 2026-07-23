@@ -1,7 +1,6 @@
-import { getApps, initializeApp, applicationDefault } from "firebase-admin/app";
+import { getApps, initializeApp, cert, applicationDefault } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
-import { getAuth } from "firebase-admin/auth";
 
 if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
   console.log("Removing GOOGLE_APPLICATION_CREDENTIALS to use Firebase Studio managed credentials.");
@@ -20,6 +19,5 @@ const adminApp = getApps().length
 
 const adminDb = getFirestore(adminApp);
 const adminStorage = getStorage(adminApp);
-const adminAuth = getAuth(adminApp);
 
-export { adminApp, adminDb, adminStorage, adminAuth };
+export { adminApp, adminDb, adminStorage };

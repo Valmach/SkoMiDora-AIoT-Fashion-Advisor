@@ -43,52 +43,33 @@ export default function OutfitRecommendationsPage() {
 
     const loadClosetAndOutfits = async () => {
       try {
+        const response = await fetch("/api/publicWardrobeItems", {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        const payload = await response.json();
+        const items = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload.items)
+            ? payload.items
+            : [];
+
         if (cancelled) return;
+
+        setCloset(items);
 
         startTransition(async () => {
           try {
-            const historyKey = "skomidora:recent-outfit-item-ids";
-            let recentItemIds: string[] = [];
-
-            try {
-              const stored = window.sessionStorage.getItem(historyKey);
-              const parsed = stored ? JSON.parse(stored) : [];
-              recentItemIds = Array.isArray(parsed)
-                ? parsed.filter(value => typeof value === "string")
-                : [];
-            } catch {
-              recentItemIds = [];
-            }
-
             const recs = await getDailyOutfitsAction(
+              items,
               eventParam || "",
               weatherParam || "",
-              String(refreshSeed),
-              recentItemIds
+              String(refreshSeed)
             );
-
-            const selectedClosetItems = recs.flatMap(rec =>
-              Array.isArray(rec.selectedItems) ? rec.selectedItems : []
-            );
-
-            if (!cancelled) {
-              setCloset(selectedClosetItems);
-            }
-
-            const selectedItemIds = recs.flatMap(rec =>
-              Array.isArray(rec.itemIds) ? rec.itemIds : []
-            );
-
-            if (selectedItemIds.length > 0) {
-              const nextHistory = Array.from(
-                new Set([...selectedItemIds, ...recentItemIds])
-              ).slice(0, 48);
-
-              window.sessionStorage.setItem(
-                historyKey,
-                JSON.stringify(nextHistory)
-              );
-            }
 
             if (!cancelled) {
               setRecommendations(recs);

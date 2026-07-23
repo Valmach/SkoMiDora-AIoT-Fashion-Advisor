@@ -11,6 +11,8 @@
 // 1. Internal Logic Imports
 import { analyzeStyleDNA as analyzeStyleDNAImpl } from './analyze-style-dna';
 import { generateOutfitForEventAction as generateOutfitImpl } from './generate-outfit-for-event';
+import { analyzeAndSaveClothingItem as analyzeAndSaveImpl } from './analyze-and-save-clothing-item';
+import { deleteClothingItem as deleteImpl } from './delete-clothing-item';
 
 /* -----------------------------------------------------------
    STYLE DNA EXPORTS
@@ -37,4 +39,24 @@ export async function analyzeStyleDNAAction(input?: any) {
  */
 export async function generateOutfitForEventAction(input: any, closetItems?: any[]) {
   return generateOutfitImpl(input, closetItems || []);
+}
+
+/* -----------------------------------------------------------
+   CLOSET & STORAGE EXPORTS
+----------------------------------------------------------- */
+
+/** * Processes new image uploads and saves metadata to Firestore.
+ * Signature updated to accept the explicit structured object required by the action.
+ */
+export async function analyzeAndSaveClothingItem(input: { 
+  imageUrl: string; 
+  imagePath: string; 
+  aiFriendlyName: string; 
+}) {
+  return analyzeAndSaveImpl(input);
+}
+
+/** Removes items from Firestore and Firebase Storage */
+export async function deleteClothingItem(itemId: string, imagePath?: string) {
+  return deleteImpl(itemId, imagePath);
 }

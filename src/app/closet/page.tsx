@@ -17,10 +17,6 @@ import {
 
 import { useFirebase } from "@/firebase/provider";
 import SkomiDoraLens from "@/components/SkomiDoraLens";
-import {
-  WARDROBE_CATEGORIES,
-  getWardrobeCategory,
-} from "@/lib/wardrobe-taxonomy";
 
 const bonheur = Bonheur_Royale({ subsets: ['latin'], weight: ['400'] });
 const playfair = Playfair_Display({ subsets: ['latin'], weight: ['400', '600', '700'] });
@@ -29,7 +25,6 @@ const inter = Inter({ subsets: ['latin'], weight: ['300', '400', '500', '600'] }
 type ClosetItem = {
   id: string;
   itemName?: string;
-  category?: string;
   itemType?: string;
   color?: string;
   narrativeDescription?: string;
@@ -150,47 +145,8 @@ export default function ClosetPage() {
     );
   }
 
-  // Shared top-level taxonomy used by both Digital Closet and AI Stylist.
-  //
-  // Firestore:
-  // category = broad group, e.g. "Footwear"
-  // itemType = specific subtype, e.g. "Trainers"
-  //
-  // Legacy documents without a valid category fall back to the
-  // canonical itemType -> category mapping.
-  const hasUncategorizedItems = items.some(
-    (item) => !getWardrobeCategory(item.category, item.itemType)
-  );
-
-  // Digital Closet and AI Stylist now consume the exact same
-  // canonical top-level category list.
-  //
-  // Closet adds "All" as its page-specific control.
-  // Stylist adds "Any Missing Piece" as its page-specific control.
-  const uniqueCategories = [
-    "All",
-    ...WARDROBE_CATEGORIES,
-    ...(hasUncategorizedItems ? ["Uncategorized"] : []),
-  ];
-
-  // Filter by broad canonical CATEGORY rather than itemType.
-  //
-  // Example:
-  // category: "Footwear"
-  // itemType: "Trainers"
-  //
-  // Clicking "Footwear" displays Trainers, Sneakers, Boots,
-  // Pumps, Mules, Sandals, etc.
-  const filteredItems =
-    activeFilter === "All"
-      ? items
-      : items.filter((item) => {
-          const resolvedCategory =
-            getWardrobeCategory(item.category, item.itemType) ||
-            "Uncategorized";
-
-          return resolvedCategory === activeFilter;
-        });
+  const uniqueCategories = ["All", ...Array.from(new Set(items.map(item => item.itemType || "Uncategorized")))];
+  const filteredItems = activeFilter === "All" ? items : items.filter(item => (item.itemType || "Uncategorized") === activeFilter);
 
   return (
     <div className={`container mx-auto space-y-6 pb-12 h-[85vh] overflow-y-auto scrollbar-hide bg-black text-zinc-100 ${inter.className} px-4 pt-4`}>
@@ -290,16 +246,8 @@ export default function ClosetPage() {
                   <div className="grid grid-cols-2 gap-3 pb-3 border-b border-zinc-900/50 mb-3 text-left">
                     <div className="flex flex-col gap-0.5">
                       <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">Type</span>
-
-                      {/* 
-                        Keep itemType on the individual card.
-                        Example:
-                        Closet category = Footwear
-                        Card type       = Trainers
-                      */}
                       <span className="text-xs font-medium text-zinc-300 capitalize truncate">{safeString(item.itemType) || "Uncategorized"}</span>
                     </div>
-
                     {item.color && (
                       <div className="flex flex-col gap-0.5 items-end text-right">
                         <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">Color</span>

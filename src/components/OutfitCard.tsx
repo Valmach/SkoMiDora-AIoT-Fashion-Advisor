@@ -151,7 +151,7 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
   const { overlay, icon } = getWeatherEffect();
 
   return (
-    <Card className="bg-[#050505] border-zinc-900 overflow-hidden flex flex-col hover:border-[#9A1B22]/50 transition-all duration-500 group shadow-2xl rounded-none">
+    <Card className="bg-[#050505] border-zinc-900 overflow-hidden flex flex-col h-full min-h-[800px] hover:border-[#9A1B22]/50 transition-all duration-500 group shadow-2xl rounded-none">
       
       <CardHeader className="pb-4 bg-black border-b border-zinc-900 px-5 pt-5 relative h-auto shrink-0 overflow-hidden">
         <div className="flex flex-col gap-3 relative z-10 w-full">
@@ -180,7 +180,7 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 flex flex-col gap-4 pt-5 px-5 pb-6 bg-[#050505]">
+      <CardContent className="flex-1 flex flex-col gap-4 pt-5 px-5 pb-6 bg-[#050505] overflow-hidden">
         
         <div className="w-full">
           <div className="grid grid-cols-2 gap-x-3 gap-y-4 h-full content-start">

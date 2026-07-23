@@ -65,17 +65,3 @@ env:
   - variable: WEATHER_API_KEY
     secret: WEATHER_API_KEY
     availability: [BUILD, RUNTIME]
-
-  # --- Google Calendar OAuth ---
-  - variable: GOOGLE_CLIENT_ID
-    secret: GOOGLE_CLIENT_ID
-    availability: [RUNTIME]
-  - variable: GOOGLE_CLIENT_SECRET
-    secret: GOOGLE_CLIENT_SECRET
-    availability: [RUNTIME]
-  - variable: GOOGLE_OAUTH_TOKEN_ENCRYPTION_KEY
-    secret: GOOGLE_OAUTH_TOKEN_ENCRYPTION_KEY
-    availability: [RUNTIME]
-  - variable: GOOGLE_CALENDAR_REDIRECT_URI
-    value: https://sk-styleai-footwear-us-cen1--styleai-footwear.us-central1.hosted.app/api/google-calendar/callback
-    availability: [RUNTIME]
