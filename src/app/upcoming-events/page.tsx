@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { getUpcomingEventsStyleAdviceAction } from '@/app/actions/get-calendar-data';
 import UpcomingEventAdviceCard from '@/components/UpcomingEventAdviceCard';
 import { collection, getDocs } from 'firebase/firestore';
-import { firestore } from '@/lib/firebase';
+import { auth, firestore } from '@/lib/firebase';
 import { Loader2, Calendar, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/hooks/use-toast";
@@ -46,8 +46,35 @@ export default function UpcomingEventsPage() {
         setClosetItems(items);
       }
 
-      const advice = await getUpcomingEventsStyleAdviceAction(items);
-      setEvents(advice || []); // Fallback to empty array just in case
+      const user = auth.currentUser;
+      let calendarEvents: any[] = [];
+
+      if (user) {
+        const idToken = await user.getIdToken();
+
+        const calendarResponse = await fetch(
+          "/api/google-calendar/events?days=365&maxResults=100",
+          {
+            headers: {
+              Authorization: `Bearer ${idToken}`,
+            },
+            cache: "no-store",
+          }
+        );
+
+        if (calendarResponse.ok) {
+          const payload = await calendarResponse.json();
+          calendarEvents = Array.isArray(payload.events) ? payload.events : [];
+        }
+      }
+
+      const advice =
+        await getUpcomingEventsStyleAdviceAction(
+          [],
+          calendarEvents,
+        );
+
+      setEvents(advice || []);
      
     } catch (error) {
       console.error("Error loading events:", error);
@@ -84,14 +111,16 @@ export default function UpcomingEventsPage() {
            </div>
         </div>
        
-        <Button
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button
           onClick={fetchData}
           variant="outline"
-          className="rounded-none border-zinc-800 hover:bg-zinc-900 hover:text-white text-xs uppercase tracking-[0.15em]"
+          className="h-9 shrink-0 rounded-none border-white/70 bg-black px-4 text-[10px] font-medium uppercase tracking-[0.2em] text-white transition-colors duration-200 hover:border-[#9A1B22] hover:bg-[#9A1B22] hover:text-white"
           disabled={loading}
         >
           {loading ? <Loader2 className="mr-3 h-4 w-4 animate-spin" /> : "Refresh Agenda"}
         </Button>
+        </div>
       </div>
 
       {/* EVENTS GRID & EMPTY STATE */}
