@@ -7,7 +7,6 @@
   },
   "scripts": {
     "dev": "next dev",
-    "prebuild": "bash ./clean.sh || true",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

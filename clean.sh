@@ -1,26 +1,49 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-echo "🧹 Starting deep clean of environment memory and caches..."
+set -euo pipefail
 
-# 1. Clear local Next.js build cache
-echo "-> Nuking Next.js build cache..."
-rm -rf .next
+PROJECT_ROOT="$(
+  cd "$(dirname "${BASH_SOURCE[0]}")"
+  pwd
+)"
 
-# 2. Clear known space-eating temp files
-echo "-> Clearing mysterious zi* temp files..."
-rm -rf ~/zi*
+cd "$PROJECT_ROOT"
 
-# 3. Clear massive Android emulator storage
-echo "-> Clearing Android emulator data (.emu)..."
-rm -rf ~/.emu
+if [[ ! -f "package.json" ]]; then
+  echo "ERROR: package.json was not found."
+  echo "Cleanup stopped without changing anything."
+  exit 1
+fi
 
-# 4. Clear Node/NPM module caches
-echo "-> Emptying global and local NPM caches..."
-rm -rf ~/.npm ~/.cache
-rm -rf ~/.global_modules
+echo "Cleaning project-generated caches only..."
 
-# 5. Clear Cloud IDE (Antigravity/IDX) workspace cache
-echo "-> Resetting Cloud IDE workspace cache..."
-rm -rf ~/.codeoss-cloudworkstations
+TARGETS=(
+  ".next"
+  ".turbo"
+  "coverage"
+  "node_modules/.cache"
+)
 
-echo "✨ Deep clean complete. Your workspace is fresh."
+removed=0
+
+for target in "${TARGETS[@]}"; do
+  if [[ -e "$target" ]]; then
+    echo "Removing $target"
+    rm -rf -- "$target"
+    removed=$((removed + 1))
+  else
+    echo "Already clean: $target"
+  fi
+done
+
+echo
+echo "Safe cleanup complete."
+echo "Removed $removed generated cache location(s)."
+echo
+echo "Preserved:"
+echo "  source files"
+echo "  node_modules"
+echo "  package-lock.json"
+echo "  Firebase configuration"
+echo "  Firebase Studio caches"
+echo "  global NPM and Nix stores"
