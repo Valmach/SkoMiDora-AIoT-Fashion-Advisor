@@ -183,7 +183,7 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
       <CardContent className="flex-1 flex flex-col gap-4 pt-5 px-5 pb-6 bg-[#050505]">
         
         <div className="w-full">
-          <div className="grid grid-cols-2 gap-x-3 gap-y-4 h-full content-start">
+          <div className="grid grid-cols-3 gap-3 h-full content-start">
             {items.slice(0, 4).map((item, i) => { 
               const imageUrl = findClosetImage(item);
               return (
