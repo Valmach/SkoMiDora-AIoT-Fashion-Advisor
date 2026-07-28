@@ -295,23 +295,14 @@ export async function POST(req: NextRequest) {
       }
     );
 
-    const displayBrand =
-      metadata.brandName ||
-      metadata.brand ||
-      metadata.designerName ||
-      "Unknown";
-
-    const displayDesigner =
-      metadata.designerName ||
-      metadata.designer ||
-      displayBrand ||
-      "Unknown";
-
-    const displayMaterial =
-      metadata.generalMaterial ||
-      metadata.material ||
-      metadata.materials ||
-      "Unknown";
+    // normalizeWardrobeMetadata() already merges brand/brandName/manufacturer
+    // into designerName, and material/fabric/composition into generalMaterial
+    // (see src/lib/wardrobeMetadata.ts). The raw brand/material fields from
+    // the AI response don't survive onto the returned object, so we read the
+    // merged fields directly instead of re-checking fields that are never set.
+    const displayBrand = metadata.designerName || "Unknown";
+    const displayDesigner = metadata.designerName || "Unknown";
+    const displayMaterial = metadata.generalMaterial || "Unknown";
 
     const meaningfulFashionLabel = (value: unknown): string | null => {
       if (value === null || value === undefined) return null;
@@ -341,17 +332,8 @@ export async function POST(req: NextRequest) {
       return invalidValues.has(normalized) ? null : cleaned;
     };
 
-    const detectedBrand =
-      meaningfulFashionLabel(metadata.brand) ||
-      meaningfulFashionLabel(metadata.brandName) ||
-      meaningfulFashionLabel(metadata.manufacturer) ||
-      meaningfulFashionLabel(displayBrand);
-
-    const detectedDesigner =
-      meaningfulFashionLabel(metadata.designer) ||
-      meaningfulFashionLabel(metadata.designerName) ||
-      meaningfulFashionLabel(metadata.fashionHouse) ||
-      meaningfulFashionLabel(displayDesigner);
+    const detectedBrand = meaningfulFashionLabel(displayBrand);
+    const detectedDesigner = meaningfulFashionLabel(displayDesigner);
 
     // The brand and designer are commonly identical for footwear and fashion.
     // Only use the opposite field as a fallback when one value is missing.
