@@ -90,16 +90,49 @@ const CITY_GALLERIES: Record<string, string[]> = {
 export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardProps) {
   if (!outfit) return null;
   const items = outfit.items || [];
-  
-  const findClosetImage = (itemName: string) => {
+
+  const findClosetItem = (itemName: string) => {
     if (!analyzedItems || analyzedItems.length === 0) return null;
-    const exact = analyzedItems.find(i => i.itemName?.toLowerCase() === itemName.toLowerCase());
-    if (exact?.imageUrl) return exact.imageUrl;
-    const fuzzy = analyzedItems.find(i => 
-      i.itemName?.toLowerCase().includes(itemName.toLowerCase()) || 
-      itemName.toLowerCase().includes(i.itemName?.toLowerCase())
+
+    const normalizedName = itemName.toLowerCase();
+    const exact = analyzedItems.find(
+      item => item.itemName?.toLowerCase() === normalizedName
     );
-    return fuzzy?.imageUrl || null;
+
+    if (exact) return exact;
+
+    return analyzedItems.find(item => {
+      const closetName = item.itemName?.toLowerCase();
+
+      if (!closetName) return false;
+
+      return (
+        closetName.includes(normalizedName) ||
+        normalizedName.includes(closetName)
+      );
+    }) || null;
+  };
+
+  const findClosetImage = (itemName: string) => {
+    const closetItem = findClosetItem(itemName);
+
+    return closetItem?.imageUrl || null;
+  };
+
+  const isFootwearItem = (itemName: string) => {
+    const closetItem = findClosetItem(itemName);
+    const searchable = [
+      closetItem?.itemType,
+      closetItem?.category,
+      itemName,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return /\b(boot|boots|bootie|booties|heel|heels|sandal|sandals|shoe|shoes|loafer|loafers|pump|pumps|sneaker|sneakers|trainer|trainers|mule|mules|flat|flats|slipper|slippers)\b/.test(
+      searchable
+    );
   };
 
   const getCityData = () => {
@@ -149,6 +182,43 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
 
   const { bg: bgImage, label: displayLocation } = getCityData();
   const { overlay, icon } = getWeatherEffect();
+  const visibleItems = items.slice(0, 3);
+  const detectedFootwearIndex = visibleItems.findIndex(isFootwearItem);
+  const footwearIndex =
+    detectedFootwearIndex >= 0
+      ? detectedFootwearIndex
+      : visibleItems.length > 1
+        ? visibleItems.length - 1
+        : -1;
+  const footwearItem =
+    footwearIndex >= 0 ? visibleItems[footwearIndex] : null;
+  const wardrobeItems = visibleItems
+    .filter((_, itemIndex) => itemIndex !== footwearIndex)
+    .slice(0, 2);
+
+  const renderItemTile = (
+    item: string,
+    itemKey: string,
+    imageClassName: string
+  ) => {
+    const imageUrl = findClosetImage(item);
+
+    return (
+      <div key={itemKey} className="flex min-w-0 flex-col gap-2">
+        <div
+          className={`relative w-full overflow-hidden rounded-sm border border-zinc-800 bg-black p-1 shadow-sm group/item ${imageClassName}`}
+        >
+          <SafeImage src={imageUrl || ""} alt={item} />
+        </div>
+        <p
+          className="truncate text-[10px] font-medium uppercase tracking-[0.1em] text-zinc-400"
+          title={item}
+        >
+          {item}
+        </p>
+      </div>
+    );
+  };
 
   return (
     <Card className="bg-[#050505] border-zinc-900 overflow-hidden flex flex-col hover:border-[#9A1B22]/50 transition-all duration-500 group shadow-2xl rounded-none">
@@ -183,21 +253,27 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
       <CardContent className="flex-1 flex flex-col gap-4 pt-5 px-5 pb-6 bg-[#050505]">
         
         <div className="w-full">
-          <div className="grid grid-cols-3 gap-3 h-full content-start">
-            {items.slice(0, 4).map((item, i) => { 
-              const imageUrl = findClosetImage(item);
-              return (
-                <div key={i} className="flex flex-col gap-1.5">
-                  <div className="relative aspect-[3/4] rounded-sm bg-black border border-zinc-900 overflow-hidden shadow-sm w-full p-1 group/item">
-                    <SafeImage src={imageUrl || ""} alt={item} />
-                  </div>
-                  <p className="text-[10px] text-zinc-400 font-medium tracking-[0.1em] uppercase truncate" title={item}>
-                    {item}
-                  </p>
-                </div>
-              );
-            })}
+          <div className="grid grid-cols-2 gap-4">
+            {wardrobeItems.map((item, itemIndex) =>
+              renderItemTile(
+                item,
+                `wardrobe-${itemIndex}-${item}`,
+                "aspect-[4/5]"
+              )
+            )}
           </div>
+
+          {footwearItem && (
+            <div className="mt-5 flex justify-center border-t border-zinc-900/70 pt-5">
+              <div className="w-[calc(50%_-_0.5rem)] min-w-0">
+                {renderItemTile(
+                  footwearItem,
+                  `footwear-${footwearItem}`,
+                  "aspect-[4/3]"
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="relative w-full h-36 border border-zinc-900 group/city overflow-hidden shrink-0 mt-2 bg-zinc-900 rounded-sm">

@@ -39,7 +39,7 @@ const recommendationSchema = z.object({
       weather: z.string(),
       outfitIdea: z.string(),
       reasoning: z.string(),
-      itemIds: z.array(z.string()).min(2).max(4),
+      itemIds: z.array(z.string()).length(3),
       colorPalette: z.string(),
     }),
   ),
@@ -313,6 +313,28 @@ function isWarmWeatherItem(item: any): boolean {
   );
 }
 
+function isSwimwearItem(item: any): boolean {
+  const type = itemType(item);
+  const text = itemText(item);
+
+  return (
+    ['swimwear', 'swimsuit', 'bikini'].includes(type) ||
+    /\b(bikini|swimsuit|swimwear|maillot|bathing suit|one-piece swimsuit|one piece swimsuit)\b/.test(
+      text,
+    )
+  );
+}
+
+function eventAllowsSwimwear(
+  eventContext: string,
+): boolean {
+  const event = cleanText(eventContext).toLowerCase();
+
+  return /\b(beach|pool|swim|swimming|resort|cruise|yacht|seaside|water park)\b/.test(
+    event,
+  );
+}
+
 function isWeatherEligible(
   item: any,
   climate: Climate,
@@ -323,6 +345,13 @@ function isWeatherEligible(
   const text = itemText(item);
   const weather = cleanText(weatherContext).toLowerCase();
   const event = cleanText(eventContext).toLowerCase();
+
+  if (
+    isSwimwearItem(item) &&
+    !eventAllowsSwimwear(eventContext)
+  ) {
+    return false;
+  }
 
   if (
     climate.tier === 'hot' &&
@@ -598,10 +627,13 @@ function resolveCompleteLook(
   if (onePiece) {
     add(onePiece);
 
-    const layer = firstRequested('layer');
-    const accessory = firstRequested('accessory');
-    if (layer) add(layer);
-    if (accessory) add(accessory);
+    const companion =
+      firstRequested('accessory') ||
+      firstRequested('layer') ||
+      firstLane('accessory') ||
+      firstLane('layer');
+
+    if (companion) add(companion);
   } else {
     const top = firstRequested('top') || firstLane('top');
     const bottom =
@@ -616,14 +648,11 @@ function resolveCompleteLook(
       if (!fallbackOnePiece && top) add(top);
       if (!fallbackOnePiece && bottom) add(bottom);
     }
-
-    const layer = firstRequested('layer');
-    if (layer && selected.length < 3) add(layer);
   }
 
   if (footwear) add(footwear);
 
-  return selected.slice(0, 4);
+  return selected.slice(0, 3);
 }
 
 function fallbackRecommendations(
@@ -672,6 +701,7 @@ function fallbackRecommendations(
         id: itemId(item),
         itemName: itemName(item),
         itemType: itemType(item),
+        role: classifyItem(item),
         imageUrl: item?.imageUrl || item?.image || item?.url || null,
       })),
       colorPalette: 'Closet-led palette',
@@ -786,6 +816,9 @@ export async function getDailyOutfitsAction(
       : climate.tier === 'cold'
         ? 'Do not select open sandals or other clearly cold-inappropriate pieces.'
         : 'Choose pieces appropriate for the supplied weather.';
+  const swimwearRule = eventAllowsSwimwear(eventName)
+    ? 'Swimwear may be selected only when it is appropriate for the explicitly stated swim or resort activity.'
+    : 'Do not select bikinis, swimsuits, swimwear, bathing suits, or other pool and beach garments.';
   const prompt = `
 You are the SkoMiDora luxury wardrobe recommendation engine.
 
@@ -798,6 +831,7 @@ CLIMATE: ${climate.tier}${
   }
 
 ${weatherRule}
+${swimwearRule}
 
 Return exactly three differentiated looks for this same event.
 
@@ -806,11 +840,11 @@ INVENTORY RULES:
 2. Look 2 may use IDs only from LOOK 2 CANDIDATE LANE.
 3. Look 3 may use IDs only from LOOK 3 CANDIDATE LANE.
 4. Return exact Firestore IDs in itemIds. Never return names in itemIds.
-5. Each look must contain two to four items and exactly one footwear item.
-6. Look 1 must use a dress, jumpsuit, suit, or other one-piece foundation.
+5. Each look must contain exactly three items: exactly two wardrobe pieces followed by exactly one footwear item.
+6. Look 1 must use a dress, jumpsuit, suit, or other one-piece foundation plus one appropriate accessory or light layer.
 7. Look 2 must use one top plus one bottom and may not use a one-piece.
 8. Look 3 must use a different top plus a different bottom and may not use a one-piece.
-9. A weather-appropriate layer or accessory may be added when useful.
+9. Do not add a fourth item.
 10. Do not invent an item or move an item between lanes.
 11. Explain the event, weather, silhouette, color, and material logic.
 
@@ -884,6 +918,7 @@ ${laneInventory}
         id: itemId(item),
         itemName: itemName(item),
         itemType: itemType(item),
+        role: classifyItem(item),
         imageUrl: item?.imageUrl || item?.image || item?.url || null,
       })),
       clothingName:

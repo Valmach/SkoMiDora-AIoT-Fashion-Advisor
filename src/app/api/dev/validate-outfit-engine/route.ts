@@ -12,6 +12,7 @@ type SelectedItem = {
   id?: unknown;
   itemName?: unknown;
   itemType?: unknown;
+  role?: unknown;
 };
 
 type Recommendation = {
@@ -47,26 +48,48 @@ function itemDescription(
     .toLowerCase();
 }
 
+function itemRole(item: SelectedItem): string {
+  return cleanText(item.role).toLowerCase();
+}
+
 function isFootwear(item: SelectedItem): boolean {
-  return /\b(shoe|shoes|sandal|sandals|pump|pumps|heel|heels|boot|boots|sneaker|sneakers|loafer|loafers|flat|flats|mule|mules|espadrille|espadrilles|slipper|slippers)\b/.test(
-    itemDescription(item),
+  return (
+    itemRole(item) === 'footwear' ||
+    /\b(shoe|shoes|sandal|sandals|pump|pumps|heel|heels|boot|boots|sneaker|sneakers|loafer|loafers|flat|flats|mule|mules|espadrille|espadrilles|slipper|slippers)\b/.test(
+      itemDescription(item),
+    )
   );
 }
 
 function isOnePiece(item: SelectedItem): boolean {
-  return /\b(dress|gown|jumpsuit|romper|playsuit|one[- ]?piece|suit)\b/.test(
-    itemDescription(item),
+  return (
+    itemRole(item) === 'one-piece' ||
+    /\b(dress|gown|jumpsuit|romper|playsuit|one[- ]?piece|suit)\b/.test(
+      itemDescription(item),
+    )
   );
 }
 
 function isTop(item: SelectedItem): boolean {
-  return /\b(shirt|blouse|top|vest|tee|t-shirt|tank|sweater|cardigan|corset|bustier)\b/.test(
-    itemDescription(item),
+  return (
+    itemRole(item) === 'top' ||
+    /\b(shirt|blouse|top|vest|tee|t-shirt|tank|sweater|cardigan|corset|bustier)\b/.test(
+      itemDescription(item),
+    )
   );
 }
 
 function isBottom(item: SelectedItem): boolean {
-  return /\b(trouser|trousers|pant|pants|jean|jeans|short|shorts|skirt|skirts|culotte|culottes)\b/.test(
+  return (
+    itemRole(item) === 'bottom' ||
+    /\b(trouser|trousers|pant|pants|jean|jeans|short|shorts|skirt|skirts|culotte|culottes)\b/.test(
+      itemDescription(item),
+    )
+  );
+}
+
+function isSwimwear(item: SelectedItem): boolean {
+  return /\b(bikini|swimsuit|swimwear|maillot|bathing suit)\b/.test(
     itemDescription(item),
   );
 }
@@ -122,9 +145,8 @@ function validateRecommendations(
         .filter(Boolean);
 
       assertCondition(
-        itemIds.length >= 2 &&
-          itemIds.length <= 4,
-        `${label}, look ${index + 1}: expected 2–4 item IDs.`,
+        itemIds.length === 3,
+        `${label}, look ${index + 1}: expected exactly 3 item IDs.`,
       );
 
       assertCondition(
@@ -155,6 +177,14 @@ function validateRecommendations(
 
       const bottomCount =
         selectedItems.filter(isBottom).length;
+
+      const swimwearCount =
+        selectedItems.filter(isSwimwear).length;
+
+      assertCondition(
+        swimwearCount === 0,
+        `${label}, look ${index + 1}: swimwear is not allowed for this event.`,
+      );
 
       assertCondition(
         footwearCount === 1,
@@ -231,6 +261,9 @@ export async function GET() {
     );
   }
 
+  let firstRecommendations: unknown = null;
+  let refreshedRecommendations: unknown = null;
+
   try {
     const eventContext =
       'Paris Summer Fashion Event';
@@ -238,7 +271,7 @@ export async function GET() {
     const weatherContext =
       '30°C Sunny';
 
-    const firstRecommendations =
+    firstRecommendations =
       await getDailyOutfitsAction(
         eventContext,
         weatherContext,
@@ -256,7 +289,7 @@ export async function GET() {
       look => look.itemIds,
     );
 
-    const refreshedRecommendations =
+    refreshedRecommendations =
       await getDailyOutfitsAction(
         eventContext,
         weatherContext,
@@ -315,6 +348,8 @@ export async function GET() {
       {
         ok: false,
         error: message,
+        firstRecommendations,
+        refreshedRecommendations,
       },
       {
         status: 500,
