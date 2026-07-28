@@ -70,6 +70,13 @@ const SAMPLE_PRODUCTS = [
 ];
 
 async function main() {
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    console.log(
+      "Removing GOOGLE_APPLICATION_CREDENTIALS to use Firebase Studio managed credentials."
+    );
+    delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  }
+
   if (!getApps().length) {
     initializeApp({
       credential: applicationDefault(),
