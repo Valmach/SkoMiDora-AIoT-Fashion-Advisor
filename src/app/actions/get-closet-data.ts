@@ -1,6 +1,6 @@
 'use server';
 
-import { db } from "@/lib/firebase-admin";
+import { adminDb as db } from "@/lib/firebase-admin";
 
 export async function getClosetDataAdmin() {
   // 1. SAFETY CHECK: Stop if database didn't connect

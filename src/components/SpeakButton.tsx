@@ -1,14 +1,13 @@
 'use server';
 
-import { getAdmin } from "@/lib/firebase-admin";
+import { adminDb, adminStorage } from "@/lib/firebase-admin";
 
 export async function getClosetDataAdmin() {
-  const admin = getAdmin();
-  const db = admin.firestore();
-  
+  const db = adminDb;
+
   // Use specific bucket or default
   const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-  const bucket = admin.storage().bucket(bucketName);
+  const bucket = bucketName ? adminStorage.bucket(bucketName) : adminStorage.bucket();
 
   try {
     const snapshot = await db.collection('publicWardrobeItems')
