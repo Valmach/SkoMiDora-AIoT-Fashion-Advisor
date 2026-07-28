@@ -92,7 +92,7 @@ export default function ShopPage() {
         <CardContent className="pt-6 px-0 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div>
             <h1 className={`${bonheur.className} text-7xl font-bold tracking-wide text-white`}>
-              SkoBoxy Shop
+              SkoBoxies Shop
             </h1>
             <p className="text-zinc-400 uppercase tracking-[0.2em] text-xs mt-2 font-medium">
               <span className="text-[#9A1B22]">●</span> {products.length} Available
