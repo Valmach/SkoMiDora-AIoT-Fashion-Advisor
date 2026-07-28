@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     const requestPayload = {
       input: { text: text },
       // 'Journey' voices are Google's newest, hyper-realistic premium tier
-      voice: { languageCode: 'en-GB', ssmlGender: 'FEMALE' }, 
+      voice: { languageCode: 'en-GB', ssmlGender: 'FEMALE' as const }, 
       audioConfig: { audioEncoding: 'MP3' as const },
     };
 
@@ -25,8 +25,15 @@ export async function POST(request: Request) {
       throw new Error("No audio content returned from GCP");
     }
 
+    // audioContent can come back as a base64 string or raw bytes depending
+    // on transport - normalize explicitly rather than guessing one shape.
+    const audioBuffer =
+      typeof response.audioContent === 'string'
+        ? Buffer.from(response.audioContent, 'base64')
+        : Buffer.from(response.audioContent);
+
     // Return the MP3 file directly to the frontend
-    return new NextResponse(response.audioContent, {
+    return new NextResponse(audioBuffer, {
       headers: {
         'Content-Type': 'audio/mpeg',
       },
