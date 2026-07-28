@@ -14,7 +14,8 @@ import {
   ChevronUp, 
   PanelLeftClose,
   Menu,
-  X
+  X,
+  ShoppingBag
 } from "lucide-react";
 
 const bonheur = Bonheur_Royale({ 
@@ -25,6 +26,7 @@ const bonheur = Bonheur_Royale({
 const MENU_ITEMS = [
   { name: "Dashboard", icon: LayoutDashboard, href: "/" },
   { name: "Closet", icon: Archive, href: "/closet" },
+  { name: "Shop", icon: ShoppingBag, href: "/shop" },
   { name: "Events", icon: CalendarDays, href: "/upcoming-events" },
   { name: "Outfits", icon: Sparkles, href: "/outfit-recommendations" }, 
   { name: "AI Stylist", icon: Sparkles, href: "/stylist" },
