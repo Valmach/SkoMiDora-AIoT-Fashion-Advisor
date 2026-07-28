@@ -4,6 +4,7 @@ import { useState, Suspense, useEffect } from "react";
 import { useSearchParams } from 'next/navigation';
 import { generateShoppingRecommendations } from '@/app/actions/generate-shopping-recommendations';
 import ShoppingRecommendations, { Recommendation } from '@/components/ShoppingRecommendations';
+import { STYLIST_TARGET_CATEGORIES } from '@/lib/wardrobe-taxonomy';
 
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -13,25 +14,7 @@ import { Inter, Great_Vibes } from 'next/font/google';
 const inter = Inter({ subsets: ['latin'], weight: ['300', '400', '500', '600'] });
 const greatVibes = Great_Vibes({ subsets: ['latin'], weight: ['400'] });
 
-// UPGRADED TAXONOMY: Removed Handbags, added Shorts and Swimwear/Resort
-const CATEGORIES = [
-  "Any Missing Piece", 
-  "Shirts & Blouses", 
-  "T-Shirts & Sweats",
-  "Tank Tops",
-  "Sweaters & Cardigans",
-  "Jackets & Outerwear", 
-  "Trousers",
-  "Shorts",
-  "Jeans",
-  "Skirts", 
-  "Dresses", 
-  "Swimwear & Resort",
-  "Innerwear & Underwear",
-  "Shoes", 
-  "Jewelry",
-  "Accessories"
-];
+const CATEGORIES = STYLIST_TARGET_CATEGORIES;
 
 function StylistContent() {
   const { toast } = useToast();

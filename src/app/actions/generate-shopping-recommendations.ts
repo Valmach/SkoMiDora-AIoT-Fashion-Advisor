@@ -5,6 +5,12 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { generateObject } from 'ai';
 import { z } from 'zod';
+import {
+  STYLIST_TARGET_CATEGORIES,
+  getCanonicalWardrobeType,
+  getWardrobeCategory,
+  type StylistTargetCategory,
+} from '@/lib/wardrobe-taxonomy';
 
 delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
@@ -63,26 +69,112 @@ function topValues(values: string[], limit = 8): string[] {
     .map(([value]) => value);
 }
 
-function normalizeTargetCategory(value: string): string {
+function normalizeTargetCategory(
+  value: string
+): StylistTargetCategory {
   const raw = cleanText(value);
-  if (!raw || raw === 'Any Missing Piece') return 'Any Missing Piece';
+
+  if (
+    !raw ||
+    raw.toLowerCase() ===
+      'any missing piece'
+  ) {
+    return 'Any Missing Piece';
+  }
+
+  const canonicalCategory =
+    getWardrobeCategory(
+      raw,
+      raw,
+      raw
+    );
+
+  if (
+    canonicalCategory &&
+    canonicalCategory !== 'Handbags'
+  ) {
+    return canonicalCategory;
+  }
 
   const compact = raw.toLowerCase();
 
-  if (compact.includes('shoe') || compact.includes('boot') || compact.includes('sandal') || compact.includes('heel')) return 'Shoes';
-  if (compact.includes('dress')) return 'Dresses';
-  if (compact.includes('skirt')) return 'Skirts';
-  if (compact.includes('short')) return 'Shorts';
-  if (compact.includes('jean')) return 'Jeans';
-  if (compact.includes('trouser') || compact.includes('pant')) return 'Trousers';
-  if (compact.includes('jacket') || compact.includes('coat') || compact.includes('outerwear')) return 'Jackets & Outerwear';
-  if (compact.includes('sweater') || compact.includes('cardigan')) return 'Sweaters & Cardigans';
-  if (compact.includes('shirt') || compact.includes('blouse')) return 'Shirts & Blouses';
-  if (compact.includes('tank')) return 'Tank Tops';
-  if (compact.includes('jewel')) return 'Jewelry';
-  if (compact.includes('accessor')) return 'Accessories';
+  if (
+    /shoe|boot|sandal|heel|pump|mule|loafer|flat|sneaker|trainer|espadrille|flip[- ]?flop/.test(
+      compact
+    )
+  ) {
+    return 'Footwear';
+  }
 
-  return raw;
+  if (
+    /shirt|blouse|tank|t-shirt|tee|sweatshirt|top/.test(
+      compact
+    )
+  ) {
+    return 'Tops';
+  }
+
+  if (/dress|gown/.test(compact)) {
+    return 'Dresses';
+  }
+
+  if (/jumpsuit|romper/.test(compact)) {
+    return 'Jumpsuits & Rompers';
+  }
+
+  if (/suit|set/.test(compact)) {
+    return 'Suits & Sets';
+  }
+
+  if (
+    /trouser|pant|jean|short|skirt|bottom/.test(
+      compact
+    )
+  ) {
+    return 'Bottoms';
+  }
+
+  if (
+    /jacket|coat|outerwear|outwear|blazer|trench/.test(
+      compact
+    )
+  ) {
+    return 'Outerwear';
+  }
+
+  if (
+    /sweater|cardigan|knitwear|jumper/.test(
+      compact
+    )
+  ) {
+    return 'Knitwear';
+  }
+
+  if (
+    /sleep|lounge|pajama|pyjama|innerwear|underwear|robe/.test(
+      compact
+    )
+  ) {
+    return 'Sleepwear & Loungewear';
+  }
+
+  if (/activewear|athletic/.test(compact)) {
+    return 'Activewear';
+  }
+
+  if (/swimwear|swimsuit|bikini|resort/.test(compact)) {
+    return 'Swimwear';
+  }
+
+  if (/jewel|earring|ring|necklace|bracelet/.test(compact)) {
+    return 'Jewelry';
+  }
+
+  if (/accessor|scarf|hat|watch|belt|eyewear/.test(compact)) {
+    return 'Accessories';
+  }
+
+  return 'Any Missing Piece';
 }
 
 function brandIsInCloset(brand: string, favoriteDesigners: string[]): boolean {
@@ -168,7 +260,21 @@ export async function generateShoppingRecommendations(
       .filter(Boolean);
 
     const itemTypes = closetItems
-      .map((item) => cleanText(item.itemType || item.type || item.category))
+      .map((item) => {
+        const name = cleanText(
+          item.aiFriendlyName ||
+          item.itemName ||
+          item.name
+        );
+
+        return (
+          getWardrobeCategory(
+            item.category,
+            item.itemType || item.type,
+            name
+          ) || ''
+        );
+      })
       .filter(Boolean);
 
     const colors = closetItems
@@ -198,7 +304,22 @@ export async function generateShoppingRecommendations(
         .map((item) => {
           const name = cleanText(item.aiFriendlyName || item.itemName || item.name || 'Unnamed luxury item');
           const designer = normalizeBrand(item.designer || item.designerName || item.brand || item.manufacturer);
-          const type = cleanText(item.itemType || item.type || item.category);
+          const rawType = cleanText(
+            item.itemType ||
+            item.type ||
+            item.category
+          );
+          const type =
+            getCanonicalWardrobeType(
+              rawType,
+              name
+            ) ||
+            getWardrobeCategory(
+              item.category,
+              rawType,
+              name
+            ) ||
+            rawType;
           const color = cleanText(item.color);
           const material = cleanText(item.generalMaterial || item.materials || item.material);
           const style = Array.isArray(item.styleKeywords) ? item.styleKeywords.slice(0, 5).join(', ') : '';
@@ -238,6 +359,9 @@ ${weatherContext || 'Provide versatile recommendations.'}
 Target category:
 "${normalizedTargetCategory}"
 
+Approved canonical target categories:
+${STYLIST_TARGET_CATEGORIES.join(', ')}
+
 The user's existing closet designer DNA:
 ${designerProfile}
 
@@ -269,6 +393,7 @@ STRICT RULES:
 7. Use the weather and event context.
 8. The searchQuery must include the suggestedBrand, itemType, and event/style context.
 9. The description must explicitly say how this recommendation connects to the user's existing closet designers, colors, materials, or style keywords.
+10. Use only the approved canonical target-category names supplied above.
 
 Return only structured JSON matching the schema.
 `;
@@ -298,10 +423,22 @@ Return only structured JSON matching the schema.
           ? closetDesigner
           : currentBrand || closetDesigner || 'Luxury designer';
 
+      const suggestedItemType =
+        getCanonicalWardrobeType(
+          cleanText(rec.itemType)
+        ) ||
+        normalizeTargetCategory(
+          cleanText(rec.itemType)
+        );
+
       const finalItemType =
-        normalizedTargetCategory !== 'Any Missing Piece'
+        normalizedTargetCategory !==
+        'Any Missing Piece'
           ? normalizedTargetCategory
-          : cleanText(rec.itemType) || 'Missing Piece';
+          : suggestedItemType !==
+              'Any Missing Piece'
+            ? suggestedItemType
+            : 'Missing Piece';
 
       const closetReason =
         rec.closetMatchReason ||

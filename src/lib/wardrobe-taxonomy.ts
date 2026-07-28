@@ -52,6 +52,20 @@
   export type WardrobeCategory =
     (typeof WARDROBE_CATEGORIES)[number];
 
+/**
+ * Canonical categories exposed by the AI Stylist.
+ * Handbags remain intentionally excluded from shopping targets.
+ */
+export const STYLIST_TARGET_CATEGORIES = [
+  "Any Missing Piece",
+  ...WARDROBE_CATEGORIES.filter(
+    category => category !== "Handbags"
+  ),
+] as const;
+
+export type StylistTargetCategory =
+  (typeof STYLIST_TARGET_CATEGORIES)[number];
+
 
   /* =========================================================
      SPECIFIC WARDROBE ITEM TYPES
