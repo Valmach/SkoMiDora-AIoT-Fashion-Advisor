@@ -1,3 +1,8 @@
+import {
+  getCanonicalWardrobeType,
+  getWardrobeCategory,
+} from "@/lib/wardrobe-taxonomy";
+
 export type WardrobeMetadata = Record<string, any>;
 
 function clean(value: any): string {
@@ -189,8 +194,10 @@ function domainFrom(url: string | null): string | null {
   }
 }
 
-export function normalizeWardrobeMetadata(base: WardrobeMetadata, commercial: WardrobeMetadata = {}) {
-  const itemName = first(
+export function normalizeWardrobeMetadata(
+  base: WardrobeMetadata,
+  commercial: WardrobeMetadata = {},
+): WardrobeMetadata {  const itemName = first(
     commercial.itemName,
     commercial.productTitle,
     commercial.title,
@@ -242,6 +249,7 @@ export function normalizeWardrobeMetadata(base: WardrobeMetadata, commercial: Wa
   const combinedText = [
     itemName,
     designerName,
+    commercial.itemType,
     commercial.category,
     commercial.productType,
     color,
@@ -254,7 +262,40 @@ export function normalizeWardrobeMetadata(base: WardrobeMetadata, commercial: Wa
     list(commercial.styleKeywords).join(" "),
   ].join(" ").toLowerCase();
 
-  const itemType = inferItemType(combinedText, base.itemType);
+  const suppliedItemType = first(
+    commercial.itemType,
+    commercial.productType,
+    base.itemType,
+  );
+
+  const inferredItemType = inferItemType(
+    combinedText,
+    suppliedItemType,
+  );
+
+  const itemType =
+    getCanonicalWardrobeType(
+      suppliedItemType,
+      itemName,
+    ) ||
+    getCanonicalWardrobeType(
+      inferredItemType,
+      itemName,
+    ) ||
+    "Uncategorized";
+
+  const category =
+    getWardrobeCategory(
+      commercial.category,
+      itemType,
+      itemName,
+    ) ||
+    getWardrobeCategory(
+      undefined,
+      itemType,
+      itemName,
+    ) ||
+    "Uncategorized";
 
   const season = uniq([...list(commercial.season), ...inferSeason(combinedText)], 8);
   const weatherSuitability = uniq([...list(commercial.weatherSuitability), ...inferWeather(combinedText)], 10);
@@ -297,6 +338,7 @@ export function normalizeWardrobeMetadata(base: WardrobeMetadata, commercial: Wa
     ...base,
     itemName,
     itemType,
+    category,
     designerName,
     color,
     generalMaterial,

@@ -7,6 +7,12 @@ import path from "path";
 import fs from "fs/promises";
 import crypto from "crypto";
 import { normalizeWardrobeMetadata } from "@/lib/wardrobeMetadata";
+import {
+  WARDROBE_CATEGORIES,
+  WARDROBE_TYPES,
+  getCanonicalWardrobeType,
+  getWardrobeCategory,
+} from "@/lib/wardrobe-taxonomy";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const runtime = "nodejs";
@@ -15,7 +21,9 @@ delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
 if (!getApps().length) {
   initializeApp({
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "styleai-footwear",
+    projectId:
+      process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ||
+      "styleai-footwear",
   });
 }
 
@@ -24,7 +32,10 @@ const BUCKET_NAME =
   "styleai-footwear.firebasestorage.app";
 
 function cleanFileName(name: string) {
-  return name.replace(/[^a-zA-Z0-9._-]/g, "-");
+  return name.replace(
+    /[^a-zA-Z0-9._-]/g,
+    "-",
+  );
 }
 
 function titleFromFileName(name: string) {
@@ -40,26 +51,48 @@ function titleFromFileName(name: string) {
     .trim();
 }
 
-function publicStorageUrl(bucket: string, objectPath: string) {
-  const encodedPath = objectPath.split("/").map(encodeURIComponent).join("/");
+function publicStorageUrl(
+  bucket: string,
+  objectPath: string,
+) {
+  const encodedPath = objectPath
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/");
+
   return `https://storage.googleapis.com/${bucket}/${encodedPath}`;
 }
 
 function extractJson(text: string) {
-  const cleaned = text.replace(/```json\n?|```/g, "").trim();
+  const cleaned = text
+    .replace(/```json\n?|```/g, "")
+    .trim();
+
   const start = cleaned.indexOf("{");
   const end = cleaned.lastIndexOf("}");
 
-  if (start === -1 || end === -1 || end <= start) return {};
+  if (
+    start === -1 ||
+    end === -1 ||
+    end <= start
+  ) {
+    return {};
+  }
 
   try {
-    return JSON.parse(cleaned.slice(start, end + 1));
+    return JSON.parse(
+      cleaned.slice(start, end + 1),
+    );
   } catch {
     return {};
   }
 }
 
-async function analyzeImageMetadata(imageBase64: string, mimeType: string, fileName: string) {
+async function analyzeImageMetadata(
+  imageBase64: string,
+  mimeType: string,
+  fileName: string,
+) {
   const apiKey =
     process.env.GEMINI_API_KEY ||
     process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
@@ -69,12 +102,18 @@ async function analyzeImageMetadata(imageBase64: string, mimeType: string, fileN
   if (!apiKey) return {};
 
   try {
-    const base64Data = imageBase64.includes(",")
-      ? imageBase64.split(",")[1]
-      : imageBase64;
+    const base64Data =
+      imageBase64.includes(",")
+        ? imageBase64.split(",")[1]
+        : imageBase64;
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const genAI =
+      new GoogleGenerativeAI(apiKey);
+
+    const model =
+      genAI.getGenerativeModel({
+        model: "gemini-1.5-flash",
+      });
 
     const prompt = [
       "Analyze this fashion or footwear image for SkoMiDora.",
@@ -85,8 +124,8 @@ async function analyzeImageMetadata(imageBase64: string, mimeType: string, fileN
       "\"brandName\": \"same as brand\",",
       "\"designer\": \"designer or fashion house if visible or recognizable, otherwise Unknown\",",
       "\"designerName\": \"same as designer\",",
-      "\"itemType\": \"Shoes | Sandal | Ankle Boot | Dress | Top | Bottom | Outerwear | Accessory | Uncategorized\",",
-      "\"category\": \"general category\",",
+      `"itemType": "${WARDROBE_TYPES.join(" | ")}",`,
+      `"category": "${WARDROBE_CATEGORIES.join(" | ")}",`,
       "\"color\": \"dominant color\",",
       "\"material\": \"likely material\",",
       "\"generalMaterial\": \"likely material\",",
@@ -99,90 +138,239 @@ async function analyzeImageMetadata(imageBase64: string, mimeType: string, fileN
       "\"formality\": \"casual | smart-casual | business-casual | cocktail | formal\",",
       "\"metadataConfidence\": 0.75",
       "}",
+      "Select exactly one itemType and its matching broad category from the provided canonical values.",
       "For footwear, apparel, handbags, and luxury fashion, the designer house is normally also the brand. When only the designer is identifiable, return that designer name in both the brand and designer fields. When only the brand is identifiable, return it in both fields. Preserve different values when the image clearly represents a collaboration, custom maker, atelier, diffusion label, or licensed brand. Do not guess luxury brands without visible evidence.",
-      "Original filename: " + fileName
+      `Original filename: ${fileName}`,
     ].join("\n");
 
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          data: base64Data,
-          mimeType,
+    const result =
+      await model.generateContent([
+        prompt,
+        {
+          inlineData: {
+            data: base64Data,
+            mimeType,
+          },
         },
-      },
-    ]);
+      ]);
 
-    const parsed = extractJson(result.response.text());
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    const parsed = extractJson(
+      result.response.text(),
+    );
+
+    return (
+      parsed &&
+      typeof parsed === "object" &&
+      !Array.isArray(parsed)
+    )
+      ? parsed
+      : {};
   } catch (error) {
-    console.warn("SkoMiDora upload image metadata analysis skipped:", error);
+    console.warn(
+      "SkoMiDora upload image metadata analysis skipped:",
+      error,
+    );
+
     return {};
   }
 }
 
-function inferLensMetadata(fileName: string) {
-  const itemName = titleFromFileName(fileName) || "SkoMiDora Lens Upload";
+function inferLensMetadata(
+  fileName: string,
+) {
+  const itemName =
+    titleFromFileName(fileName) ||
+    "SkoMiDora Lens Upload";
+
   const lower = itemName.toLowerCase();
 
   let designerName = "Unknown";
-  if (lower.includes("dolce") || lower.includes("gabbana")) designerName = "Dolce & Gabbana";
-  else if (lower.includes("ganni")) designerName = "GANNI";
-  else if (lower.includes("prada")) designerName = "Prada";
-  else if (lower.includes("tory burch")) designerName = "Tory Burch";
-  else if (lower.includes("zigzagger")) designerName = "Zigzagger";
-  else if (lower.includes("loewe")) designerName = "Loewe";
-  else if (lower.includes("louboutin")) designerName = "Christian Louboutin";
-  else if (lower.includes("manolo")) designerName = "Manolo Blahnik";
-  else if (lower.includes("zimmermann")) designerName = "Zimmermann";
-  else if (lower.includes("miu miu")) designerName = "Miu Miu";
-  else if (lower.includes("ferragamo")) designerName = "Ferragamo";
+
+  if (
+    lower.includes("dolce") ||
+    lower.includes("gabbana")
+  ) {
+    designerName = "Dolce & Gabbana";
+  } else if (lower.includes("ganni")) {
+    designerName = "GANNI";
+  } else if (lower.includes("prada")) {
+    designerName = "Prada";
+  } else if (
+    lower.includes("tory burch")
+  ) {
+    designerName = "Tory Burch";
+  } else if (
+    lower.includes("zigzagger")
+  ) {
+    designerName = "Zigzagger";
+  } else if (lower.includes("loewe")) {
+    designerName = "Loewe";
+  } else if (
+    lower.includes("louboutin")
+  ) {
+    designerName =
+      "Christian Louboutin";
+  } else if (
+    lower.includes("manolo")
+  ) {
+    designerName =
+      "Manolo Blahnik";
+  } else if (
+    lower.includes("zimmermann")
+  ) {
+    designerName = "Zimmermann";
+  } else if (
+    lower.includes("miu miu")
+  ) {
+    designerName = "Miu Miu";
+  } else if (
+    lower.includes("ferragamo")
+  ) {
+    designerName = "Ferragamo";
+  }
 
   let itemType = "Uncategorized";
-  if (lower.includes("dress") || lower.includes("gown")) itemType = "Dress";
-  else if (lower.includes("skirt")) itemType = "Skirt";
-  else if (lower.includes("sandal")) itemType = "Sandal";
-  else if (lower.includes("mule")) itemType = "Shoes";
-  else if (lower.includes("slipper")) itemType = "Slippers";
-  else if (lower.includes("boot")) itemType = "Ankle Boot";
-  else if (lower.includes("heel") || lower.includes("stiletto") || lower.includes("pump")) itemType = "Stiletto";
-  else if (lower.includes("coat") || lower.includes("jacket") || lower.includes("blazer")) itemType = "Outerwear";
-  else if (lower.includes("bag") || lower.includes("belt")) itemType = "Accessory";
-  else if (lower.includes("top") || lower.includes("blouse") || lower.includes("bustier")) itemType = "Top";
+
+  if (
+    lower.includes("dress") ||
+    lower.includes("gown")
+  ) {
+    itemType = "Dress";
+  } else if (lower.includes("skirt")) {
+    itemType = "Skirt";
+  } else if (
+    lower.includes("sandal")
+  ) {
+    itemType = "Sandal";
+  } else if (lower.includes("mule")) {
+    itemType = "Shoes";
+  } else if (
+    lower.includes("slipper")
+  ) {
+    itemType = "Slippers";
+  } else if (lower.includes("boot")) {
+    itemType = "Ankle Boot";
+  } else if (
+    lower.includes("heel") ||
+    lower.includes("stiletto") ||
+    lower.includes("pump")
+  ) {
+    itemType = "Stiletto";
+  } else if (
+    lower.includes("coat") ||
+    lower.includes("jacket") ||
+    lower.includes("blazer")
+  ) {
+    itemType = "Outerwear";
+  } else if (
+    lower.includes("bag") ||
+    lower.includes("belt")
+  ) {
+    itemType = "Accessory";
+  } else if (
+    lower.includes("top") ||
+    lower.includes("blouse") ||
+    lower.includes("bustier")
+  ) {
+    itemType = "Top";
+  }
 
   const colors = [
-    "yellow", "blue", "black", "white", "green", "red", "pink", "orange",
-    "brown", "beige", "cream", "ivory", "gold", "silver", "gray", "grey",
-    "purple", "navy", "burgundy"
+    "yellow",
+    "blue",
+    "black",
+    "white",
+    "green",
+    "red",
+    "pink",
+    "orange",
+    "brown",
+    "beige",
+    "cream",
+    "ivory",
+    "gold",
+    "silver",
+    "gray",
+    "grey",
+    "purple",
+    "navy",
+    "burgundy",
   ];
 
-  const foundColor = colors.find((c) => lower.includes(c));
+  const foundColor = colors.find(
+    (candidate) =>
+      lower.includes(candidate),
+  );
+
   const color = foundColor
-    ? foundColor.charAt(0).toUpperCase() + foundColor.slice(1)
+    ? foundColor
+        .charAt(0)
+        .toUpperCase() +
+      foundColor.slice(1)
     : "Unknown";
 
   let generalMaterial = "Unknown";
-  if (lower.includes("crochet")) generalMaterial = "Crochet";
-  else if (lower.includes("leather")) generalMaterial = "Leather";
-  else if (lower.includes("suede")) generalMaterial = "Suede";
-  else if (lower.includes("silk")) generalMaterial = "Silk";
-  else if (lower.includes("cotton")) generalMaterial = "Cotton";
-  else if (lower.includes("linen")) generalMaterial = "Linen";
-  else if (lower.includes("wool")) generalMaterial = "Wool";
-  else if (lower.includes("denim")) generalMaterial = "Denim";
-  else if (lower.includes("satin")) generalMaterial = "Satin";
+
+  if (lower.includes("crochet")) {
+    generalMaterial = "Crochet";
+  } else if (
+    lower.includes("leather")
+  ) {
+    generalMaterial = "Leather";
+  } else if (
+    lower.includes("suede")
+  ) {
+    generalMaterial = "Suede";
+  } else if (
+    lower.includes("silk")
+  ) {
+    generalMaterial = "Silk";
+  } else if (
+    lower.includes("cotton")
+  ) {
+    generalMaterial = "Cotton";
+  } else if (
+    lower.includes("linen")
+  ) {
+    generalMaterial = "Linen";
+  } else if (
+    lower.includes("wool")
+  ) {
+    generalMaterial = "Wool";
+  } else if (
+    lower.includes("denim")
+  ) {
+    generalMaterial = "Denim";
+  } else if (
+    lower.includes("satin")
+  ) {
+    generalMaterial = "Satin";
+  }
 
   const detailedSpecifications =
-    `Brand: ${designerName} Type: ${itemType} Color: ${color} Material: ${generalMaterial}`;
+    `Brand: ${designerName} ` +
+    `Type: ${itemType} ` +
+    `Color: ${color} ` +
+    `Material: ${generalMaterial}`;
 
   const narrativeDescription =
-    `${itemName}. Uploaded through SkoMiDora Lens and cataloged for the digital closet.`;
+    `${itemName}. Uploaded through ` +
+    "SkoMiDora Lens and cataloged " +
+    "for the digital closet.";
 
   const styleKeywords = [
-    designerName !== "Unknown" ? designerName : null,
-    itemType !== "Uncategorized" ? itemType : null,
-    color !== "Unknown" ? color : null,
-    generalMaterial !== "Unknown" ? generalMaterial : null,
+    designerName !== "Unknown"
+      ? designerName
+      : null,
+    itemType !== "Uncategorized"
+      ? itemType
+      : null,
+    color !== "Unknown"
+      ? color
+      : null,
+    generalMaterial !== "Unknown"
+      ? generalMaterial
+      : null,
   ].filter(Boolean);
 
   return {
@@ -197,121 +385,270 @@ function inferLensMetadata(fileName: string) {
   };
 }
 
-export async function POST(req: NextRequest) {
-  let tempFilePath: string | null = null;
+export async function POST(
+  req: NextRequest,
+) {
+  let tempFilePath: string | null =
+    null;
 
   try {
     const body = await req.json();
 
-    const imageBase64 = body.imageBase64 as string | undefined;
-    const fileName = body.fileName as string | undefined;
+    const imageBase64 =
+      body.imageBase64 as
+        | string
+        | undefined;
+
+    const fileName =
+      body.fileName as
+        | string
+        | undefined;
 
     const commercialMetadata = {
       itemName: body.itemName,
-      productTitle: body.productTitle,
+      productTitle:
+        body.productTitle,
       title: body.title,
       name: body.name,
       description: body.description,
-      productDescription: body.productDescription,
+      productDescription:
+        body.productDescription,
       brand: body.brand,
       brandName: body.brandName,
       designer: body.designer,
-      designerName: body.designerName,
+      designerName:
+        body.designerName,
       color: body.color,
       colour: body.colour,
       material: body.material,
       fabric: body.fabric,
       composition: body.composition,
+      itemType: body.itemType,
       category: body.category,
       productType: body.productType,
       price: body.price,
-      currentPrice: body.currentPrice,
+      currentPrice:
+        body.currentPrice,
       salePrice: body.salePrice,
-      originalPrice: body.originalPrice,
+      originalPrice:
+        body.originalPrice,
       currency: body.currency,
       sourceUrl: body.sourceUrl,
       productUrl: body.productUrl,
       url: body.url,
       pageUrl: body.pageUrl,
-      canonicalUrl: body.canonicalUrl,
-      styleKeywords: body.styleKeywords,
+      canonicalUrl:
+        body.canonicalUrl,
+      styleKeywords:
+        body.styleKeywords,
       keywords: body.keywords,
       tags: body.tags,
       season: body.season,
-      weatherSuitability: body.weatherSuitability,
-      eventCategory: body.eventCategory,
+      weatherSuitability:
+        body.weatherSuitability,
+      eventCategory:
+        body.eventCategory,
       formality: body.formality,
-      ...(body.metadata && typeof body.metadata === "object" && !Array.isArray(body.metadata) ? body.metadata : {}),
-      ...(body.productMetadata && typeof body.productMetadata === "object" && !Array.isArray(body.productMetadata) ? body.productMetadata : {}),
-      ...(body.commercialMetadata && typeof body.commercialMetadata === "object" && !Array.isArray(body.commercialMetadata) ? body.commercialMetadata : {}),
-      ...(body.awesomeScreenshotMetadata && typeof body.awesomeScreenshotMetadata === "object" && !Array.isArray(body.awesomeScreenshotMetadata) ? body.awesomeScreenshotMetadata : {}),
+      ...(
+        body.metadata &&
+        typeof body.metadata ===
+          "object" &&
+        !Array.isArray(body.metadata)
+          ? body.metadata
+          : {}
+      ),
+      ...(
+        body.productMetadata &&
+        typeof body.productMetadata ===
+          "object" &&
+        !Array.isArray(
+          body.productMetadata,
+        )
+          ? body.productMetadata
+          : {}
+      ),
+      ...(
+        body.commercialMetadata &&
+        typeof
+          body.commercialMetadata ===
+          "object" &&
+        !Array.isArray(
+          body.commercialMetadata,
+        )
+          ? body.commercialMetadata
+          : {}
+      ),
+      ...(
+        body.awesomeScreenshotMetadata &&
+        typeof
+          body.awesomeScreenshotMetadata ===
+          "object" &&
+        !Array.isArray(
+          body.awesomeScreenshotMetadata,
+        )
+          ? body.awesomeScreenshotMetadata
+          : {}
+      ),
     };
 
     if (!imageBase64) {
-      return NextResponse.json({ error: "Missing imageBase64" }, { status: 400 });
+      return NextResponse.json(
+        {
+          error:
+            "Missing imageBase64",
+        },
+        {
+          status: 400,
+        },
+      );
     }
 
-    const contentTypeMatch = imageBase64.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,/);
-    const contentType = contentTypeMatch?.[1] || "image/jpeg";
-    const ext = contentType.includes("png") ? "png" : "jpg";
+    const contentTypeMatch =
+      imageBase64.match(
+        /^data:(image\/[a-zA-Z0-9.+-]+);base64,/,
+      );
 
-    const originalName = cleanFileName(fileName || `lens-upload.${ext}`);
-    const baseName = originalName.replace(/\.[^.]+$/, "");
-    const safeFileName = `${Date.now()}-${baseName}.${ext}`;
-    const imagePath = `public_wardrobe_items/${safeFileName}`;
+    const contentType =
+      contentTypeMatch?.[1] ||
+      "image/jpeg";
 
-    const base64Data = imageBase64.includes(",")
-      ? imageBase64.split(",")[1]
-      : imageBase64;
+    const ext =
+      contentType.includes("png")
+        ? "png"
+        : "jpg";
 
-    const buffer = Buffer.from(base64Data, "base64");
+    const originalName =
+      cleanFileName(
+        fileName ||
+          `lens-upload.${ext}`,
+      );
 
-    tempFilePath = path.join(os.tmpdir(), `${crypto.randomUUID()}.${ext}`);
-    await fs.writeFile(tempFilePath, buffer);
+    const baseName =
+      originalName.replace(
+        /\.[^.]+$/,
+        "",
+      );
+
+    const safeFileName =
+      `${Date.now()}-${baseName}.${ext}`;
+
+    const imagePath =
+      `public_wardrobe_items/${safeFileName}`;
+
+    const base64Data =
+      imageBase64.includes(",")
+        ? imageBase64.split(",")[1]
+        : imageBase64;
+
+    const buffer = Buffer.from(
+      base64Data,
+      "base64",
+    );
+
+    tempFilePath = path.join(
+      os.tmpdir(),
+      `${crypto.randomUUID()}.${ext}`,
+    );
+
+    await fs.writeFile(
+      tempFilePath,
+      buffer,
+    );
 
     const storage = new Storage();
-    const bucket = storage.bucket(BUCKET_NAME);
 
-    await bucket.upload(tempFilePath, {
-      destination: imagePath,
-      resumable: false,
-      metadata: {
-        contentType,
-        cacheControl: "public,max-age=31536000",
+    const bucket =
+      storage.bucket(BUCKET_NAME);
+
+    await bucket.upload(
+      tempFilePath,
+      {
+        destination: imagePath,
+        resumable: false,
+        metadata: {
+          contentType,
+          cacheControl:
+            "public,max-age=31536000",
+        },
       },
-    });
+    );
 
-    const imageUrl = publicStorageUrl(BUCKET_NAME, imagePath);
+    const imageUrl =
+      publicStorageUrl(
+        BUCKET_NAME,
+        imagePath,
+      );
 
     const db = getFirestore();
 
-    const aiMetadata = await analyzeImageMetadata(imageBase64, contentType, originalName);
+    const aiMetadata =
+      await analyzeImageMetadata(
+        imageBase64,
+        contentType,
+        originalName,
+      );
 
-    const metadata = normalizeWardrobeMetadata(
-      inferLensMetadata(originalName),
-      {
-        ...aiMetadata,
-        ...commercialMetadata,
-      }
-    );
+    const metadata =
+      normalizeWardrobeMetadata(
+        inferLensMetadata(
+          originalName,
+        ),
+        {
+          ...aiMetadata,
+          ...commercialMetadata,
+        },
+      );
+
+    const canonicalItemType =
+      getCanonicalWardrobeType(
+        metadata.itemType,
+        metadata.itemName,
+      ) ||
+      "Uncategorized";
+
+    const canonicalCategory =
+      getWardrobeCategory(
+        metadata.category,
+        canonicalItemType,
+        metadata.itemName,
+      ) ||
+      "Uncategorized";
 
     // normalizeWardrobeMetadata() already merges brand/brandName/manufacturer
     // into designerName, and material/fabric/composition into generalMaterial
     // (see src/lib/wardrobeMetadata.ts). The raw brand/material fields from
     // the AI response don't survive onto the returned object, so we read the
     // merged fields directly instead of re-checking fields that are never set.
-    const displayBrand = metadata.designerName || "Unknown";
-    const displayDesigner = metadata.designerName || "Unknown";
-    const displayMaterial = metadata.generalMaterial || "Unknown";
+    const displayBrand =
+      metadata.designerName ||
+      "Unknown";
 
-    const meaningfulFashionLabel = (value: unknown): string | null => {
-      if (value === null || value === undefined) return null;
+    const displayDesigner =
+      metadata.designerName ||
+      "Unknown";
 
-      const cleaned = String(value).replace(/\s+/g, " ").trim();
+    const displayMaterial =
+      metadata.generalMaterial ||
+      "Unknown";
+
+    const meaningfulFashionLabel = (
+      value: unknown,
+    ): string | null => {
+      if (
+        value === null ||
+        value === undefined
+      ) {
+        return null;
+      }
+
+      const cleaned = String(value)
+        .replace(/\s+/g, " ")
+        .trim();
 
       if (!cleaned) return null;
 
-      const normalized = cleaned.toLowerCase();
+      const normalized =
+        cleaned.toLowerCase();
 
       const invalidValues = new Set([
         "unknown",
@@ -326,17 +663,24 @@ export async function POST(req: NextRequest) {
         "not identified",
         "not visible",
         "unbranded",
-        "generic"
+        "generic",
       ]);
 
-      return invalidValues.has(normalized) ? null : cleaned;
+      return invalidValues.has(normalized)
+        ? null
+        : cleaned;
     };
 
-    const detectedBrand = meaningfulFashionLabel(displayBrand);
-    const detectedDesigner = meaningfulFashionLabel(displayDesigner);
+    const detectedBrand =
+      meaningfulFashionLabel(
+        displayBrand,
+      );
 
-    // The brand and designer are commonly identical for footwear and fashion.
-    // Only use the opposite field as a fallback when one value is missing.
+    const detectedDesigner =
+      meaningfulFashionLabel(
+        displayDesigner,
+      );
+
     const resolvedBrand =
       detectedBrand ||
       detectedDesigner ||
@@ -348,7 +692,8 @@ export async function POST(req: NextRequest) {
       "Unknown";
 
     const brandResolutionSource =
-      detectedBrand && detectedDesigner
+      detectedBrand &&
+      detectedDesigner
         ? "brand-and-designer-detected"
         : detectedBrand
           ? "brand-detected-designer-copied"
@@ -356,68 +701,131 @@ export async function POST(req: NextRequest) {
             ? "designer-detected-brand-copied"
             : "unresolved";
 
-    const aiAnalyzed = Object.keys(aiMetadata).length > 0;
+    const aiAnalyzed =
+      Object.keys(aiMetadata).length > 0;
 
-    const docRef = await db.collection("publicWardrobeItems").add({
-      itemName: metadata.itemName,
-      name: metadata.itemName,
-      title: metadata.itemName,
-      displayName: metadata.itemName,
-      aiFriendlyName: metadata.itemName,
+    const docRef = await db
+      .collection(
+        "publicWardrobeItems",
+      )
+      .add({
+        itemName:
+          metadata.itemName,
+        name: metadata.itemName,
+        title: metadata.itemName,
+        displayName:
+          metadata.itemName,
+        aiFriendlyName:
+          metadata.itemName,
 
-      itemType: metadata.itemType,
-      type: metadata.itemType,
-      category: metadata.itemType,
+        itemType:
+          canonicalItemType,
+        type:
+          canonicalItemType,
+        category:
+          canonicalCategory,
 
-      designer: resolvedDesigner,
-      designerName: resolvedDesigner,
-      brand: resolvedBrand,
-      brandName: resolvedBrand,
-      manufacturer: resolvedBrand,
-      label: resolvedBrand,
-      fashionHouse: resolvedDesigner,
-      detectedBrand: resolvedBrand,
-      detectedDesigner: resolvedDesigner,
-      brandDesignerResolved: resolvedBrand !== "Unknown",
-      brandResolutionSource,
+        designer:
+          resolvedDesigner,
+        designerName:
+          resolvedDesigner,
+        brand: resolvedBrand,
+        brandName: resolvedBrand,
+        manufacturer:
+          resolvedBrand,
+        label: resolvedBrand,
+        fashionHouse:
+          resolvedDesigner,
+        detectedBrand:
+          resolvedBrand,
+        detectedDesigner:
+          resolvedDesigner,
+        brandDesignerResolved:
+          resolvedBrand !==
+          "Unknown",
+        brandResolutionSource,
 
-      color: metadata.color,
-      generalMaterial: displayMaterial,
-      material: displayMaterial,
-      materials: displayMaterial,
-      detailedSpecifications: metadata.detailedSpecifications,
-      narrativeDescription: metadata.narrativeDescription,
-      styleKeywords: metadata.styleKeywords,
+        color: metadata.color,
+        generalMaterial:
+          displayMaterial,
+        material: displayMaterial,
+        materials:
+          displayMaterial,
+        detailedSpecifications:
+          metadata
+            .detailedSpecifications,
+        narrativeDescription:
+          metadata
+            .narrativeDescription,
+        styleKeywords:
+          metadata.styleKeywords,
 
-      season: metadata.season,
-      weatherSuitability: metadata.weatherSuitability,
-      eventCategory: metadata.eventCategory,
-      formality: metadata.formality,
-      tags: metadata.tags,
+        season: metadata.season,
+        weatherSuitability:
+          metadata
+            .weatherSuitability,
+        eventCategory:
+          metadata.eventCategory,
+        formality:
+          metadata.formality,
+        tags: metadata.tags,
 
-      sourceUrl: metadata.sourceUrl,
-      productUrl: metadata.productUrl,
-      sourceDomain: metadata.sourceDomain,
-      price: metadata.price,
-      priceText: metadata.priceText,
-      currency: metadata.currency,
-      metadataSource: aiAnalyzed ? "Gemini Vision Upload Analysis" : metadata.metadataSource,
-      metadataConfidence: aiAnalyzed
-        ? Math.max(Number(metadata.metadataConfidence || 0), Number((aiMetadata as any).metadataConfidence || 0.75))
-        : metadata.metadataConfidence,
-      aiMetadata,
+        sourceUrl:
+          metadata.sourceUrl,
+        productUrl:
+          metadata.productUrl,
+        sourceDomain:
+          metadata.sourceDomain,
+        price: metadata.price,
+        priceText:
+          metadata.priceText,
+        currency:
+          metadata.currency,
+        metadataSource:
+          aiAnalyzed
+            ? "Gemini Vision Upload Analysis"
+            : metadata
+                .metadataSource,
+        metadataConfidence:
+          aiAnalyzed
+            ? Math.max(
+                Number(
+                  metadata
+                    .metadataConfidence ||
+                    0,
+                ),
+                Number(
+                  (
+                    aiMetadata as Record<
+                      string,
+                      unknown
+                    >
+                  )
+                    .metadataConfidence ||
+                    0.75,
+                ),
+              )
+            : metadata
+                .metadataConfidence,
+        aiMetadata,
 
-      imageUrl,
-      imagePath,
-      storageBucket: BUCKET_NAME,
-      source: "SkoMiDora Lens",
-      imageStatus: "available",
-      uploadStatus: "uploaded",
-      aiAnalyzed,
+        imageUrl,
+        imagePath,
+        storageBucket:
+          BUCKET_NAME,
+        source:
+          "SkoMiDora Lens",
+        imageStatus: "available",
+        uploadStatus: "uploaded",
+        aiAnalyzed,
 
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    });
+        createdAt:
+          FieldValue
+            .serverTimestamp(),
+        updatedAt:
+          FieldValue
+            .serverTimestamp(),
+      });
 
     return NextResponse.json({
       ok: true,
@@ -425,21 +833,52 @@ export async function POST(req: NextRequest) {
       imagePath,
       imageUrl,
       firestoreId: docRef.id,
-      metadata,
+      metadata: {
+        ...metadata,
+        itemType:
+          canonicalItemType,
+        category:
+          canonicalCategory,
+      },
     });
-  } catch (error: any) {
-    console.error("Storage upload API error:", error);
+  } catch (error: unknown) {
+    console.error(
+      "Storage upload API error:",
+      error,
+    );
+
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Storage upload failed";
+
+    const code =
+      error &&
+      typeof error === "object" &&
+      "code" in error
+        ? String(
+            (
+              error as {
+                code?: unknown;
+              }
+            ).code || "",
+          ) || null
+        : null;
 
     return NextResponse.json(
       {
-        error: error?.message || "Storage upload failed",
-        code: error?.code || null,
+        error: message,
+        code,
       },
-      { status: 500 }
+      {
+        status: 500,
+      },
     );
   } finally {
     if (tempFilePath) {
-      await fs.unlink(tempFilePath).catch(() => {});
+      await fs
+        .unlink(tempFilePath)
+        .catch(() => {});
     }
   }
 }
