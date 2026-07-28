@@ -242,7 +242,7 @@ function classifyItem(item: any): ItemRole {
 
   if (
     TOP_TYPES.has(type) ||
-    /\b(shirt|t-shirt|tshirt|tee|blouse|tank|sweater|top)\b/.test(
+    /\b(shirt|t-shirt|tshirt|tee|blouse|tank|sweater|top|vest|waistcoat)\b/.test(
       text,
     )
   ) {

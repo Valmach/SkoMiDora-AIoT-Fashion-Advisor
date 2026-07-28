@@ -345,181 +345,199 @@ export async function POST(req: NextRequest) {
     };
 
     const db = getFirestore();
-    const batch = db.batch();
 
     const eventRef = db.collection("iotDeviceEvents").doc();
-    batch.set(eventRef, telemetry);
-
     const boxRef = db.collection("smartShoeboxes").doc(boxId);
-    batch.set(
-      boxRef,
-      {
-        deviceId,
-        boxId,
-        deviceType: telemetry.deviceType,
-        itemId,
-        registered: true,
-        status: "online",
-        currentPhysicalStatus,
-        physicalLocationType: telemetry.physicalLocationType,
-        locationName: telemetry.locationName,
-        closetZone: telemetry.closetZone,
-        closetShelfLabel: telemetry.closetShelfLabel,
-        shelfId,
-        slotId,
-        rfidTag: telemetry.rfidTag,
-        nfcTag: telemetry.nfcTag,
-        batteryLevel: telemetry.batteryLevel,
-        chargingStatus: telemetry.chargingStatus,
-        temperatureC: telemetry.temperatureC,
-        humidityPct: telemetry.humidityPct,
-        signalStrength: telemetry.signalStrength,
-        firmwareVersion: telemetry.firmwareVersion,
-        lastEventType: eventType,
-        lastConditionEventType: conditionEventType || null,
-        lastEventId: eventRef.id,
-        lastHeartbeatAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true }
-    );
+    const shelfRef = shelfId ? db.collection("smartShelves").doc(shelfId) : null;
+    const ledgerRef =
+      conditionEventType && itemId ? db.collection("conditionLedger").doc() : null;
+    const conditionLedgerId = ledgerRef ? ledgerRef.id : null;
+    const wardrobeRef = itemId ? db.collection("publicWardrobeItems").doc(itemId) : null;
 
-    if (shelfId) {
-      const shelfRef = db.collection("smartShelves").doc(shelfId);
-      const safeSlotId = slotId || "unknown-slot";
+    await db.runTransaction(async (tx) => {
+      // Reads must happen before writes in a Firestore transaction. We read the
+      // existing wardrobe doc so worstHumidityPct/maxTemperatureC can track true
+      // historical maximums instead of being overwritten by the latest reading.
+      let existingWorstHumidityPct: number | null = null;
+      let existingMaxTemperatureC: number | null = null;
 
-      batch.set(
-        shelfRef,
+      if (wardrobeRef) {
+        const wardrobeSnap = await tx.get(wardrobeRef);
+        if (wardrobeSnap.exists) {
+          const existing = wardrobeSnap.data() || {};
+          existingWorstHumidityPct = cleanNumber(existing.worstHumidityPct);
+          existingMaxTemperatureC = cleanNumber(existing.maxTemperatureC);
+        }
+      }
+
+      tx.set(eventRef, telemetry);
+
+      tx.set(
+        boxRef,
         {
-          shelfId,
+          deviceId,
+          boxId,
+          deviceType: telemetry.deviceType,
+          itemId,
+          registered: true,
           status: "online",
+          currentPhysicalStatus,
+          physicalLocationType: telemetry.physicalLocationType,
           locationName: telemetry.locationName,
-          physicalLocationType: "skomidora-networked-shelf",
+          closetZone: telemetry.closetZone,
+          closetShelfLabel: telemetry.closetShelfLabel,
+          shelfId,
+          slotId,
+          rfidTag: telemetry.rfidTag,
+          nfcTag: telemetry.nfcTag,
+          batteryLevel: telemetry.batteryLevel,
+          chargingStatus: telemetry.chargingStatus,
           temperatureC: telemetry.temperatureC,
           humidityPct: telemetry.humidityPct,
+          signalStrength: telemetry.signalStrength,
+          firmwareVersion: telemetry.firmwareVersion,
+          lastEventType: eventType,
+          lastConditionEventType: conditionEventType || null,
           lastEventId: eventRef.id,
+          lastHeartbeatAt: FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
-          [`slots.${safeSlotId}`]: {
-            boxId,
-            itemId,
-            status: currentPhysicalStatus,
-            lastDetectedAt: FieldValue.serverTimestamp(),
-          },
         },
         { merge: true }
       );
-    }
 
-    let conditionLedgerId: string | null = null;
+      if (shelfRef) {
+        const safeSlotId = slotId || "unknown-slot";
 
-    if (conditionEventType && itemId) {
-      const ledgerRef = db.collection("conditionLedger").doc();
-      conditionLedgerId = ledgerRef.id;
-
-      batch.set(ledgerRef, {
-        userId: telemetry.userId,
-        itemId,
-        boxId,
-        deviceId,
-        iotDeviceEventId: eventRef.id,
-
-        eventType: conditionEventType,
-        conditionBefore: telemetry.conditionBefore,
-        conditionAfter: telemetry.conditionAfter,
-        conditionGrade: telemetry.conditionGrade,
-        severity,
-        confidence: telemetry.confidence,
-        notes: telemetry.notes,
-        source: telemetry.source,
-
-        photos: photoUrls.map((url, index) => ({
-          imageUrl: url,
-          angle: index === 0 ? "primary" : `photo-${index + 1}`,
-          source: telemetry.source,
-        })),
-
-        sensorSnapshot: {
-          temperatureC,
-          humidityPct,
-          batteryLevel,
-          exposureMinutes,
-          signalStrength: telemetry.signalStrength,
-        },
-
-        serviceProvider: cleanText(body.serviceProvider),
-        repairCost: cleanNumber(body.repairCost),
-        currency: cleanText(body.currency),
-
-        createdAt: FieldValue.serverTimestamp(),
-      });
-    }
-
-    if (itemId) {
-      const wardrobeRef = db.collection("publicWardrobeItems").doc(itemId);
-
-      const wardrobeUpdate: Record<string, unknown> = {
-        currentBoxId: boxId,
-        currentPhysicalStatus,
-        physicalLocationType: telemetry.physicalLocationType,
-        locationName: telemetry.locationName,
-        closetZone: telemetry.closetZone,
-        closetShelfLabel: telemetry.closetShelfLabel,
-        shelfId,
-        slotId,
-        boxBatteryLevel: telemetry.batteryLevel,
-        boxTemperatureC: telemetry.temperatureC,
-        boxHumidityPct: telemetry.humidityPct,
-        lastSeenAt: FieldValue.serverTimestamp(),
-        physicalMetadataSource: telemetry.source,
-        updatedAt: FieldValue.serverTimestamp(),
-      };
-
-      if (eventType === "box-removed") {
-        wardrobeUpdate.lastRemovedAt = FieldValue.serverTimestamp();
-      }
-
-      if (eventType === "box-returned") {
-        wardrobeUpdate.lastReturnedAt = FieldValue.serverTimestamp();
-      }
-
-      if (humidityPct !== null) {
-        wardrobeUpdate.lastHumidityPct = humidityPct;
-        wardrobeUpdate.worstHumidityPct = humidityPct;
-      }
-
-      if (temperatureC !== null) {
-        wardrobeUpdate.lastTemperatureC = temperatureC;
-        wardrobeUpdate.maxTemperatureC = temperatureC;
-      }
-
-      if (conditionEventType) {
-        Object.assign(
-          wardrobeUpdate,
-          conditionSummaryPatch(conditionEventType, FieldValue.serverTimestamp())
+        tx.set(
+          shelfRef,
+          {
+            shelfId,
+            status: "online",
+            locationName: telemetry.locationName,
+            physicalLocationType: "skomidora-networked-shelf",
+            temperatureC: telemetry.temperatureC,
+            humidityPct: telemetry.humidityPct,
+            lastEventId: eventRef.id,
+            updatedAt: FieldValue.serverTimestamp(),
+            [`slots.${safeSlotId}`]: {
+              boxId,
+              itemId,
+              status: currentPhysicalStatus,
+              lastDetectedAt: FieldValue.serverTimestamp(),
+            },
+          },
+          { merge: true }
         );
+      }
 
-        wardrobeUpdate.conditionLedgerLatestEventId = conditionLedgerId;
-        wardrobeUpdate.lastConditionEventType = conditionEventType;
-        wardrobeUpdate.lastConditionSeverity = severity;
+      if (ledgerRef) {
+        tx.set(ledgerRef, {
+          userId: telemetry.userId,
+          itemId,
+          boxId,
+          deviceId,
+          iotDeviceEventId: eventRef.id,
 
-        if (telemetry.conditionGrade) {
-          wardrobeUpdate.conditionGrade = telemetry.conditionGrade;
+          eventType: conditionEventType,
+          conditionBefore: telemetry.conditionBefore,
+          conditionAfter: telemetry.conditionAfter,
+          conditionGrade: telemetry.conditionGrade,
+          severity,
+          confidence: telemetry.confidence,
+          notes: telemetry.notes,
+          source: telemetry.source,
+
+          photos: photoUrls.map((url, index) => ({
+            imageUrl: url,
+            angle: index === 0 ? "primary" : `photo-${index + 1}`,
+            source: telemetry.source,
+          })),
+
+          sensorSnapshot: {
+            temperatureC,
+            humidityPct,
+            batteryLevel,
+            exposureMinutes,
+            signalStrength: telemetry.signalStrength,
+          },
+
+          serviceProvider: cleanText(body.serviceProvider),
+          repairCost: cleanNumber(body.repairCost),
+          currency: cleanText(body.currency),
+
+          createdAt: FieldValue.serverTimestamp(),
+        });
+      }
+
+      if (wardrobeRef) {
+        const wardrobeUpdate: Record<string, unknown> = {
+          currentBoxId: boxId,
+          currentPhysicalStatus,
+          physicalLocationType: telemetry.physicalLocationType,
+          locationName: telemetry.locationName,
+          closetZone: telemetry.closetZone,
+          closetShelfLabel: telemetry.closetShelfLabel,
+          shelfId,
+          slotId,
+          boxBatteryLevel: telemetry.batteryLevel,
+          boxTemperatureC: telemetry.temperatureC,
+          boxHumidityPct: telemetry.humidityPct,
+          lastSeenAt: FieldValue.serverTimestamp(),
+          physicalMetadataSource: telemetry.source,
+          updatedAt: FieldValue.serverTimestamp(),
+        };
+
+        if (eventType === "box-removed") {
+          wardrobeUpdate.lastRemovedAt = FieldValue.serverTimestamp();
         }
 
-        const conditionTags = [
-          conditionEventType,
-          severity ? `${severity}-severity` : null,
-          humidityPct !== null && humidityPct >= 70 ? "humidity-monitored" : null,
-          temperatureC !== null && temperatureC >= 32 ? "temperature-monitored" : null,
-        ].filter(Boolean);
+        if (eventType === "box-returned") {
+          wardrobeUpdate.lastReturnedAt = FieldValue.serverTimestamp();
+        }
 
-        wardrobeUpdate.conditionTags = FieldValue.arrayUnion(...conditionTags);
+        if (humidityPct !== null) {
+          wardrobeUpdate.lastHumidityPct = humidityPct;
+          wardrobeUpdate.worstHumidityPct =
+            existingWorstHumidityPct !== null
+              ? Math.max(existingWorstHumidityPct, humidityPct)
+              : humidityPct;
+        }
+
+        if (temperatureC !== null) {
+          wardrobeUpdate.lastTemperatureC = temperatureC;
+          wardrobeUpdate.maxTemperatureC =
+            existingMaxTemperatureC !== null
+              ? Math.max(existingMaxTemperatureC, temperatureC)
+              : temperatureC;
+        }
+
+        if (conditionEventType) {
+          Object.assign(
+            wardrobeUpdate,
+            conditionSummaryPatch(conditionEventType, FieldValue.serverTimestamp())
+          );
+
+          wardrobeUpdate.conditionLedgerLatestEventId = conditionLedgerId;
+          wardrobeUpdate.lastConditionEventType = conditionEventType;
+          wardrobeUpdate.lastConditionSeverity = severity;
+
+          if (telemetry.conditionGrade) {
+            wardrobeUpdate.conditionGrade = telemetry.conditionGrade;
+          }
+
+          const conditionTags = [
+            conditionEventType,
+            severity ? `${severity}-severity` : null,
+            humidityPct !== null && humidityPct >= 70 ? "humidity-monitored" : null,
+            temperatureC !== null && temperatureC >= 32 ? "temperature-monitored" : null,
+          ].filter(Boolean);
+
+          wardrobeUpdate.conditionTags = FieldValue.arrayUnion(...conditionTags);
+        }
+
+        tx.set(wardrobeRef, wardrobeUpdate, { merge: true });
       }
-
-      batch.set(wardrobeRef, wardrobeUpdate, { merge: true });
-    }
-
-    await batch.commit();
+    });
 
     return NextResponse.json({
       ok: true,

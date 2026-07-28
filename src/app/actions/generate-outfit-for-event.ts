@@ -48,7 +48,7 @@ function isClothing(item: any): boolean {
   if (CLOTHING_TYPES.has(t)) return true;
 
   const n = String(item?.itemName || '').toLowerCase();
-  return /(dress|coat|jacket|blazer|top|shirt|blouse|pant|trouser|skirt|suit|jumpsuit|sweater|cardigan)/.test(n);
+  return /(dress|coat|jacket|blazer|top|shirt|blouse|pant|trouser|skirt|suit|jumpsuit|sweater|cardigan|vest|waistcoat)/.test(n);
 }
 
 function resolveImage(item: any): string | null {
