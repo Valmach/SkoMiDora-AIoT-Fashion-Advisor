@@ -17,6 +17,12 @@ import {
 
 import { useFirebase } from "@/firebase/provider";
 import SkomiDoraLens from "@/components/SkomiDoraLens";
+import {
+  WARDROBE_CATEGORIES,
+  getCanonicalWardrobeType,
+  getWardrobeCategory,
+  type WardrobeCategory,
+} from "@/lib/wardrobe-taxonomy";
 
 const bonheur = Bonheur_Royale({ subsets: ['latin'], weight: ['400'] });
 const playfair = Playfair_Display({ subsets: ['latin'], weight: ['400', '600', '700'] });
@@ -26,6 +32,7 @@ type ClosetItem = {
   id: string;
   itemName?: string;
   itemType?: string;
+  category?: string;
   color?: string;
   narrativeDescription?: string;
   styleKeywords?: string[];
@@ -45,6 +52,35 @@ const safeString = (val: any): string => {
   if (typeof val === 'number') return String(val);
   return '';
 };
+
+type ResolvedWardrobeCategory =
+  | WardrobeCategory
+  | "Uncategorized";
+
+function getItemCategory(
+  item: ClosetItem
+): ResolvedWardrobeCategory {
+  return (
+    getWardrobeCategory(
+      item.category,
+      item.itemType,
+      item.itemName
+    ) || "Uncategorized"
+  );
+}
+
+function getItemTypeLabel(
+  item: ClosetItem
+): string {
+  return (
+    getCanonicalWardrobeType(
+      item.itemType,
+      item.itemName
+    ) ||
+    safeString(item.itemType) ||
+    "Uncategorized"
+  );
+}
 
 function normalizeImagePath(path: string): string {
   let p = path;
@@ -145,8 +181,28 @@ export default function ClosetPage() {
     );
   }
 
-  const uniqueCategories = ["All", ...Array.from(new Set(items.map(item => item.itemType || "Uncategorized")))];
-  const filteredItems = activeFilter === "All" ? items : items.filter(item => (item.itemType || "Uncategorized") === activeFilter);
+  const resolvedCategories = new Set(
+    items.map(getItemCategory)
+  );
+
+  const uniqueCategories = [
+    "All",
+    ...WARDROBE_CATEGORIES.filter(category =>
+      resolvedCategories.has(category)
+    ),
+    ...(resolvedCategories.has("Uncategorized")
+      ? ["Uncategorized"]
+      : []),
+  ];
+
+  const filteredItems =
+    activeFilter === "All"
+      ? items
+      : items.filter(
+          item =>
+            getItemCategory(item) ===
+            activeFilter
+        );
 
   return (
     <div className={`container mx-auto space-y-6 pb-12 h-[85vh] overflow-y-auto scrollbar-hide bg-black text-zinc-100 ${inter.className} px-4 pt-4`}>
@@ -246,7 +302,7 @@ export default function ClosetPage() {
                   <div className="grid grid-cols-2 gap-3 pb-3 border-b border-zinc-900/50 mb-3 text-left">
                     <div className="flex flex-col gap-0.5">
                       <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">Type</span>
-                      <span className="text-xs font-medium text-zinc-300 capitalize truncate">{safeString(item.itemType) || "Uncategorized"}</span>
+                      <span className="text-xs font-medium text-zinc-300 capitalize truncate">{getItemTypeLabel(item)}</span>
                     </div>
                     {item.color && (
                       <div className="flex flex-col gap-0.5 items-end text-right">
