@@ -13,6 +13,10 @@ export interface Product {
   currency: string; // ISO 4217, e.g. "USD"
   category: string; // e.g. "Classic", "Collector Edition", "Kids"
   imageUrl: string;
+  // Ordered set of angle frames for a hover-to-spin 360 view. Optional -
+  // when absent or length <= 1, the product card just shows imageUrl as a
+  // static image. When present, hovering scrubs through the frames.
+  images?: string[];
   status: ProductStatus;
   sku?: string;
   // Explicit flag for seed/placeholder inventory. The current catalog is

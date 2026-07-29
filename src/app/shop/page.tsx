@@ -5,10 +5,11 @@ import { collection, query, orderBy, onSnapshot, Timestamp } from "firebase/fire
 import { Bonheur_Royale, Inter } from "next/font/google";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, AlertCircle, ImageOff, PackageSearch, ShoppingBag } from "lucide-react";
+import { Loader2, AlertCircle, PackageSearch, ShoppingBag } from "lucide-react";
 
 import { useFirebase } from "@/firebase/provider";
 import { formatPrice, type Product } from "@/lib/products";
+import { ProductSpinImage } from "@/components/ProductSpinImage";
 
 const bonheur = Bonheur_Royale({ subsets: ["latin"], weight: ["400"] });
 const inter = Inter({ subsets: ["latin"], weight: ["300", "400", "500", "600"] });
@@ -145,18 +146,11 @@ export default function ShopPage() {
               className="group relative bg-[#050505] border border-zinc-900 shadow-2xl hover:border-[#9A1B22]/50 transition-all duration-500 overflow-hidden flex flex-col justify-start"
             >
               <div className="relative aspect-[3/2] w-full bg-black flex items-center justify-center overflow-hidden p-3 border-b border-zinc-900 shrink-0">
-                {product.imageUrl ? (
-                  <img
-                    src={product.imageUrl}
-                    alt={safeString(product.name) || "SkoBoxy"}
-                    className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-103 drop-shadow-2xl"
-                  />
-                ) : (
-                  <div className="flex flex-col items-center justify-center text-zinc-800">
-                    <ImageOff className="h-6 w-6 mb-2 opacity-50" />
-                    <span className="text-[10px] uppercase tracking-widest">No image</span>
-                  </div>
-                )}
+                <ProductSpinImage
+                  imageUrl={product.imageUrl}
+                  images={product.images}
+                  alt={safeString(product.name) || "SkoBoxy"}
+                />
 
                 {product.isMock && (
                   <span className="absolute top-3 left-3 px-2 py-1 bg-black/90 border border-zinc-700 text-[9px] uppercase tracking-widest text-zinc-400">
