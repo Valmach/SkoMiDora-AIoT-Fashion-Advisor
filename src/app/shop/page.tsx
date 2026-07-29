@@ -10,6 +10,7 @@ import { Loader2, AlertCircle, PackageSearch, ShoppingBag } from "lucide-react";
 import { useFirebase } from "@/firebase/provider";
 import { formatPrice, type Product } from "@/lib/products";
 import { ProductSpinImage } from "@/components/ProductSpinImage";
+import { ProductImageLightbox } from "@/components/ProductImageLightbox";
 
 const bonheur = Bonheur_Royale({ subsets: ["latin"], weight: ["400"] });
 const inter = Inter({ subsets: ["latin"], weight: ["300", "400", "500", "600"] });
@@ -29,6 +30,7 @@ export default function ShopPage() {
   // collapsing failure and emptiness into the same state as a real problem.
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>("All");
+  const [lightboxProduct, setLightboxProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     if (!firebase || !firebase.firestore) return;
@@ -145,7 +147,10 @@ export default function ShopPage() {
               key={product.id}
               className="group relative bg-[#050505] border border-zinc-900 shadow-2xl hover:border-[#9A1B22]/50 transition-all duration-500 overflow-hidden flex flex-col justify-start"
             >
-              <div className="relative aspect-[3/2] w-full bg-black flex items-center justify-center overflow-hidden p-3 border-b border-zinc-900 shrink-0">
+              <div
+                onClick={() => setLightboxProduct(product)}
+                className="relative aspect-[3/2] w-full bg-black flex items-center justify-center overflow-hidden p-3 border-b border-zinc-900 shrink-0 cursor-zoom-in"
+              >
                 <ProductSpinImage
                   imageUrl={product.imageUrl}
                   images={product.images}
@@ -190,6 +195,16 @@ export default function ShopPage() {
           ))}
         </div>
       )}
+
+      <ProductImageLightbox
+        open={!!lightboxProduct}
+        onOpenChange={(open) => {
+          if (!open) setLightboxProduct(null);
+        }}
+        imageUrl={lightboxProduct?.imageUrl ?? ""}
+        images={lightboxProduct?.images}
+        alt={lightboxProduct ? safeString(lightboxProduct.name) : ""}
+      />
     </div>
   );
 }
