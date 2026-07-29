@@ -77,6 +77,17 @@ const SAMPLE_PRODUCTS = [
     category: "Collector Edition",
     imageUrl:
       "https://storage.googleapis.com/styleai-footwear.firebasestorage.app/products/birdboxies.jpg",
+    images: [
+      "https://storage.googleapis.com/styleai-footwear.firebasestorage.app/products/bird-boxies/Birdboxie_front.jpg",
+      "https://storage.googleapis.com/styleai-footwear.firebasestorage.app/products/bird-boxies/birdboxie_top_right.png",
+      "https://storage.googleapis.com/styleai-footwear.firebasestorage.app/products/bird-boxies/birdboxie_top_left.png",
+      "https://storage.googleapis.com/styleai-footwear.firebasestorage.app/products/bird-boxies/Birdboxieback_side.jpg",
+      "https://storage.googleapis.com/styleai-footwear.firebasestorage.app/products/bird-boxies/Birdboxie__top_front.jpg",
+      "https://storage.googleapis.com/styleai-footwear.firebasestorage.app/products/bird-boxies/BirdBoxies_Immer_3432.png",
+      "https://storage.googleapis.com/styleai-footwear.firebasestorage.app/products/bird-boxies/BirdBoxies_Immer_3433.png",
+      "https://storage.googleapis.com/styleai-footwear.firebasestorage.app/products/bird-boxies/BirdBoxies_Immer_3434.png",
+      "https://storage.googleapis.com/styleai-footwear.firebasestorage.app/products/bird-boxies/BirdBoxies_Immer_3435.png",
+    ],
     status: "active",
     sku: "SKD-ART-BRD",
     isMock: true,
