@@ -149,7 +149,7 @@ export default function ShopPage() {
             >
               <div
                 onClick={() => setLightboxProduct(product)}
-                className="relative aspect-[3/2] w-full bg-black flex items-center justify-center overflow-hidden p-3 border-b border-zinc-900 shrink-0 cursor-zoom-in"
+                className="relative aspect-[3/2] w-full bg-[#1a1512] flex items-center justify-center overflow-hidden p-1 border-b border-zinc-900 shrink-0 cursor-zoom-in"
               >
                 <ProductSpinImage
                   imageUrl={product.imageUrl}

@@ -83,7 +83,7 @@ export function ProductImageLightbox({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-4xl w-[90vw] h-[80vh] bg-[#050505] border-zinc-800 p-0 overflow-hidden"
+        className="max-w-4xl w-[90vw] h-[80vh] bg-[#1a1512] border-zinc-800 p-0 overflow-hidden"
       >
         <DialogTitle className="sr-only">{alt}</DialogTitle>
 
@@ -123,11 +123,12 @@ export function ProductImageLightbox({
           style={{ cursor: zoom > 1 ? "grab" : "default" }}
         >
           <div
+            className="aspect-[3/2]"
             style={{
               transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
               transition: dragState.current ? "none" : "transform 150ms ease-out",
-              width: "70%",
-              height: "70%",
+              width: "88%",
+              maxHeight: "88%",
               pointerEvents: zoom > 1 ? "none" : "auto",
             }}
           >
