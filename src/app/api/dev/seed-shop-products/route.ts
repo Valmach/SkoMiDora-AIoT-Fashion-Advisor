@@ -101,6 +101,26 @@ const SAMPLE_PRODUCTS = [
     sku: "SKD-ART-KPP",
     isMock: true,
   },
+  {
+    id: "meurte-boxies",
+    name: "Meurte Boxies",
+    slug: "meurte-boxies",
+    description: "Deep red wave-pattern wraparound design, rendered in SketchUp + KeyShot Pro.",
+    priceCents: 17900,
+    currency: "USD",
+    category: "Collector Edition",
+    imageUrl:
+      "https://storage.googleapis.com/styleai-footwear.firebasestorage.app/products/meurte-boxies/meurte_ffouri.jpg",
+    images: [
+      "https://storage.googleapis.com/styleai-footwear.firebasestorage.app/products/meurte-boxies/meurte_ffouri.jpg",
+      "https://storage.googleapis.com/styleai-footwear.firebasestorage.app/products/meurte-boxies/meurte_imme_back.jpg",
+      "https://storage.googleapis.com/styleai-footwear.firebasestorage.app/products/meurte-boxies/meurte_imme_lf.jpg",
+      "https://storage.googleapis.com/styleai-footwear.firebasestorage.app/products/meurte-boxies/meurte_immer.jpg",
+    ],
+    status: "active" as const,
+    sku: "SKD-ART-MRT",
+    isMock: true,
+  },
 ];
 
 export async function POST() {
