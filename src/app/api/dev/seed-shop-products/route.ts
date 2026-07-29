@@ -62,6 +62,34 @@ const SAMPLE_PRODUCTS = [
     sku: "SKD-TRV-NDE",
     isMock: true,
   },
+  {
+    id: "bird-boxies",
+    name: "Bird Boxies",
+    slug: "bird-boxies",
+    description: "Vivid tropical bird wraparound artwork, rendered in SketchUp + KeyShot Pro.",
+    priceCents: 17900,
+    currency: "USD",
+    category: "Collector Edition",
+    imageUrl:
+      "https://storage.googleapis.com/styleai-footwear.firebasestorage.app/products/birdboxies.jpg",
+    status: "active" as const,
+    sku: "SKD-ART-BRD",
+    isMock: true,
+  },
+  {
+    id: "kpop-boxies",
+    name: "K-Pop Boxies",
+    slug: "kpop-boxies",
+    description: "Holographic K-Pop fan-edition wraparound design.",
+    priceCents: 17900,
+    currency: "USD",
+    category: "Collector Edition",
+    imageUrl:
+      "https://storage.googleapis.com/styleai-footwear.firebasestorage.app/products/kpop.png",
+    status: "active" as const,
+    sku: "SKD-ART-KPP",
+    isMock: true,
+  },
 ];
 
 export async function POST() {
