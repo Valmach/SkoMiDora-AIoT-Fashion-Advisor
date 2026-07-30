@@ -878,6 +878,10 @@ ${laneInventory}
     generated.object.recommendations.slice(0, 3);
 
   if (aiRecommendations.length !== 3) {
+    console.error(
+      `Daily outfit generation returned ${generated.object.recommendations.length} recommendation(s) instead of 3; using validated closet fallback. Event: "${eventName}", weather: "${weather}".`,
+    );
+
     return fallbackRecommendations(
       lanes,
       eventName,
