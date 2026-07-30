@@ -63,21 +63,21 @@ const CITY_IMAGES: Record<string, string> = {
   'Default': 'https://images.unsplash.com/photo-1473625247510-8ceb1760943f?auto=format&fit=crop&w=800&q=80' 
 };
 
-export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, cardIndex }: AdviceProps) {
+export default function UpcomingEventAdviceCard({ eventAdvice, cardIndex }: AdviceProps) {
   const { toast } = useToast();
-
-  if (!eventAdvice) return null;
+  const advice = eventAdvice || {};
 
   // --- SAFE DATA FALLBACKS ---
-  const safeEventName = String(eventAdvice.eventName || eventAdvice.summary || eventAdvice.title || eventAdvice.name || "Upcoming Event");
-  const rawDate = eventAdvice.date || eventAdvice.start?.dateTime || eventAdvice.start?.date || "Date TBA";
+  const safeEventName = String(advice.eventName || advice.summary || advice.title || advice.name || "Upcoming Event");
+  const safeLocation = String(advice.location || "Location TBA");
+  const rawDate = advice.date || advice.start?.dateTime || advice.start?.date || "Date TBA";
   const safeDate = typeof rawDate === 'string' ? rawDate.split('•')[0] : "Upcoming";
-  const safeWeather = String(eventAdvice.weatherForecast || eventAdvice.weather || eventAdvice.weatherContext || "Weather data unavailable");
-  const safeReasoning = String(eventAdvice.reasoning || eventAdvice.description || "Stylist notes are being generated...");
+  const safeWeather = String(advice.weatherForecast || advice.weather || advice.weatherContext || "Weather data unavailable");
+  const safeReasoning = String(advice.reasoning || advice.description || "Stylist notes are being generated...");
   
-  const safeKeywords = Array.isArray(eventAdvice.styleKeywords) 
-    ? eventAdvice.styleKeywords 
-    : (typeof eventAdvice.styleKeywords === 'string' ? eventAdvice.styleKeywords.split(', ') : []);
+  const safeKeywords = Array.isArray(advice.styleKeywords)
+    ? advice.styleKeywords
+    : (typeof advice.styleKeywords === 'string' ? advice.styleKeywords.split(', ') : []);
 
   const animationDelay = `${cardIndex * 150}ms`;
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -91,6 +91,8 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
       window.speechSynthesis.cancel();
     };
   }, [audioElement]);
+
+  if (!eventAdvice) return null;
 
   const handleSpeak = async () => {
     if (isSpeaking) {
@@ -108,7 +110,9 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
     const rawText = `${safeEventName}. ${safeWeather}. Stylist Notes: ${safeReasoning}`;
 
     const cleanTextToRead = rawText
-      .replace(/[*#_`~\[\]]/g, "")
+      .replace(/[*#_`~]/g, "")
+      .replaceAll("[", "")
+      .replaceAll("]", "")
       .replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, "")
       .replace(/\s+/g, " ")
       .trim()
@@ -249,7 +253,7 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
         
         <div className="h-56 w-full bg-zinc-800 relative overflow-hidden group shrink-0">
           <img 
-            src={getCityImage(safeEventName)} 
+            src={advice.cityBg || getCityImage(`${safeEventName} ${safeLocation}`)}
             alt={safeEventName}
             className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-700 group-hover:scale-110 transform transition-transform"
             onError={(e) => { e.currentTarget.src = CITY_IMAGES['Default']; }}
@@ -270,7 +274,7 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
               </CardTitle>
               <div className="flex items-center gap-2 text-zinc-400 text-xs tracking-wider uppercase font-medium">
                 <MapPin size={12} className="text-[#DC143C]" />
-                <span>{safeEventName.split(' ').slice(1).join(' ') || "Location TBA"}</span>
+                <span>{safeLocation}</span>
               </div>
             </div>
           </div>
@@ -305,7 +309,7 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
             </div>
             
             <p className={`font-normal text-sm text-zinc-200 tracking-wide leading-relaxed ${playfair.className}`}>
-              "{safeReasoning}"
+              &ldquo;{safeReasoning}&rdquo;
             </p>
           </div>
 
