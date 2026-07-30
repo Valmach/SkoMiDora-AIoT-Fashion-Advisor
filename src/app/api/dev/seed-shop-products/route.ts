@@ -128,7 +128,14 @@ const SAMPLE_PRODUCTS = [
     priceCents: 22900,
     currency: "USD",
     category: "Limited Edition",
-    imageUrl: "",
+    imageUrl:
+      "https://storage.googleapis.com/styleai-footwear.firebasestorage.app/products/Limited%20edition./Limited%20edition%20left%20front..jpg",
+    images: [
+      "https://storage.googleapis.com/styleai-footwear.firebasestorage.app/products/Limited%20edition./Limited%20edition%20left%20front..jpg",
+      "https://storage.googleapis.com/styleai-footwear.firebasestorage.app/products/Limited%20edition./Limited%20edition.%20Right%20front..jpg",
+      "https://storage.googleapis.com/styleai-footwear.firebasestorage.app/products/Limited%20edition./Limited%20edition.%20Top%20front..jpg",
+      "https://storage.googleapis.com/styleai-footwear.firebasestorage.app/products/Limited%20edition./Limited%20edition%20back..jpg",
+    ],
     status: "active" as const,
     sku: "SKD-LTD-001",
     isMock: true,
