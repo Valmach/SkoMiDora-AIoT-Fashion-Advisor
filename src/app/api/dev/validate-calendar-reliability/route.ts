@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import {
   calendarEventAllowsSwimwear,
   getEventStyleKeywords,
+  getSeasonForLatitude,
   normalizeCalendarEvent,
   SWIMWEAR_KEYWORDS,
   type CalendarEventInput,
@@ -93,6 +94,17 @@ export async function GET() {
             `${event.name} did not preserve its Calendar start date.`,
           );
 
+          const season =
+            getSeasonForLatitude(
+              event.eventDate,
+              45,
+            );
+
+          assertCondition(
+            season === "Summer",
+            `${event.name} resolved to ${season}, not Summer.`,
+          );
+
           assertCondition(
             !calendarEventAllowsSwimwear(
               fixture,
@@ -137,6 +149,7 @@ export async function GET() {
               event.location,
             startDateTime:
               event.eventDate.toISOString(),
+            season,
             allowsSwimwear: false,
           };
         },

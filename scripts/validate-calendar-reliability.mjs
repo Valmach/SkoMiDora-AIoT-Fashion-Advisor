@@ -119,10 +119,10 @@ async function main() {
   const results = [
     {
       check:
-        "Calendar event normalization",
+        "Paris/Oslo/Rome synchronization",
       status: "PASS",
       details:
-        "Paris, Oslo, and Rome retained their Calendar dates and excluded swimwear.",
+        "All three fixtures retained their event date, resolved to Summer, and excluded swimwear.",
     },
     {
       check:
