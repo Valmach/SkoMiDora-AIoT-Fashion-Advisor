@@ -40,6 +40,7 @@ export function formatPrice(priceCents: number, currency: string = "USD"): strin
 export const PRODUCT_CATEGORIES = [
   "Classic",
   "Collector Edition",
+  "Limited Edition",
   "Kids",
   "Travel",
 ] as const;

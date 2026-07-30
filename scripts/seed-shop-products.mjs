@@ -124,6 +124,20 @@ const SAMPLE_PRODUCTS = [
     sku: "SKD-ART-MRT",
     isMock: true,
   },
+  {
+    id: "limited-edition-skoboxie",
+    name: "Limited Edition SkoBoxie",
+    slug: "limited-edition-skoboxie",
+    description:
+      "Inspired by great minds and sustainability, these precision-crafted Boxies blend innovative design with eco-friendly materials. Available only at SkoMiDora.",
+    priceCents: 22900,
+    currency: "USD",
+    category: "Limited Edition",
+    imageUrl: "",
+    status: "active",
+    sku: "SKD-LTD-001",
+    isMock: true,
+  },
 ];
 
 async function main() {
