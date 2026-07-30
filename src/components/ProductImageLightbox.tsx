@@ -83,7 +83,7 @@ export function ProductImageLightbox({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-4xl w-[90vw] h-[80vh] bg-[#1a1512] border-zinc-800 p-0 overflow-hidden"
+        className="max-w-4xl w-[90vw] h-[80vh] bg-black border-zinc-800 p-0 overflow-hidden"
       >
         <DialogTitle className="sr-only">{alt}</DialogTitle>
 
