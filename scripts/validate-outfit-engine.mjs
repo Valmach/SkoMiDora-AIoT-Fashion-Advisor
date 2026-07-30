@@ -53,6 +53,7 @@ const baseUrl = (
         generation: 'Initial',
         look: look.look,
         items: look.itemIds.length,
+        images: look.imageCount,
         footwear: look.footwearCount,
         foundation:
           look.onePieceCount > 0
@@ -63,6 +64,7 @@ const baseUrl = (
         generation: 'Refresh',
         look: look.look,
         items: look.itemIds.length,
+        images: look.imageCount,
         footwear: look.footwearCount,
         foundation:
           look.onePieceCount > 0

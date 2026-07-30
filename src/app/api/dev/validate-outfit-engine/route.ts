@@ -3,6 +3,9 @@ import { NextResponse } from 'next/server';
 import {
   getDailyOutfitsAction,
 } from '@/app/actions/get-daily-outfits';
+import {
+  isWardrobeImageReachable,
+} from '@/lib/server/wardrobe-image-integrity';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,6 +16,7 @@ type SelectedItem = {
   itemName?: unknown;
   itemType?: unknown;
   role?: unknown;
+  imageUrl?: unknown;
 };
 
 type Recommendation = {
@@ -30,6 +34,7 @@ type ValidationSummary = {
   onePieceCount: number;
   topCount: number;
   bottomCount: number;
+  imageCount: number;
 };
 
 function cleanText(value: unknown): string {
@@ -103,10 +108,10 @@ function assertCondition(
   }
 }
 
-function validateRecommendations(
+async function validateRecommendations(
   value: unknown,
   label: string,
-): ValidationSummary[] {
+): Promise<ValidationSummary[]> {
   assertCondition(
     Array.isArray(value),
     `${label}: recommendations were not an array.`,
@@ -122,8 +127,9 @@ function validateRecommendations(
 
   const allIds: string[] = [];
 
-  const summaries = recommendations.map(
-    (recommendation, index) => {
+  const summaries = await Promise.all(
+    recommendations.map(
+    async (recommendation, index) => {
       const itemIds = Array.isArray(
         recommendation.itemIds,
       )
@@ -181,6 +187,20 @@ function validateRecommendations(
       const swimwearCount =
         selectedItems.filter(isSwimwear).length;
 
+      const imageChecks = await Promise.all(
+        selectedItems.map(item =>
+          isWardrobeImageReachable(item),
+        ),
+      );
+
+      const imageCount =
+        imageChecks.filter(Boolean).length;
+
+      assertCondition(
+        imageCount === selectedItems.length,
+        `${label}, look ${index + 1}: one or more selected wardrobe images are missing or unreachable.`,
+      );
+
       assertCondition(
         swimwearCount === 0,
         `${label}, look ${index + 1}: swimwear is not allowed for this event.`,
@@ -237,8 +257,10 @@ function validateRecommendations(
         onePieceCount,
         topCount,
         bottomCount,
+        imageCount,
       };
     },
+    ),
   );
 
   assertCondition(
@@ -280,7 +302,7 @@ export async function GET() {
       );
 
     const first =
-      validateRecommendations(
+      await validateRecommendations(
         firstRecommendations,
         'First generation',
       );
@@ -298,7 +320,7 @@ export async function GET() {
       );
 
     const refreshed =
-      validateRecommendations(
+      await validateRecommendations(
         refreshedRecommendations,
         'Refresh generation',
       );

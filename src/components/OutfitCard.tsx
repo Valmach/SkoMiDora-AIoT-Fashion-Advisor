@@ -40,6 +40,15 @@ const SafeImage = ({ src, alt }: { src: string, alt: string }) => {
   );
 };
 
+type SelectedOutfitItem = {
+  id?: string;
+  itemName?: string;
+  itemType?: string;
+  category?: string;
+  role?: string;
+  imageUrl?: string;
+};
+
 interface OutfitCardProps {
   outfit: {
     eventName?: string;
@@ -48,6 +57,7 @@ interface OutfitCardProps {
     outfitIdea: string;
     reasoning: string;
     items: string[];
+    selectedItems?: SelectedOutfitItem[];
     colorPalette?: string;
   };
   index: number;
@@ -91,8 +101,16 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
   if (!outfit) return null;
   const items = outfit.items || [];
 
-  const findClosetItem = (itemName: string) => {
+  const findClosetItem = (itemName: string, itemId?: string) => {
     if (!analyzedItems || analyzedItems.length === 0) return null;
+
+    if (itemId) {
+      const idMatch = analyzedItems.find(
+        item => String(item?.id || "") === itemId
+      );
+
+      if (idMatch) return idMatch;
+    }
 
     const normalizedName = itemName.toLowerCase();
     const exact = analyzedItems.find(
@@ -113,14 +131,25 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
     }) || null;
   };
 
-  const findClosetImage = (itemName: string) => {
-    const closetItem = findClosetItem(itemName);
+  const findClosetImage = (itemName: string, itemId?: string) => {
+    const closetItem = findClosetItem(itemName, itemId);
 
-    return closetItem?.imageUrl || null;
+    return (
+      closetItem?.imageUrl ||
+      closetItem?.image ||
+      closetItem?.url ||
+      null
+    );
   };
 
-  const isFootwearItem = (itemName: string) => {
-    const closetItem = findClosetItem(itemName);
+  const isFootwearItem = (
+    itemName: string,
+    itemId?: string,
+    role?: string
+  ) => {
+    if (role === "footwear") return true;
+
+    const closetItem = findClosetItem(itemName, itemId);
     const searchable = [
       closetItem?.itemType,
       closetItem?.category,
@@ -182,8 +211,19 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
 
   const { bg: bgImage, label: displayLocation } = getCityData();
   const { overlay, icon } = getWeatherEffect();
-  const visibleItems = items.slice(0, 3);
-  const detectedFootwearIndex = visibleItems.findIndex(isFootwearItem);
+  const selectedItems: SelectedOutfitItem[] =
+    Array.isArray(outfit.selectedItems) &&
+    outfit.selectedItems.length > 0
+      ? outfit.selectedItems
+      : items.map((itemName) => ({ itemName }));
+  const visibleItems = selectedItems.slice(0, 3);
+  const detectedFootwearIndex = visibleItems.findIndex(item =>
+    isFootwearItem(
+      item.itemName || "",
+      item.id,
+      item.role
+    )
+  );
   const footwearIndex =
     detectedFootwearIndex >= 0
       ? detectedFootwearIndex
@@ -197,24 +237,31 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
     .slice(0, 2);
 
   const renderItemTile = (
-    item: string,
+    item: {
+      id?: string;
+      itemName?: string;
+      imageUrl?: string;
+    },
     itemKey: string,
     imageClassName: string
   ) => {
-    const imageUrl = findClosetImage(item);
+    const itemName = item.itemName || "Item Unavailable";
+    const imageUrl =
+      item.imageUrl ||
+      findClosetImage(itemName, item.id);
 
     return (
       <div key={itemKey} className="flex min-w-0 flex-col gap-2">
         <div
           className={`relative w-full overflow-hidden rounded-sm border border-zinc-800 bg-black p-1 shadow-sm group/item ${imageClassName}`}
         >
-          <SafeImage src={imageUrl || ""} alt={item} />
+          <SafeImage src={imageUrl || ""} alt={itemName} />
         </div>
         <p
           className="truncate text-[10px] font-medium uppercase tracking-[0.1em] text-zinc-400"
-          title={item}
+          title={itemName}
         >
-          {item}
+          {itemName}
         </p>
       </div>
     );
@@ -257,7 +304,7 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
             {wardrobeItems.map((item, itemIndex) =>
               renderItemTile(
                 item,
-                `wardrobe-${itemIndex}-${item}`,
+                `wardrobe-${item.id || itemIndex}`,
                 "aspect-[4/5]"
               )
             )}
@@ -268,7 +315,7 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
               <div className="w-[calc(50%_-_0.5rem)] min-w-0">
                 {renderItemTile(
                   footwearItem,
-                  `footwear-${footwearItem}`,
+                  `footwear-${footwearItem.id || footwearItem.itemName}`,
                   "aspect-[4/3]"
                 )}
               </div>

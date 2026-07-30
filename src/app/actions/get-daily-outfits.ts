@@ -6,6 +6,10 @@ import { z } from 'zod';
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { scanWardrobeInventory } from '@/lib/server/wardrobe-inventory-scan';
+import {
+  getWardrobeImageUrl,
+  isWardrobeImageReachable,
+} from '@/lib/server/wardrobe-image-integrity';
 
 const google = createGoogleGenerativeAI({
   apiKey:
@@ -590,11 +594,11 @@ function candidateDescription(item: any): string {
   }`;
 }
 
-function resolveCompleteLook(
+async function resolveCompleteLook(
   requestedIds: string[],
   laneItems: any[],
   foundationMode: "one-piece" | "separates",
-): any[] {
+): Promise<any[]> {
   const laneById = new Map(
     laneItems.map(item => [itemId(item), item]),
   );
@@ -611,39 +615,60 @@ function resolveCompleteLook(
     selected.push(item);
   };
 
-  const firstRequested = (role: ItemRole) =>
-    requested.find(item => classifyItem(item) === role);
-  const firstLane = (role: ItemRole) =>
-    laneItems.find(item => classifyItem(item) === role);
+  const candidates = uniqueItems([
+    ...requested,
+    ...laneItems,
+  ]);
 
-  const footwear =
-    firstRequested('footwear') || firstLane('footwear');
+  const firstReachable = async (
+    roles: ItemRole[],
+  ): Promise<any | null> => {
+    for (const item of candidates) {
+      const id = itemId(item);
+
+      if (
+        !id ||
+        selectedIds.has(id) ||
+        !roles.includes(classifyItem(item))
+      ) {
+        continue;
+      }
+
+      if (await isWardrobeImageReachable(item)) {
+        return item;
+      }
+    }
+
+    return null;
+  };
+
+  const footwear = await firstReachable(['footwear']);
   const onePiece =
     foundationMode === "one-piece"
-      ? firstRequested('one-piece') ||
-        firstLane('one-piece')
+      ? await firstReachable(['one-piece'])
       : null;
 
   if (onePiece) {
     add(onePiece);
 
-    const companion =
-      firstRequested('accessory') ||
-      firstRequested('layer') ||
-      firstLane('accessory') ||
-      firstLane('layer');
+    const companion = await firstReachable([
+      'accessory',
+      'layer',
+      'top',
+      'bottom',
+    ]);
 
     if (companion) add(companion);
   } else {
-    const top = firstRequested('top') || firstLane('top');
-    const bottom =
-      firstRequested('bottom') || firstLane('bottom');
+    const top = await firstReachable(['top']);
+    const bottom = await firstReachable(['bottom']);
 
     if (top && bottom) {
       add(top);
       add(bottom);
     } else {
-      const fallbackOnePiece = firstLane('one-piece');
+      const fallbackOnePiece =
+        await firstReachable(['one-piece']);
       if (fallbackOnePiece) add(fallbackOnePiece);
       if (!fallbackOnePiece && top) add(top);
       if (!fallbackOnePiece && bottom) add(bottom);
@@ -655,7 +680,7 @@ function resolveCompleteLook(
   return selected.slice(0, 3);
 }
 
-function fallbackRecommendations(
+async function fallbackRecommendations(
   lanes: LookLane[],
   eventContext: string,
   weatherContext: string,
@@ -672,8 +697,8 @@ function fallbackRecommendations(
     'Closet Discovery: Event-Ready Contrast',
   ];
 
-  return lanes.map((lane, index) => {
-    const selected = resolveCompleteLook(
+  return Promise.all(lanes.map(async (lane, index) => {
+    const selected = await resolveCompleteLook(
       [],
       lane.items,
       index === 0 ? "one-piece" : "separates",
@@ -702,7 +727,7 @@ function fallbackRecommendations(
         itemName: itemName(item),
         itemType: itemType(item),
         role: classifyItem(item),
-        imageUrl: item?.imageUrl || item?.image || item?.url || null,
+        imageUrl: getWardrobeImageUrl(item),
       })),
       colorPalette: 'Closet-led palette',
       clothingName:
@@ -721,7 +746,7 @@ function fallbackRecommendations(
           ? '--'
           : `${climate.tempC}°C`,
     };
-  });
+  }));
 }
 
 export async function getDailyOutfitsAction(
@@ -866,7 +891,7 @@ ${laneInventory}
       error,
     );
 
-    return fallbackRecommendations(
+    return await fallbackRecommendations(
       lanes,
       eventName,
       weather,
@@ -882,7 +907,7 @@ ${laneInventory}
       `Daily outfit generation returned ${generated.object.recommendations.length} recommendation(s) instead of 3; using validated closet fallback. Event: "${eventName}", weather: "${weather}".`,
     );
 
-    return fallbackRecommendations(
+    return await fallbackRecommendations(
       lanes,
       eventName,
       weather,
@@ -890,9 +915,9 @@ ${laneInventory}
     );
   }
 
-  return aiRecommendations.map((recommendation, index) => {
+  return Promise.all(aiRecommendations.map(async (recommendation, index) => {
     const lane = lanes[index];
-    const selected = resolveCompleteLook(
+    const selected = await resolveCompleteLook(
       recommendation.itemIds,
       lane.items,
       index === 0 ? "one-piece" : "separates",
@@ -923,7 +948,7 @@ ${laneInventory}
         itemName: itemName(item),
         itemType: itemType(item),
         role: classifyItem(item),
-        imageUrl: item?.imageUrl || item?.image || item?.url || null,
+        imageUrl: getWardrobeImageUrl(item),
       })),
       clothingName:
         itemName(
@@ -941,5 +966,5 @@ ${laneInventory}
           ? '--'
           : `${climate.tempC}°C`,
     };
-  });
+  }));
 }
