@@ -1,146 +1,439 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import { useRouter } from 'next/navigation';
-import { getUpcomingEventsStyleAdviceAction } from '@/app/actions/get-calendar-data';
+import {
+  collection,
+  getDocs,
+} from 'firebase/firestore';
+import {
+  Calendar,
+  Loader2,
+  Sparkles,
+  TriangleAlert,
+} from 'lucide-react';
+import {
+  Imperial_Script,
+  Outfit,
+} from 'next/font/google';
+
+import {
+  getUpcomingEventsStyleAdviceAction,
+} from '@/app/actions/get-calendar-data';
 import UpcomingEventAdviceCard from '@/components/UpcomingEventAdviceCard';
-import { collection, getDocs } from 'firebase/firestore';
-import { firestore } from '@/lib/firebase';
-import { Loader2, Calendar, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useToast } from "@/hooks/use-toast";
-import { Outfit, Imperial_Script } from "next/font/google";
+import { useToast } from '@/hooks/use-toast';
+import {
+  auth,
+  firestore,
+} from '@/lib/firebase';
+import type {
+  CalendarEventInput,
+} from '@/lib/calendar-event-style';
 
 const outfit = Outfit({
-  subsets: ["latin"],
-  weight: ["300", "400", "700"],
+  subsets: ['latin'],
+  weight: ['300', '400', '700'],
 });
 
 const imperial = Imperial_Script({
-  subsets: ["latin"],
-  weight: ["400"],
+  subsets: ['latin'],
+  weight: ['400'],
 });
 
+type EventLoadState =
+  | 'loading'
+  | 'ready'
+  | 'empty'
+  | 'disconnected'
+  | 'error';
+
+type CalendarEventsPayload = {
+  connected?: boolean;
+  reconnectRequired?: boolean;
+  events?: CalendarEventInput[];
+  error?: string;
+};
+
+async function readJsonResponse(
+  response: Response,
+): Promise<CalendarEventsPayload> {
+  try {
+    return (
+      await response.json()
+    ) as CalendarEventsPayload;
+  } catch {
+    return {};
+  }
+}
+
 export default function UpcomingEventsPage() {
-  const [events, setEvents] = useState<any[]>([]);
-  const [closetItems, setClosetItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [events, setEvents] =
+    useState<any[]>([]);
+
+  const [
+    closetItems,
+    setClosetItems,
+  ] = useState<any[]>([]);
+
+  const [
+    loadState,
+    setLoadState,
+  ] = useState<EventLoadState>(
+    'loading',
+  );
+
+  const [
+    loadMessage,
+    setLoadMessage,
+  ] = useState('');
+
   const { toast } = useToast();
- 
   const router = useRouter();
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      let items: any[] = [];
-      if (firestore) {
-        const snapshot = await getDocs(collection(firestore, 'publicWardrobeItems'));
-        items = snapshot.docs.map(d => {
-          const data = d.data();
-          return {
-            ...data,
-            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : null,
-            updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : null,
-          };
-        });
-        setClosetItems(items);
-      }
+  const fetchData = useCallback(
+    async () => {
+      setLoadState('loading');
+      setLoadMessage('');
 
-      const advice = await getUpcomingEventsStyleAdviceAction(items);
-      setEvents(advice || []); // Fallback to empty array just in case
-     
-    } catch (error) {
-      console.error("Error loading events:", error);
-      toast({
-        title: "Error",
-        description: "Could not sync with Google Calendar.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+      try {
+        await auth.authStateReady();
+
+        const user =
+          auth.currentUser;
+
+        if (!user) {
+          setEvents([]);
+          setLoadState(
+            'disconnected',
+          );
+          setLoadMessage(
+            'Sign in and connect Google Calendar in Settings to load your agenda.',
+          );
+          return;
+        }
+
+        let items: any[] = [];
+
+        try {
+          const snapshot =
+            await getDocs(
+              collection(
+                firestore,
+                'publicWardrobeItems',
+              ),
+            );
+
+          items =
+            snapshot.docs.map(document => {
+              const data =
+                document.data();
+
+              return {
+                id: document.id,
+                ...data,
+                createdAt:
+                  data.createdAt
+                    ?.toDate
+                    ? data.createdAt
+                        .toDate()
+                        .toISOString()
+                    : null,
+                updatedAt:
+                  data.updatedAt
+                    ?.toDate
+                    ? data.updatedAt
+                        .toDate()
+                        .toISOString()
+                    : null,
+              };
+            });
+
+          setClosetItems(items);
+        } catch (error) {
+          console.warn(
+            'Wardrobe context could not be loaded for Calendar styling:',
+            error instanceof Error
+              ? error.message
+              : 'Unknown wardrobe error',
+          );
+
+          setClosetItems([]);
+        }
+
+        const idToken =
+          await user.getIdToken();
+
+        const calendarResponse =
+          await fetch(
+            '/api/google-calendar/events?days=365&maxResults=100',
+            {
+              headers: {
+                Authorization:
+                  `Bearer ${idToken}`,
+              },
+              cache: 'no-store',
+            },
+          );
+
+        const payload =
+          await readJsonResponse(
+            calendarResponse,
+          );
+
+        if (
+          calendarResponse.status ===
+            401 ||
+          calendarResponse.status ===
+            409
+        ) {
+          setEvents([]);
+          setLoadState(
+            'disconnected',
+          );
+          setLoadMessage(
+            payload.error ||
+              'Connect Google Calendar in Settings to load your agenda.',
+          );
+          return;
+        }
+
+        if (!calendarResponse.ok) {
+          throw new Error(
+            payload.error ||
+              'Unable to load Google Calendar events.',
+          );
+        }
+
+        const calendarEvents =
+          Array.isArray(payload.events)
+            ? payload.events
+            : [];
+
+        if (
+          calendarEvents.length === 0
+        ) {
+          setEvents([]);
+          setLoadState('empty');
+          return;
+        }
+
+        const advice =
+          await getUpcomingEventsStyleAdviceAction(
+            items,
+            calendarEvents,
+          );
+
+        setEvents(advice);
+        setLoadState(
+          advice.length > 0
+            ? 'ready'
+            : 'empty',
+        );
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Unable to load Google Calendar events.';
+
+        console.error(
+          'Calendar event loading failed:',
+          message,
+        );
+
+        setEvents([]);
+        setLoadState('error');
+        setLoadMessage(message);
+
+        toast({
+          title:
+            'Unable to load agenda',
+          description: message,
+          variant: 'destructive',
+        });
+      }
+    },
+    [toast],
+  );
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    void fetchData();
+  }, [fetchData]);
 
   return (
-    <div className={`min-h-screen bg-black text-white p-6 md:p-12 ${outfit.className}`}>
-     
-      {/* HEADER SECTION */}
-      <div className="max-w-7xl mx-auto mb-12 flex flex-col md:flex-row justify-between items-end border-b border-zinc-900 pb-8 gap-6">
+    <div
+      className={`min-h-screen bg-black p-6 text-white md:p-12 ${outfit.className}`}
+    >
+      <div className="mx-auto mb-12 flex max-w-7xl flex-col items-end justify-between gap-6 border-b border-zinc-900 pb-8 md:flex-row">
         <div>
-           <div className="flex items-center gap-2 text-zinc-500 text-xs font-bold uppercase tracking-[0.2em] mb-4">
-             <span className="text-[#9A1B22]">●</span> Synced Agenda
-           </div>
-           
-           <div className="flex items-center gap-4">
-             <Calendar className="h-8 md:h-10 w-8 md:w-10 text-[#9A1B22]" />
-             <h1 className={`text-5xl md:text-6xl font-normal tracking-wide ${imperial.className}`}>
-               <span className="text-white">Your Google Calendar </span>
-               <span className="text-[#9A1B22]">Events</span>
-             </h1>
-           </div>
+          <div className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-zinc-500">
+            <span className="text-[#9A1B22]">
+              ●
+            </span>
+            Synced Agenda
+          </div>
+
+          <div className="flex items-center gap-4">
+            <Calendar className="h-8 w-8 text-[#9A1B22] md:h-10 md:w-10" />
+            <h1
+              className={`text-5xl font-normal tracking-wide md:text-6xl ${imperial.className}`}
+            >
+              <span className="text-white">
+                Your Google Calendar{' '}
+              </span>
+              <span className="text-[#9A1B22]">
+                Events
+              </span>
+            </h1>
+          </div>
         </div>
-       
+
         <Button
-          onClick={fetchData}
+          onClick={() => {
+            void fetchData();
+          }}
           variant="outline"
-          className="rounded-none border-zinc-800 hover:bg-zinc-900 hover:text-white text-xs uppercase tracking-[0.15em]"
-          disabled={loading}
+          className="rounded-none border-zinc-800 text-xs uppercase tracking-[0.15em] hover:bg-zinc-900 hover:text-white"
+          disabled={
+            loadState === 'loading'
+          }
         >
-          {loading ? <Loader2 className="mr-3 h-4 w-4 animate-spin" /> : "Refresh Agenda"}
+          {loadState === 'loading' ? (
+            <Loader2 className="mr-3 h-4 w-4 animate-spin" />
+          ) : (
+            'Refresh Agenda'
+          )}
         </Button>
       </div>
 
-      {/* EVENTS GRID & EMPTY STATE */}
-      <div className="max-w-7xl mx-auto">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-32 space-y-4">
+      <div className="mx-auto max-w-7xl">
+        {loadState === 'loading' && (
+          <div className="flex flex-col items-center justify-center space-y-4 py-32">
             <Loader2 className="h-10 w-10 animate-spin text-[#9A1B22]" />
-            <p className="text-zinc-500 text-xs uppercase tracking-[0.2em] font-medium">Consulting AI Stylist...</p>
+            <p className="text-xs font-medium uppercase tracking-[0.2em] text-zinc-500">
+              Loading Calendar Events...
+            </p>
           </div>
-        ) : events.length === 0 ? (
-          /* --- NEW EMPTY STATE UI --- */
-          <div className="flex flex-col items-center justify-center py-32 space-y-6 border border-zinc-900 bg-zinc-950/30 rounded-sm">
+        )}
+
+        {loadState ===
+          'disconnected' && (
+          <div className="flex flex-col items-center justify-center space-y-6 border border-zinc-900 bg-zinc-950/30 py-32">
+            <Calendar className="h-12 w-12 text-zinc-700" />
+            <div className="space-y-2 text-center">
+              <h3 className="font-serif text-xl text-white">
+                Google Calendar Is Not Connected
+              </h3>
+              <p className="mx-auto max-w-md text-sm text-zinc-500">
+                {loadMessage}
+              </p>
+            </div>
+            <Button
+              onClick={() =>
+                router.push(
+                  '/settings',
+                )
+              }
+              className="rounded-none bg-[#9A1B22] px-8 text-xs font-bold uppercase tracking-[0.15em] text-white hover:bg-[#7A151B]"
+            >
+              Open Settings
+            </Button>
+          </div>
+        )}
+
+        {loadState === 'error' && (
+          <div className="flex flex-col items-center justify-center space-y-6 border border-[#9A1B22]/40 bg-[#9A1B22]/5 py-32">
+            <TriangleAlert className="h-12 w-12 text-[#9A1B22]" />
+            <div className="space-y-2 text-center">
+              <h3 className="font-serif text-xl text-white">
+                Unable to Load Events
+              </h3>
+              <p className="mx-auto max-w-md text-sm text-zinc-400">
+                {loadMessage ||
+                  'The Calendar service could not be reached. Your agenda has not been reported as empty.'}
+              </p>
+            </div>
+            <Button
+              onClick={() => {
+                void fetchData();
+              }}
+              variant="outline"
+              className="rounded-none border-zinc-700 px-8 text-xs font-bold uppercase tracking-[0.15em] text-white hover:bg-zinc-900"
+            >
+              Try Again
+            </Button>
+          </div>
+        )}
+
+        {loadState === 'empty' && (
+          <div className="flex flex-col items-center justify-center space-y-6 border border-zinc-900 bg-zinc-950/30 py-32">
             <Calendar className="h-12 w-12 text-zinc-800" />
-            <div className="text-center space-y-2">
-              <h3 className="text-xl text-white font-serif">No Upcoming Events Found</h3>
-              <p className="text-zinc-500 text-sm max-w-md mx-auto">
-                Your synced agenda is currently empty. Add upcoming engagements to your Google Calendar to receive curated styling advice.
+            <div className="space-y-2 text-center">
+              <h3 className="font-serif text-xl text-white">
+                No Upcoming Events Found
+              </h3>
+              <p className="mx-auto max-w-md text-sm text-zinc-500">
+                Google Calendar loaded successfully, but the next 365 days contain no upcoming events.
               </p>
             </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {events.map((event, index) => {
-             
-              const currentEventName = event.summary || event.title || event.name || "Upcoming Event";
-              const currentWeather = event.weatherForecast || event.weather || event.temperature || event.weatherContext || "Weather data unavailable";
+        )}
 
-              return (
-                <div key={index} className="flex flex-col h-full space-y-4 group">
-                  <div className="flex-grow">
-                    <UpcomingEventAdviceCard
-                      eventAdvice={event}
-                      analyzedItems={closetItems}
-                      cardIndex={index}
-                    />
-                  </div>
+        {loadState === 'ready' && (
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {events.map(
+              (event, index) => {
+                const currentEventName =
+                  event.eventName ||
+                  event.summary ||
+                  event.title ||
+                  'Upcoming Event';
 
-                  <Button
-                    onClick={() => {
-                      router.push(`/stylist?event=${encodeURIComponent(currentEventName)}&weather=${encodeURIComponent(currentWeather)}`);
-                    }}
-                    className="w-full bg-[#9A1B22] text-white hover:bg-[#7A151B] uppercase tracking-[0.2em] text-[11px] font-bold py-7 rounded-none flex items-center justify-center gap-3 transition-all shadow-lg group-hover:shadow-[0_0_20px_rgba(154,27,34,0.2)]"
+                const currentWeather =
+                  event.weatherForecast ||
+                  'Weather data unavailable';
+
+                return (
+                  <div
+                    key={
+                      event.id ||
+                      `${currentEventName}-${index}`
+                    }
+                    className="group flex h-full flex-col space-y-4"
                   >
-                    <Sparkles className="h-4 w-4" />
-                    Style This Event
-                  </Button>
-                </div>
-              );
-            })}
+                    <div className="flex-grow">
+                      <UpcomingEventAdviceCard
+                        eventAdvice={
+                          event
+                        }
+                        analyzedItems={
+                          closetItems
+                        }
+                        cardIndex={
+                          index
+                        }
+                      />
+                    </div>
+
+                    <Button
+                      onClick={() => {
+                        router.push(
+                          `/stylist?event=${encodeURIComponent(currentEventName)}&weather=${encodeURIComponent(currentWeather)}`,
+                        );
+                      }}
+                      className="flex w-full items-center justify-center gap-3 rounded-none bg-[#9A1B22] py-7 text-[11px] font-bold uppercase tracking-[0.2em] text-white shadow-lg transition-all hover:bg-[#7A151B] group-hover:shadow-[0_0_20px_rgba(154,27,34,0.2)]"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      Style This Event
+                    </Button>
+                  </div>
+                );
+              },
+            )}
           </div>
         )}
       </div>
