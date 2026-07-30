@@ -81,7 +81,7 @@ export function ProductSpinImage({
 
       {frames && (
         <span
-          className={`absolute bottom-2 right-2 px-2 py-1 bg-black/80 border border-zinc-700 text-[9px] uppercase tracking-widest transition-opacity ${
+          className={`absolute bottom-2 right-2 px-2 py-1 bg-black/80 border border-zinc-700 text-[9px] uppercase tracking-widest transition-opacity pointer-events-none ${
             isSpinning ? "opacity-0" : "opacity-100 text-zinc-400"
           }`}
         >

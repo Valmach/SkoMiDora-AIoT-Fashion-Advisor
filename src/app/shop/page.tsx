@@ -158,7 +158,7 @@ export default function ShopPage() {
                 />
 
                 {product.isMock && (
-                  <span className="absolute top-3 left-3 px-2 py-1 bg-black/90 border border-zinc-700 text-[9px] uppercase tracking-widest text-zinc-400">
+                  <span className="absolute top-3 left-3 px-2 py-1 bg-black/90 border border-zinc-700 text-[9px] uppercase tracking-widest text-zinc-400 pointer-events-none">
                     Sample
                   </span>
                 )}
