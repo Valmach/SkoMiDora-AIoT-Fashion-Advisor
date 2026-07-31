@@ -63,12 +63,11 @@ const nextConfig = {
     ];
   },
 
-  // CRITICAL BUILD FIX: IGNORE LINT/TYPE ERRORS
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
 };
 
