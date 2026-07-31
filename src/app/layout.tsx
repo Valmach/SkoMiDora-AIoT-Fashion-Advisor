@@ -43,6 +43,9 @@ export default function RootLayout({
             <span className="text-zinc-400">Valentino Massimo</span>,{' '}
             @SkoMiDora @SHOURAiGen — 2026 All Rights Reserved
           </p>
+          <p className="text-[9px] text-zinc-800 tracking-wider mt-1">
+            build {process.env.NEXT_PUBLIC_COMMIT_SHA || 'unknown'}
+          </p>
         </footer>
       </body>
     </html>
