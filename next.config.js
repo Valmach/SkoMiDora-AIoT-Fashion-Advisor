@@ -1,5 +1,27 @@
+const { execSync } = require('child_process');
+
+// Resolve the current git commit SHA at build time so the deployed app can
+// report which commit is live (see /api/health). Firebase App Hosting's
+// build environment does not reliably expose a commit-SHA env var, so we
+// shell out to git directly and fall back to 'unknown' if that fails (e.g.
+// a shallow checkout without .git, or a local build outside a git repo).
+function resolveCommitSha() {
+  if (process.env.NEXT_PUBLIC_COMMIT_SHA) {
+    return process.env.NEXT_PUBLIC_COMMIT_SHA;
+  }
+  try {
+    return execSync('git rev-parse --short HEAD').toString().trim();
+  } catch {
+    return 'unknown';
+  }
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  env: {
+    NEXT_PUBLIC_COMMIT_SHA: resolveCommitSha(),
+  },
+
   // Disable strict mode
   reactStrictMode: false,
 
