@@ -669,7 +669,18 @@ async function resolveCompleteLook(
     } else {
       const fallbackOnePiece =
         await firstReachable(['one-piece']);
-      if (fallbackOnePiece) add(fallbackOnePiece);
+
+      if (fallbackOnePiece) {
+        add(fallbackOnePiece);
+
+        const companion = await firstReachable([
+          'accessory',
+          'layer',
+        ]);
+
+        if (companion) add(companion);
+      }
+
       if (!fallbackOnePiece && top) add(top);
       if (!fallbackOnePiece && bottom) add(bottom);
     }
