@@ -268,6 +268,17 @@ function inferLensMetadata(
   ) {
     itemType = "Accessory";
   } else if (
+    lower.includes("earring") ||
+    lower.includes("necklace") ||
+    lower.includes("bracelet") ||
+    lower.includes("ring") ||
+    lower.includes("cuff") ||
+    lower.includes("pendant") ||
+    lower.includes("brooch") ||
+    lower.includes("choker")
+  ) {
+    itemType = "Accessory";
+  } else if (
     lower.includes("top") ||
     lower.includes("blouse") ||
     lower.includes("bustier")
@@ -345,6 +356,14 @@ function inferLensMetadata(
     lower.includes("satin")
   ) {
     generalMaterial = "Satin";
+  } else if (
+    lower.includes("shell")
+  ) {
+    generalMaterial = "Shell";
+  } else if (
+    lower.includes("pearl")
+  ) {
+    generalMaterial = "Pearl";
   }
 
   const detailedSpecifications =

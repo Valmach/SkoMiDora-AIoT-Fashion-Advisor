@@ -71,6 +71,7 @@ function inferItemType(text: string, fallback: string): string {
   if (/\b(top|blouse|shirt|tee|t-shirt|bustier|camisole|tank|vest|waistcoat)\b/.test(text)) return "Top";
   if (/\b(pant|pants|trouser|trousers|jean|jeans|shorts)\b/.test(text)) return "Bottom";
   if (/\b(bag|purse|clutch|belt|scarf)\b/.test(text)) return "Accessory";
+  if (/\b(earring|earrings|necklace|bracelet|ring|cuff|pendant|brooch|choker)\b/.test(text)) return "Accessory";
   return fallback || "Uncategorized";
 }
 
