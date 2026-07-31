@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     let data: any = null;
     let lastError = '';
     let lastStatus = 0;
-    let attemptedVoices: any[] = [];
+    const attemptedVoices: any[] = [];
 
     for (const selectedVoice of selectedVoices) {
       attemptedVoices.push(selectedVoice);
