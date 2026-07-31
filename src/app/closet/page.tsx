@@ -205,7 +205,7 @@ export default function ClosetPage() {
         );
 
   return (
-    <div className={`container mx-auto space-y-6 pb-12 h-[85vh] overflow-y-auto scrollbar-hide bg-black text-zinc-100 ${inter.className} px-4 pt-4`}>
+    <div className={`container mx-auto space-y-6 pb-12 min-h-screen bg-black text-zinc-100 ${inter.className} px-4 pt-4`}>
       
       <Card className="border-0 shadow-none bg-transparent mb-4">
         <CardContent className="pt-6 px-0 flex flex-col sm:flex-row justify-between items-center gap-4">
