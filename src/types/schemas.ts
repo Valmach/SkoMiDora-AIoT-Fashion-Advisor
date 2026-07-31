@@ -120,32 +120,6 @@ export const ProcessOutfitFeedbackOutputSchema = z.object({
 });
 
 /* ============================================================
-   Outfit Feedback Records (Firestore)
-   ------------------------------------------------------------
-   Client-supplied shape for a single feedback event on a
-   generated outfit (accept / reject / modify / worn). userId and
-   createdAt are set server-side from the verified Firebase token
-   and server clock — never trust client-supplied values for
-   either, since this schema validates the request body only.
-============================================================ */
-
-export const OutfitFeedbackActionSchema = z.enum([
-  "accepted",
-  "rejected",
-  "modified",
-  "worn",
-]);
-
-export const OutfitFeedbackRecordSchema = z.object({
-  outfitId: z.string().min(1),
-  itemIds: z.array(z.string().min(1)).min(1),
-  action: OutfitFeedbackActionSchema,
-  eventName: z.string().max(200).optional(),
-  eventLocation: z.string().max(200).optional(),
-  notes: z.string().max(2000).optional(),
-});
-
-/* ============================================================
    Recommend Outfit
 ============================================================ */
 

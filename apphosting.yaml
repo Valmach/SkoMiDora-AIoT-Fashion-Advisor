@@ -1,6 +1,6 @@
 # apphosting.yaml
 runConfig:
-  runtime: nodejs22
+  runtime: nodejs20
   minInstances: 0
   maxInstances: 10
   concurrency: 80
@@ -65,17 +65,3 @@ env:
   - variable: WEATHER_API_KEY
     secret: WEATHER_API_KEY
     availability: [BUILD, RUNTIME]
-
-  # --- Google Calendar OAuth ---
-  - variable: GOOGLE_CLIENT_ID
-    secret: GOOGLE_CLIENT_ID
-    availability: [RUNTIME]
-  - variable: GOOGLE_CLIENT_SECRET
-    secret: GOOGLE_CLIENT_SECRET
-    availability: [RUNTIME]
-  - variable: GOOGLE_CALENDAR_REDIRECT_URI
-    secret: GOOGLE_CALENDAR_REDIRECT_URI
-    availability: [RUNTIME]
-  - variable: GOOGLE_OAUTH_TOKEN_ENCRYPTION_KEY
-    secret: GOOGLE_OAUTH_TOKEN_ENCRYPTION_KEY
-    availability: [RUNTIME]

@@ -4,9 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, CloudRain, Snowflake, Sun, ThumbsUp, ThumbsDown, Check, Loader2 } from "lucide-react";
-import { useFirebase } from "@/firebase/provider";
-import { useToast } from "@/hooks/use-toast";
+import { MapPin, CloudRain, Snowflake, Sun } from "lucide-react";
 // ✅ Pulled in fonts
 import { Gelasio, Great_Vibes } from 'next/font/google';
 
@@ -59,7 +57,6 @@ interface OutfitCardProps {
     outfitIdea: string;
     reasoning: string;
     items: string[];
-    itemIds?: string[];
     selectedItems?: SelectedOutfitItem[];
     colorPalette?: string;
   };
@@ -101,12 +98,6 @@ const CITY_GALLERIES: Record<string, string[]> = {
 };
 
 export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardProps) {
-  const { user } = useFirebase();
-  const { toast } = useToast();
-  const [feedbackStatus, setFeedbackStatus] = useState<
-    "idle" | "submitting" | "accepted" | "rejected"
-  >("idle");
-
   if (!outfit) return null;
   const items = outfit.items || [];
 
@@ -245,72 +236,6 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
     .filter((_, itemIndex) => itemIndex !== footwearIndex)
     .slice(0, 2);
 
-  // Stable-enough identity for feedback purposes: same combination of
-  // Firestore item IDs (or names, if IDs are missing) is treated as the
-  // same outfit. There's no persisted "outfit" document today, so this is
-  // derived rather than a real foreign key.
-  const feedbackItemIds = (
-    outfit.itemIds && outfit.itemIds.length > 0
-      ? outfit.itemIds
-      : selectedItems.map((item) => item.id || item.itemName || "")
-  ).filter(Boolean);
-  const outfitIdentifier =
-    feedbackItemIds.length > 0
-      ? feedbackItemIds.slice().sort().join("|")
-      : `outfit-${index}`;
-
-  const submitFeedback = async (action: "accepted" | "rejected") => {
-    if (feedbackStatus === "submitting" || feedbackStatus === action) return;
-
-    if (!user) {
-      toast({
-        title: "Sign in required",
-        description: "Sign in to save outfit feedback.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (feedbackItemIds.length === 0) {
-      return;
-    }
-
-    setFeedbackStatus("submitting");
-
-    try {
-      const idToken = await user.getIdToken();
-
-      const response = await fetch("/api/outfit-feedback", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({
-          outfitId: outfitIdentifier,
-          itemIds: feedbackItemIds,
-          action,
-          eventName: outfit.eventName,
-          eventLocation: outfit.location,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Feedback request failed with ${response.status}`);
-      }
-
-      setFeedbackStatus(action);
-    } catch (error) {
-      console.error("Failed to submit outfit feedback:", error);
-      setFeedbackStatus("idle");
-      toast({
-        title: "Couldn't save feedback",
-        description: "Please try again in a moment.",
-        variant: "destructive",
-      });
-    }
-  };
-
   const renderItemTile = (
     item: {
       id?: string;
@@ -423,43 +348,6 @@ export default function OutfitCard({ outfit, index, analyzedItems }: OutfitCardP
           <p className="text-xs text-zinc-400 font-light leading-loose italic line-clamp-4">
             &ldquo;{outfit.reasoning}&rdquo;
           </p>
-        </div>
-
-        {/* ========================================== */}
-        {/* OUTFIT FEEDBACK (ACCEPT / REJECT)          */}
-        {/* ========================================== */}
-        <div className="mt-4 flex items-center justify-center gap-3 border-t border-zinc-900/70 pt-4">
-          {feedbackStatus === "accepted" || feedbackStatus === "rejected" ? (
-            <span className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-zinc-500">
-              <Check size={12} className="text-[#9A1B22]" />
-              {feedbackStatus === "accepted" ? "Saved to your taste" : "Feedback noted"}
-            </span>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => submitFeedback("accepted")}
-                disabled={feedbackStatus === "submitting"}
-                className="flex items-center gap-2 border border-zinc-800 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 transition-colors duration-300 hover:border-[#9A1B22]/60 hover:text-white disabled:opacity-40"
-              >
-                {feedbackStatus === "submitting" ? (
-                  <Loader2 size={12} className="animate-spin" />
-                ) : (
-                  <ThumbsUp size={12} />
-                )}
-                Love This
-              </button>
-              <button
-                type="button"
-                onClick={() => submitFeedback("rejected")}
-                disabled={feedbackStatus === "submitting"}
-                className="flex items-center gap-2 border border-zinc-800 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 transition-colors duration-300 hover:border-zinc-600 hover:text-white disabled:opacity-40"
-              >
-                <ThumbsDown size={12} />
-                Not For Me
-              </button>
-            </>
-          )}
         </div>
 
         {/* ========================================== */}

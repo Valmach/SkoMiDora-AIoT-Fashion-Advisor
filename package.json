@@ -11,7 +11,6 @@
     "start": "next start",
     "lint": "next lint",
     "clean": "bash ./clean.sh",
-    "validate:calendar": "node scripts/validate-calendar-reliability.mjs",
     "seed:shop": "node scripts/seed-shop-products.mjs",
     "deploy:fast": "firebase deploy --only hosting,functions --force --non-interactive && gcloud run services update ssrstyleaifootwear --memory=1024Mi --region=us-central1 --project=styleai-footwear || echo '⚠️ Deploy finished with warnings.'"
   },
@@ -59,6 +58,7 @@
     "googleapis": "^172.0.0",
     "lucide-react": "^0.395.0",
     "next": "^15.5.7",
+    "next-auth": "^4.24.7",
     "next-themes": "^0.4.6",
     "node-fetch": "^2.7.0",
     "react": "^18.2.0",

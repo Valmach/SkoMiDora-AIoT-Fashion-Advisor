@@ -31,7 +31,7 @@ export default function RootLayout({
           <SidebarProvider>
             <div className="flex flex-1 w-full">
               <AppSidebar />
-              <main className="flex-grow flex flex-col h-[100dvh] md:h-screen w-full overflow-y-auto">
+              <main className="flex-grow flex flex-col min-h-screen w-full overflow-hidden">
                 {children}
               </main>
             </div>
@@ -42,9 +42,6 @@ export default function RootLayout({
             App Designed, Created & Developed by{' '}
             <span className="text-zinc-400">Valentino Massimo</span>,{' '}
             @SkoMiDora @SHOURAiGen — 2026 All Rights Reserved
-          </p>
-          <p className="text-[9px] text-zinc-800 tracking-wider mt-1">
-            build {process.env.NEXT_PUBLIC_COMMIT_SHA || 'unknown'}
           </p>
         </footer>
       </body>
