@@ -269,6 +269,7 @@ export default function ClosetPage() {
                       src={url}
                       alt={safeString(item.itemName) || "Item"}
                       className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-103 drop-shadow-2xl"
+                      onError={() => setBrokenImages((prev) => new Set(prev).add(item.id))}
                     />
                   )}
                   <button onClick={() => handleDelete(item)} className="absolute top-3 right-3 p-2 bg-black/90 text-[#9A1B22] rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-lg border border-zinc-800 hover:bg-[#9A1B22] hover:text-white" title="Remove item">
