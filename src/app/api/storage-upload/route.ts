@@ -592,6 +592,24 @@ export async function POST(
       },
     );
 
+    // DIAGNOSTIC (temporary): verify the object is actually retrievable
+    // immediately after bucket.upload() resolves. Self-contained - cannot
+    // affect the real upload response either way.
+    try {
+      const [existsAfterUpload] =
+        await bucket
+          .file(imagePath)
+          .exists();
+      console.log(
+        `[storage-upload] post-upload existence check for ${imagePath}: ${existsAfterUpload}`,
+      );
+    } catch (existsCheckError) {
+      console.error(
+        `[storage-upload] post-upload existence check FAILED for ${imagePath}:`,
+        existsCheckError,
+      );
+    }
+
     const imageUrl =
       publicStorageUrl(
         BUCKET_NAME,
