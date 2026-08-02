@@ -50,3 +50,4 @@ functions/node_modules/
 src/app/.sh fixes/
 *.tar.gz
 backups/
+firebase-admin.json
