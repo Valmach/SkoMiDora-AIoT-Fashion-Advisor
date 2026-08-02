@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { 
   collection, query, orderBy, onSnapshot, Timestamp, 
-  doc, deleteDoc, addDoc, serverTimestamp 
+  doc, deleteDoc 
 } from "firebase/firestore";
 import { ref, deleteObject } from "firebase/storage"; 
 import { Bonheur_Royale, Playfair_Display, Inter } from 'next/font/google';
@@ -53,33 +53,14 @@ const safeString = (val: any): string => {
   return '';
 };
 
-type ResolvedWardrobeCategory =
-  | WardrobeCategory
-  | "Uncategorized";
+type ResolvedWardrobeCategory = WardrobeCategory | "Uncategorized";
 
-function getItemCategory(
-  item: ClosetItem
-): ResolvedWardrobeCategory {
-  return (
-    getWardrobeCategory(
-      item.category,
-      item.itemType,
-      item.itemName
-    ) || "Uncategorized"
-  );
+function getItemCategory(item: ClosetItem): ResolvedWardrobeCategory {
+  return getWardrobeCategory(item.category, item.itemType, item.itemName) || "Uncategorized";
 }
 
-function getItemTypeLabel(
-  item: ClosetItem
-): string {
-  return (
-    getCanonicalWardrobeType(
-      item.itemType,
-      item.itemName
-    ) ||
-    safeString(item.itemType) ||
-    "Uncategorized"
-  );
+function getItemTypeLabel(item: ClosetItem): string {
+  return getCanonicalWardrobeType(item.itemType, item.itemName) || safeString(item.itemType) || "Uncategorized";
 }
 
 function normalizeImagePath(path: string): string {
@@ -90,10 +71,7 @@ function normalizeImagePath(path: string): string {
 }
 
 function publicStorageUrl(path: string): string {
-  const bucket =
-    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
-    "styleai-footwear.firebasestorage.app";
-
+  const bucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "styleai-footwear.firebasestorage.app";
   const encodedPath = path.split("/").map(encodeURIComponent).join("/");
   return `https://storage.googleapis.com/${bucket}/${encodedPath}`;
 }
@@ -107,7 +85,6 @@ export default function ClosetPage() {
   const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
   const [activeFilter, setActiveFilter] = useState<string>("All");
 
   useEffect(() => {
@@ -181,32 +158,20 @@ export default function ClosetPage() {
     );
   }
 
-  const resolvedCategories = new Set(
-    items.map(getItemCategory)
-  );
+  const resolvedCategories = new Set(items.map(getItemCategory));
 
   const uniqueCategories = [
     "All",
-    ...WARDROBE_CATEGORIES.filter(category =>
-      resolvedCategories.has(category)
-    ),
-    ...(resolvedCategories.has("Uncategorized")
-      ? ["Uncategorized"]
-      : []),
+    ...WARDROBE_CATEGORIES.filter(category => resolvedCategories.has(category)),
+    ...(resolvedCategories.has("Uncategorized") ? ["Uncategorized"] : []),
   ];
 
-  const filteredItems =
-    activeFilter === "All"
-      ? items
-      : items.filter(
-          item =>
-            getItemCategory(item) ===
-            activeFilter
-        );
+  const filteredItems = activeFilter === "All" 
+    ? items 
+    : items.filter(item => getItemCategory(item) === activeFilter);
 
   return (
     <div className={`container mx-auto space-y-6 pb-12 h-[85vh] overflow-y-auto scrollbar-hide bg-black text-zinc-100 ${inter.className} px-4 pt-4`}>
-      
       <Card className="border-0 shadow-none bg-transparent mb-4">
         <CardContent className="pt-6 px-0 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div>
@@ -215,7 +180,6 @@ export default function ClosetPage() {
               <span className="text-[#9A1B22]">●</span> {items.length} Curated Pieces
             </p>
           </div>
-          
           <div className="w-full md:w-auto shrink-0">
             <SkomiDoraLens />
           </div>
@@ -259,8 +223,9 @@ export default function ClosetPage() {
               <div key={item.id} className="group relative bg-[#050505] border border-zinc-900 shadow-2xl hover:border-[#9A1B22]/50 transition-all duration-500 overflow-hidden flex flex-col justify-start">
                 
                 <div className="relative aspect-[3/2] w-full bg-black flex items-center justify-center overflow-hidden p-3 border-b border-zinc-900 shrink-0">
+                  {/* Graceful Fallback Handler */}
                   {!url || isBroken ? (
-                    <div className="flex flex-col items-center justify-center text-zinc-800">
+                    <div className="flex flex-col items-center justify-center text-zinc-800 w-full h-full">
                       <ImageOff className="h-6 w-6 mb-2 opacity-50" />
                       <span className="text-[10px] uppercase tracking-widest">Unavailable</span>
                     </div>
@@ -269,7 +234,10 @@ export default function ClosetPage() {
                       src={url}
                       alt={safeString(item.itemName) || "Item"}
                       className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-103 drop-shadow-2xl"
-                      onError={() => setBrokenImages((prev) => new Set(prev).add(item.id))}
+                      onError={() => {
+                        // Immediately flags the image as broken if the Storage Bucket returns an XML error
+                        setBrokenImages((prev) => new Set(prev).add(item.id));
+                      }}
                     />
                   )}
                   <button onClick={() => handleDelete(item)} className="absolute top-3 right-3 p-2 bg-black/90 text-[#9A1B22] rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-lg border border-zinc-800 hover:bg-[#9A1B22] hover:text-white" title="Remove item">
@@ -278,7 +246,6 @@ export default function ClosetPage() {
                 </div>
 
                 <div className="pt-4 px-5 pb-5 flex flex-col flex-grow">
-                  
                   {(item.designer || item.originCountry || item.brand) && (
                     <div className="flex items-center justify-between mb-2">
                       {(item.designer || item.brand) && (
