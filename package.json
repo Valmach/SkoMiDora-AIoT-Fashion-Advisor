@@ -17,7 +17,7 @@
   "dependencies": {
     "@ai-sdk/google": "^3.0.7",
     "@genkit-ai/firebase": "^1.0.0",
-    "@genkit-ai/google-genai": "^1.0.6",
+    "@genkit-ai/google-genai": "^1.40.1",
     "@google-cloud/storage": "^7.21.0",
     "@google-cloud/text-to-speech": "^6.4.0",
     "@google/generative-ai": "^0.24.1",

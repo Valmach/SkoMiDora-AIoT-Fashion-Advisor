@@ -17,6 +17,7 @@ import {
 
 import { useFirebase } from "@/firebase/provider";
 import SkomiDoraLens from "@/components/SkomiDoraLens";
+import WardrobeUpload from "@/components/WardrobeUpload";
 import {
   WARDROBE_CATEGORIES,
   getCanonicalWardrobeType,
@@ -34,10 +35,12 @@ type ClosetItem = {
   itemType?: string;
   category?: string;
   color?: string;
+  type?: string;
   narrativeDescription?: string;
   styleKeywords?: string[];
   detailedSpecifications?: string;
   generalMaterial?: string;
+  material?: string;
   designer?: string; 
   brand?: string; 
   originCountry?: string;
@@ -173,15 +176,16 @@ export default function ClosetPage() {
   return (
     <div className={`container mx-auto space-y-6 pb-12 h-[85vh] overflow-y-auto scrollbar-hide bg-black text-zinc-100 ${inter.className} px-4 pt-4`}>
       <Card className="border-0 shadow-none bg-transparent mb-4">
-        <CardContent className="pt-6 px-0 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <CardContent className="pt-6 px-0 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
           <div>
             <h1 className={`${bonheur.className} text-7xl font-bold tracking-wide text-white`}>Digital Closet</h1>
             <p className="text-zinc-400 uppercase tracking-[0.2em] text-xs mt-2 font-medium">
               <span className="text-[#9A1B22]">●</span> {items.length} Curated Pieces
             </p>
           </div>
-          <div className="w-full md:w-auto shrink-0">
+          <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto shrink-0">
             <SkomiDoraLens />
+            <WardrobeUpload />
           </div>
         </CardContent>
       </Card>
@@ -223,7 +227,6 @@ export default function ClosetPage() {
               <div key={item.id} className="group relative bg-[#050505] border border-zinc-900 shadow-2xl hover:border-[#9A1B22]/50 transition-all duration-500 overflow-hidden flex flex-col justify-start">
                 
                 <div className="relative aspect-[3/2] w-full bg-black flex items-center justify-center overflow-hidden p-3 border-b border-zinc-900 shrink-0">
-                  {/* Graceful Fallback Handler */}
                   {!url || isBroken ? (
                     <div className="flex flex-col items-center justify-center text-zinc-800 w-full h-full">
                       <ImageOff className="h-6 w-6 mb-2 opacity-50" />
@@ -235,7 +238,6 @@ export default function ClosetPage() {
                       alt={safeString(item.itemName) || "Item"}
                       className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-103 drop-shadow-2xl"
                       onError={() => {
-                        // Immediately flags the image as broken if the Storage Bucket returns an XML error
                         setBrokenImages((prev) => new Set(prev).add(item.id));
                       }}
                     />
