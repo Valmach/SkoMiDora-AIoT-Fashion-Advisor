@@ -623,19 +623,31 @@ async function resolveCompleteLook(
   const firstReachable = async (
     roles: ItemRole[],
   ): Promise<any | null> => {
-    for (const item of candidates) {
+    const eligible = candidates.filter((item) => {
       const id = itemId(item);
+      return (
+        !!id &&
+        !selectedIds.has(id) &&
+        roles.includes(classifyItem(item))
+      );
+    });
 
-      if (
-        !id ||
-        selectedIds.has(id) ||
-        !roles.includes(classifyItem(item))
-      ) {
-        continue;
-      }
+    // Run all reachability checks concurrently instead of one at a time.
+    // Each check has its own internal timeout (see
+    // wardrobe-image-integrity.ts), so this is bounded by the slowest
+    // single check, not the sum of every check - previously, N broken
+    // images in a row could each cost up to 6s sequentially, compounding
+    // into a delay large enough to plausibly cause the whole outfit
+    // generation request to fail/timeout. This does not change which
+    // item gets selected - still the first reachable one, in the exact
+    // same candidate priority order - only how long it takes to find it.
+    const reachability = await Promise.all(
+      eligible.map((item) => isWardrobeImageReachable(item)),
+    );
 
-      if (await isWardrobeImageReachable(item)) {
-        return item;
+    for (let i = 0; i < eligible.length; i++) {
+      if (reachability[i]) {
+        return eligible[i];
       }
     }
 
