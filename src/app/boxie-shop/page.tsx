@@ -20,8 +20,8 @@ type BoxieProduct = {
 
 const BUCKET = "styleai-footwear.firebasestorage.app";
 
-// Firebase Storage public REST media endpoint
-const getPublicStorageUrl = (path: string) => {
+// Firebase Storage public REST media endpoint pointing strictly to hardware products
+const getStorageUrl = (path: string) => {
   return `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/${encodeURIComponent(path)}?alt=media`;
 };
 
@@ -29,37 +29,37 @@ const SKOBOXIE_PRODUCTS: BoxieProduct[] = [
   {
     id: "meurte-boxies",
     name: "Meurte Boxies",
-    category: "Collector Edition",
+    category: "COLLECTOR EDITION",
     price: "$179.00",
     description: "Deep red wave-pattern wraparound design, rendered in SketchUp + KeyShot Pro.",
-    imageUrl: getPublicStorageUrl("products/meurte-boxies"),
+    imageUrl: getStorageUrl("products/meurte-boxies"),
     status: "COMING SOON",
   },
   {
     id: "limited-edition-skoboxie",
     name: "Limited Edition SkoBoxie",
-    category: "Limited Edition",
+    category: "LIMITED EDITION",
     price: "$229.00",
     description: "Inspired by great minds and sustainability, these precision-crafted Boxies blend innovative design with eco-friendly materials.",
-    imageUrl: getPublicStorageUrl("products/Limited edition"),
+    imageUrl: getStorageUrl("products/Limited edition"),
     status: "COMING SOON",
   },
   {
     id: "k-pop-boxies",
     name: "K-Pop Boxies",
-    category: "Collector Edition",
+    category: "COLLECTOR EDITION",
     price: "$179.00",
     description: "Holographic K-Pop fan-edition wraparound design.",
-    imageUrl: getPublicStorageUrl("products/k-pop"),
+    imageUrl: getStorageUrl("products/k-pop"),
     status: "COMING SOON",
   },
   {
     id: "bird-boxies",
     name: "Bird Boxies",
-    category: "Collector Edition",
+    category: "COLLECTOR EDITION",
     price: "$179.00",
     description: "Vivid tropical bird wraparound artwork, rendered in SketchUp + KeyShot Pro.",
-    imageUrl: getPublicStorageUrl("products/bird-boxies"),
+    imageUrl: getStorageUrl("products/bird-boxies"),
     status: "COMING SOON",
   },
 ];
