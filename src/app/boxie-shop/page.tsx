@@ -2,21 +2,37 @@
 
 import React, { useState } from "react";
 import { Bonheur_Royale, Playfair_Display, Inter } from "next/font/google";
+import { ImageOff } from "lucide-react";
 
 const bonheur = Bonheur_Royale({ subsets: ["latin"], weight: ["400"] });
 const playfair = Playfair_Display({ subsets: ["latin"], weight: ["400", "600", "700"] });
 const inter = Inter({ subsets: ["latin"], weight: ["300", "400", "500", "600"] });
 
-// Filter out placeholder sample boxes and keep only published SkoBoxies with active media
-const SKOBOXIE_PRODUCTS = [
+type BoxieProduct = {
+  id: string;
+  name: string;
+  category: string;
+  price: string;
+  description: string;
+  imageUrl: string;
+  status: string;
+};
+
+const BUCKET = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "styleai-footwear.firebasestorage.app";
+
+const getPublicStorageUrl = (path: string) => {
+  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+  return `https://storage.googleapis.com/${BUCKET}/${encodedPath}`;
+};
+
+const SKOBOXIE_PRODUCTS: BoxieProduct[] = [
   {
     id: "meurte-boxies",
     name: "Meurte Boxies",
     category: "Collector Edition",
     price: "$179.00",
     description: "Deep red wave-pattern wraparound design, rendered in SketchUp + KeyShot Pro.",
-    imageUrl: "/images/meurte-boxie.jpg", // Replace with your exact asset path
-    isSample: false,
+    imageUrl: getPublicStorageUrl("products/meurte-boxies"),
     status: "COMING SOON",
   },
   {
@@ -25,8 +41,7 @@ const SKOBOXIE_PRODUCTS = [
     category: "Limited Edition",
     price: "$229.00",
     description: "Inspired by great minds and sustainability, these precision-crafted Boxies blend innovative design with eco-friendly materials.",
-    imageUrl: "/images/limited-skoboxie.jpg", // Replace with your exact asset path
-    isSample: false,
+    imageUrl: getPublicStorageUrl("products/Limited edition"),
     status: "COMING SOON",
   },
   {
@@ -35,8 +50,7 @@ const SKOBOXIE_PRODUCTS = [
     category: "Collector Edition",
     price: "$179.00",
     description: "Holographic K-Pop fan-edition wraparound design.",
-    imageUrl: "/images/kpop-boxie.jpg", // Replace with your exact asset path
-    isSample: false,
+    imageUrl: getPublicStorageUrl("products/k-pop"),
     status: "COMING SOON",
   },
   {
@@ -45,14 +59,14 @@ const SKOBOXIE_PRODUCTS = [
     category: "Collector Edition",
     price: "$179.00",
     description: "Vivid tropical bird wraparound artwork, rendered in SketchUp + KeyShot Pro.",
-    imageUrl: "/images/bird-boxie.jpg", // Replace with your exact asset path
-    isSample: false,
+    imageUrl: getPublicStorageUrl("products/bird-boxies"),
     status: "COMING SOON",
   },
 ];
 
 export default function BoxieShopPage() {
   const [activeCategory, setActiveCategory] = useState("ALL");
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
   const categories = ["ALL", "CLASSIC", "COLLECTOR EDITION", "LIMITED EDITION", "TRAVEL"];
 
@@ -61,6 +75,10 @@ export default function BoxieShopPage() {
     : SKOBOXIE_PRODUCTS.filter(
         (p) => p.category.toUpperCase() === activeCategory
       );
+
+  const handleImageError = (id: string) => {
+    setFailedImages((prev) => ({ ...prev, [id]: true }));
+  };
 
   return (
     <div className={`container mx-auto space-y-6 pb-12 h-[85vh] overflow-y-auto scrollbar-hide bg-black text-zinc-100 ${inter.className} px-4 pt-4`}>
@@ -95,46 +113,58 @@ export default function BoxieShopPage() {
 
       {/* Product Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-        {filteredProducts.map((product) => (
-          <div
-            key={product.id}
-            className="group relative bg-[#050505] border border-zinc-900 shadow-2xl hover:border-[#9A1B22]/50 transition-all duration-500 overflow-hidden flex flex-col justify-between"
-          >
-            <div className="relative aspect-[3/2] w-full bg-black flex items-center justify-center overflow-hidden p-1 border-b border-zinc-900 shrink-0">
-              <img
-                src={product.imageUrl}
-                alt={product.name}
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-              />
-              <span className="absolute bottom-2 right-2 px-2 py-0.5 bg-black/80 border border-zinc-800 text-[8px] uppercase tracking-widest text-zinc-400">
-                360° Hover to Spin
-              </span>
-            </div>
+        {filteredProducts.map((product) => {
+          const isImageMissing = failedImages[product.id];
 
-            <div className="p-5 flex flex-col justify-between flex-grow">
-              <div>
-                <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest block mb-1">
-                  {product.category}
+          return (
+            <div
+              key={product.id}
+              className="group relative bg-[#050505] border border-zinc-900 shadow-2xl hover:border-[#9A1B22]/50 transition-all duration-500 overflow-hidden flex flex-col justify-between"
+            >
+              <div className="relative aspect-[3/2] w-full bg-black flex items-center justify-center overflow-hidden p-1 border-b border-zinc-900 shrink-0">
+                {isImageMissing ? (
+                  <div className="flex flex-col items-center justify-center text-zinc-700">
+                    <ImageOff className="h-8 w-8 mb-2 opacity-40" />
+                    <span className="text-[10px] uppercase tracking-widest text-zinc-500">Asset Pending</span>
+                  </div>
+                ) : (
+                  <img
+                    src={product.imageUrl}
+                    alt={product.name}
+                    onError={() => handleImageError(product.id)}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                )}
+                <span className="absolute bottom-2 right-2 px-2 py-0.5 bg-black/80 border border-zinc-800 text-[8px] uppercase tracking-widest text-zinc-400">
+                  360° Hover to Spin
                 </span>
-                <h2 className={`${playfair.className} text-xl font-bold tracking-wide text-white mb-2`}>
-                  {product.name}
-                </h2>
-                <p className="text-xs text-zinc-400 leading-relaxed font-normal line-clamp-2 mb-4">
-                  {product.description}
-                </p>
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t border-zinc-900">
-                <span className="text-sm font-bold text-white tracking-wider">
-                  {product.price}
-                </span>
-                <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">
-                  {product.status}
-                </span>
+              <div className="p-5 flex flex-col justify-between flex-grow">
+                <div>
+                  <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest block mb-1">
+                    {product.category}
+                  </span>
+                  <h2 className={`${playfair.className} text-xl font-bold tracking-wide text-white mb-2`}>
+                    {product.name}
+                  </h2>
+                  <p className="text-xs text-zinc-400 leading-relaxed font-normal line-clamp-2 mb-4">
+                    {product.description}
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between pt-4 border-t border-zinc-900">
+                  <span className="text-sm font-bold text-white tracking-wider">
+                    {product.price}
+                  </span>
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">
+                    {product.status}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
