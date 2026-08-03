@@ -1,8 +1,24 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Bonheur_Royale, Playfair_Display, Inter } from "next/font/google";
-import { ImageOff } from "lucide-react";
+import { ImageOff, Loader2 } from "lucide-react";
+import { getStorage, ref, getDownloadURL } from "firebase/storage";
+import { initializeApp, getApps } from "firebase/app";
+
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+};
+
+if (getApps().length === 0) {
+  initializeApp(firebaseConfig);
+}
+const storage = getStorage();
 
 const bonheur = Bonheur_Royale({ subsets: ["latin"], weight: ["400"] });
 const playfair = Playfair_Display({ subsets: ["latin"], weight: ["400", "600", "700"] });
@@ -14,15 +30,8 @@ type BoxieProduct = {
   category: string;
   price: string;
   description: string;
-  imageUrl: string;
+  storagePath: string;
   status: string;
-};
-
-const BUCKET = "styleai-footwear.firebasestorage.app";
-
-// Firebase Storage public REST media endpoint pointing strictly to hardware products
-const getStorageUrl = (path: string) => {
-  return `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/${encodeURIComponent(path)}?alt=media`;
 };
 
 const SKOBOXIE_PRODUCTS: BoxieProduct[] = [
@@ -32,7 +41,7 @@ const SKOBOXIE_PRODUCTS: BoxieProduct[] = [
     category: "COLLECTOR EDITION",
     price: "$179.00",
     description: "Deep red wave-pattern wraparound design, rendered in SketchUp + KeyShot Pro.",
-    imageUrl: getStorageUrl("products/meurte-boxies"),
+    storagePath: "products/meurte-boxies",
     status: "COMING SOON",
   },
   {
@@ -41,7 +50,7 @@ const SKOBOXIE_PRODUCTS: BoxieProduct[] = [
     category: "LIMITED EDITION",
     price: "$229.00",
     description: "Inspired by great minds and sustainability, these precision-crafted Boxies blend innovative design with eco-friendly materials.",
-    imageUrl: getStorageUrl("products/Limited edition"),
+    storagePath: "products/Limited edition",
     status: "COMING SOON",
   },
   {
@@ -50,7 +59,7 @@ const SKOBOXIE_PRODUCTS: BoxieProduct[] = [
     category: "COLLECTOR EDITION",
     price: "$179.00",
     description: "Holographic K-Pop fan-edition wraparound design.",
-    imageUrl: getStorageUrl("products/k-pop"),
+    storagePath: "products/k-pop",
     status: "COMING SOON",
   },
   {
@@ -59,26 +68,43 @@ const SKOBOXIE_PRODUCTS: BoxieProduct[] = [
     category: "COLLECTOR EDITION",
     price: "$179.00",
     description: "Vivid tropical bird wraparound artwork, rendered in SketchUp + KeyShot Pro.",
-    imageUrl: getStorageUrl("products/bird-boxies"),
+    storagePath: "products/bird-boxies",
     status: "COMING SOON",
   },
 ];
 
 export default function BoxieShopPage() {
   const [activeCategory, setActiveCategory] = useState("ALL");
-  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
+  const [products, setProducts] = useState<(BoxieProduct & { resolvedImageUrl?: string })[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function resolveUrls() {
+      const updated = await Promise.all(
+        SKOBOXIE_PRODUCTS.map(async (product) => {
+          try {
+            const imageRef = ref(storage, product.storagePath);
+            const url = await getDownloadURL(imageRef);
+            return { ...product, resolvedImageUrl: url };
+          } catch (err) {
+            console.error(`Failed to load storage asset for ${product.name}:`, err);
+            return { ...product, resolvedImageUrl: undefined };
+          }
+        })
+      );
+      setProducts(updated);
+      setLoading(false);
+    }
+    resolveUrls();
+  }, []);
 
   const categories = ["ALL", "CLASSIC", "COLLECTOR EDITION", "LIMITED EDITION", "TRAVEL"];
 
   const filteredProducts = activeCategory === "ALL"
-    ? SKOBOXIE_PRODUCTS
-    : SKOBOXIE_PRODUCTS.filter(
+    ? products
+    : products.filter(
         (p) => p.category.toUpperCase() === activeCategory
       );
-
-  const handleImageError = (id: string) => {
-    setFailedImages((prev) => ({ ...prev, [id]: true }));
-  };
 
   return (
     <div className={`container mx-auto space-y-6 pb-12 h-[85vh] overflow-y-auto scrollbar-hide bg-black text-zinc-100 ${inter.className} px-4 pt-4`}>
@@ -111,29 +137,29 @@ export default function BoxieShopPage() {
         ))}
       </div>
 
-      {/* Product Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-        {filteredProducts.map((product) => {
-          const isImageMissing = failedImages[product.id];
-
-          return (
+      {loading ? (
+        <div className="flex items-center justify-center py-20 text-zinc-500">
+          <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading Storage Assets...
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+          {filteredProducts.map((product) => (
             <div
               key={product.id}
               className="group relative bg-[#050505] border border-zinc-900 shadow-2xl hover:border-[#9A1B22]/50 transition-all duration-500 overflow-hidden flex flex-col justify-between"
             >
               <div className="relative aspect-[3/2] w-full bg-black flex items-center justify-center overflow-hidden p-1 border-b border-zinc-900 shrink-0">
-                {isImageMissing ? (
+                {product.resolvedImageUrl ? (
+                  <img
+                    src={product.resolvedImageUrl}
+                    alt={product.name}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                ) : (
                   <div className="flex flex-col items-center justify-center text-zinc-700">
                     <ImageOff className="h-8 w-8 mb-2 opacity-40" />
                     <span className="text-[10px] uppercase tracking-widest text-zinc-500">Asset Pending</span>
                   </div>
-                ) : (
-                  <img
-                    src={product.imageUrl}
-                    alt={product.name}
-                    onError={() => handleImageError(product.id)}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
                 )}
                 <span className="absolute bottom-2 right-2 px-2 py-0.5 bg-black/80 border border-zinc-800 text-[8px] uppercase tracking-widest text-zinc-400">
                   360° Hover to Spin
@@ -163,9 +189,9 @@ export default function BoxieShopPage() {
                 </div>
               </div>
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
