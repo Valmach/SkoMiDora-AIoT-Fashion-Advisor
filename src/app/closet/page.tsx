@@ -17,7 +17,6 @@ import {
 
 import { useFirebase } from "@/firebase/provider";
 import SkomiDoraLens from "@/components/SkomiDoraLens";
-import WardrobeUpload from "@/components/WardrobeUpload";
 import {
   WARDROBE_CATEGORIES,
   getCanonicalWardrobeType,
@@ -35,12 +34,10 @@ type ClosetItem = {
   itemType?: string;
   category?: string;
   color?: string;
-  type?: string;
   narrativeDescription?: string;
   styleKeywords?: string[];
   detailedSpecifications?: string;
   generalMaterial?: string;
-  material?: string;
   designer?: string; 
   brand?: string; 
   originCountry?: string;
@@ -185,7 +182,6 @@ export default function ClosetPage() {
           </div>
           <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto shrink-0">
             <SkomiDoraLens />
-            <WardrobeUpload />
           </div>
         </CardContent>
       </Card>
