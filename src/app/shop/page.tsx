@@ -1,5 +1,1 @@
-import { redirect } from "next/navigation";
-
-export default function ShopRedirect() {
-  redirect("/boxie-shop");
-}
+import { redirect } from "next/navigation"; export default function ShopRedirect() { redirect("/boxie-shop"); }
