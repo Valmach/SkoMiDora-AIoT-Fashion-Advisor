@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Bonheur_Royale, Playfair_Display, Inter } from "next/font/google";
-import { ImageOff, Loader2 } from "lucide-react";
+import { ImageOff, Loader2, ZoomIn, X, RotateCw } from "lucide-react";
 import { getStorage, ref, listAll, getDownloadURL } from "firebase/storage";
 import { initializeApp, getApps } from "firebase/app";
 
@@ -75,52 +75,73 @@ const PRODUCTS_TEMPLATE: BoxieProduct[] = [
 
 export default function BoxieShopPage() {
   const [activeCategory, setActiveCategory] = useState("ALL");
-  const [products, setProducts] = useState<(BoxieProduct & { resolvedImageUrl?: string })[]>([]);
+  const [products, setProducts] = useState<(BoxieProduct & { imageUrls: string[] })[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeIndexes, setActiveIndexes] = useState<Record<string, number>>({});
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchAndMatchBucketAssets() {
+    async function fetchAndGroupBucketAssets() {
       try {
         const productsRef = ref(storage, "products");
         const res = await listAll(productsRef);
 
-        const allFiles: { fullPath: string; url: string }[] = [];
+        const bucketMap: Record<string, string[]> = {
+          meurte: [],
+          limit: [],
+          "k-pop": [],
+          bird: [],
+        };
 
-        // Check files directly in products/
+        const categorize = (path: string, url: string) => {
+          const lower = path.toLowerCase();
+          if (lower.includes("meurte")) bucketMap.meurte.push(url);
+          else if (lower.includes("limit") || lower.includes("edition")) bucketMap.limit.push(url);
+          else if (lower.includes("k-pop") || lower.includes("kpop")) bucketMap["k-pop"].push(url);
+          else if (lower.includes("bird")) bucketMap.bird.push(url);
+        };
+
         for (const itemRef of res.items) {
           const url = await getDownloadURL(itemRef);
-          allFiles.push({ fullPath: itemRef.fullPath.toLowerCase(), url });
+          categorize(itemRef.fullPath, url);
         }
 
-        // Check files inside sub-folders/prefixes
         for (const prefixRef of res.prefixes) {
           const subRes = await listAll(prefixRef);
           for (const subItemRef of subRes.items) {
             const url = await getDownloadURL(subItemRef);
-            allFiles.push({ fullPath: subItemRef.fullPath.toLowerCase(), url });
+            categorize(subItemRef.fullPath, url);
           }
         }
 
-        // Match template products to discovered storage items dynamically
-        const matched = PRODUCTS_TEMPLATE.map((product) => {
-          const found = allFiles.find((f) => f.fullPath.includes(product.keyword));
-          return {
-            ...product,
-            resolvedImageUrl: found ? found.url : undefined,
-          };
-        });
+        const matched = PRODUCTS_TEMPLATE.map((product) => ({
+          ...product,
+          imageUrls: bucketMap[product.keyword] || [],
+        }));
 
         setProducts(matched);
       } catch (err) {
-        console.error("Error inspecting storage bucket:", err);
-        setProducts(PRODUCTS_TEMPLATE);
+        console.error("Error scanning storage bucket:", err);
+        setProducts(PRODUCTS_TEMPLATE.map(p => ({ ...p, imageUrls: [] })));
       } finally {
         setLoading(false);
       }
     }
 
-    fetchAndMatchBucketAssets();
+    fetchAndGroupBucketAssets();
   }, []);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>, productId: string, totalImages: number) => {
+    if (totalImages <= 1) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const width = rect.width;
+    const index = Math.min(
+      totalImages - 1,
+      Math.max(0, Math.floor((x / width) * totalImages))
+    );
+    setActiveIndexes((prev) => ({ ...prev, [productId]: index }));
+  };
 
   const categories = ["ALL", "CLASSIC", "COLLECTOR EDITION", "LIMITED EDITION", "TRAVEL"];
 
@@ -131,7 +152,7 @@ export default function BoxieShopPage() {
       );
 
   return (
-    <div className={`container mx-auto space-y-6 pb-12 h-[85vh] overflow-y-auto scrollbar-hide bg-black text-zinc-100 ${inter.className} px-4 pt-4`}>
+    <div className={`container mx-auto space-y-6 pb-12 h-[85vh] overflow-y-auto scrollbar-hide bg-black text-zinc-100 ${inter.className} px-4 pt-4 relative`}>
       {/* Header */}
       <div className="flex flex-col mb-4">
         <h1 className={`${bonheur.className} text-7xl font-bold tracking-wide text-white`}>
@@ -163,57 +184,96 @@ export default function BoxieShopPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20 text-zinc-500">
-          <Loader2 className="h-6 w-6 animate-spin mr-2" /> Scanning Storage Bucket...
+          <Loader2 className="h-6 w-6 animate-spin mr-2" /> Indexing Multi-Angle Assets...
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-          {filteredProducts.map((product) => (
-            <div
-              key={product.id}
-              className="group relative bg-[#050505] border border-zinc-900 shadow-2xl hover:border-[#9A1B22]/50 transition-all duration-500 overflow-hidden flex flex-col justify-between"
-            >
-              <div className="relative aspect-[3/2] w-full bg-black flex items-center justify-center overflow-hidden p-1 border-b border-zinc-900 shrink-0">
-                {product.resolvedImageUrl ? (
-                  <img
-                    src={product.resolvedImageUrl}
-                    alt={product.name}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
-                ) : (
-                  <div className="flex flex-col items-center justify-center text-zinc-700">
-                    <ImageOff className="h-8 w-8 mb-2 opacity-40" />
-                    <span className="text-[10px] uppercase tracking-widest text-zinc-500">Asset Pending</span>
+          {filteredProducts.map((product) => {
+            const urls = product.imageUrls;
+            const currentIndex = activeIndexes[product.id] || 0;
+            const currentImg = urls[currentIndex] || urls[0];
+
+            return (
+              <div
+                key={product.id}
+                className="group relative bg-[#050505] border border-zinc-900 shadow-2xl hover:border-[#9A1B22]/50 transition-all duration-500 overflow-hidden flex flex-col justify-between"
+              >
+                {/* 360 Spin & Zoom Container */}
+                <div 
+                  className="relative aspect-[3/2] w-full bg-black flex items-center justify-center overflow-hidden p-1 border-b border-zinc-900 cursor-crosshair shrink-0"
+                  onMouseMove={(e) => handleMouseMove(e, product.id, urls.length)}
+                  onClick={() => currentImg && setZoomedImage(currentImg)}
+                >
+                  {currentImg ? (
+                    <img
+                      src={currentImg}
+                      alt={product.name}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-zinc-700">
+                      <ImageOff className="h-8 w-8 mb-2 opacity-40" />
+                      <span className="text-[10px] uppercase tracking-widest text-zinc-500">Asset Pending</span>
+                    </div>
+                  )}
+
+                  {/* Badges */}
+                  <div className="absolute bottom-2 left-2 flex items-center gap-1 px-2 py-0.5 bg-black/80 border border-zinc-800 text-[8px] uppercase tracking-widest text-zinc-400 pointer-events-none">
+                    <RotateCw className="w-2.5 h-2.5 text-[#9A1B22] animate-spin-slow" /> 360° Hover to Spin ({currentIndex + 1}/{urls.length || 1})
                   </div>
-                )}
-                <span className="absolute bottom-2 right-2 px-2 py-0.5 bg-black/80 border border-zinc-800 text-[8px] uppercase tracking-widest text-zinc-400">
-                  360° Hover to Spin
-                </span>
-              </div>
 
-              <div className="p-5 flex flex-col justify-between flex-grow">
-                <div>
-                  <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest block mb-1">
-                    {product.category}
-                  </span>
-                  <h2 className={`${playfair.className} text-xl font-bold tracking-wide text-white mb-2`}>
-                    {product.name}
-                  </h2>
-                  <p className="text-xs text-zinc-400 leading-relaxed font-normal line-clamp-2 mb-4">
-                    {product.description}
-                  </p>
+                  <button 
+                    className="absolute top-2 right-2 p-1.5 bg-black/70 border border-zinc-800 text-zinc-400 hover:text-white hover:border-[#9A1B22] transition-all rounded"
+                    title="Zoom In"
+                  >
+                    <ZoomIn className="w-3.5 h-3.5" />
+                  </button>
                 </div>
 
-                <div className="flex items-center justify-between pt-4 border-t border-zinc-900">
-                  <span className="text-sm font-bold text-white tracking-wider">
-                    {product.price}
-                  </span>
-                  <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">
-                    {product.status}
-                  </span>
+                <div className="p-5 flex flex-col justify-between flex-grow">
+                  <div>
+                    <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest block mb-1">
+                      {product.category}
+                    </span>
+                    <h2 className={`${playfair.className} text-xl font-bold tracking-wide text-white mb-2`}>
+                      {product.name}
+                    </h2>
+                    <p className="text-xs text-zinc-400 leading-relaxed font-normal line-clamp-2 mb-4">
+                      {product.description}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-4 border-t border-zinc-900">
+                    <span className="text-sm font-bold text-white tracking-wider">
+                      {product.price}
+                    </span>
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">
+                      {product.status}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
+        </div>
+      )}
+
+      {/* Zoom / Lightbox Modal */}
+      {zoomedImage && (
+        <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4 backdrop-blur-md">
+          <button
+            onClick={() => setZoomedImage(null)}
+            className="absolute top-6 right-6 p-3 bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white hover:border-[#9A1B22] transition-all rounded-full"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <div className="relative max-w-5xl max-h-[90vh] w-full h-full flex items-center justify-center overflow-auto">
+            <img
+              src={zoomedImage}
+              alt="Zoomed Product View"
+              className="max-w-full max-h-[85vh] object-contain border border-zinc-800 shadow-2xl scale-125 transition-transform duration-300"
+            />
+          </div>
         </div>
       )}
     </div>
