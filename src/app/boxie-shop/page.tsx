@@ -24,111 +24,100 @@ const bonheur = Bonheur_Royale({ subsets: ["latin"], weight: ["400"] });
 const playfair = Playfair_Display({ subsets: ["latin"], weight: ["400", "600", "700"] });
 const inter = Inter({ subsets: ["latin"], weight: ["300", "400", "500", "600"] });
 
-type BoxieProduct = {
+type DynamicProduct = {
   id: string;
   name: string;
   category: string;
   price: string;
   description: string;
-  keyword: string;
+  imageUrls: string[];
   status: string;
 };
 
-const PRODUCTS_TEMPLATE: BoxieProduct[] = [
-  {
-    id: "meurte-boxies",
-    name: "Meurte Boxies",
-    category: "COLLECTOR EDITION",
-    price: "$179.00",
-    description: "Deep red wave-pattern wraparound design, rendered in SketchUp + KeyShot Pro.",
-    keyword: "meurte",
-    status: "COMING SOON",
-  },
-  {
-    id: "limited-edition-skoboxie",
-    name: "Limited Edition SkoBoxie",
-    category: "LIMITED EDITION",
-    price: "$229.00",
-    description: "Inspired by great minds and sustainability, these precision-crafted Boxies blend innovative design with eco-friendly materials.",
-    keyword: "limit",
-    status: "COMING SOON",
-  },
-  {
-    id: "k-pop-boxies",
-    name: "K-Pop Boxies",
-    category: "COLLECTOR EDITION",
-    price: "$179.00",
-    description: "Holographic K-Pop fan-edition wraparound design.",
-    keyword: "k-pop",
-    status: "COMING SOON",
-  },
-  {
-    id: "bird-boxies",
-    name: "Bird Boxies",
-    category: "COLLECTOR EDITION",
-    price: "$179.00",
-    description: "Vivid tropical bird wraparound artwork, rendered in SketchUp + KeyShot Pro.",
-    keyword: "bird",
-    status: "COMING SOON",
-  },
-];
+// Helper to format folder/file names into clean titles
+const formatTitle = (slug: string) => {
+  return slug
+    .replace(/[-_]/g, " ")
+    .replace(/\.[^/.]+$/, "")
+    .replace(/\b\w/g, (l) => l.toUpperCase());
+};
 
 export default function BoxieShopPage() {
   const [activeCategory, setActiveCategory] = useState("ALL");
-  const [products, setProducts] = useState<(BoxieProduct & { imageUrls: string[] })[]>([]);
+  const [products, setProducts] = useState<DynamicProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeIndexes, setActiveIndexes] = useState<Record<string, number>>({});
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchAndGroupBucketAssets() {
+    async function loadDynamicStorageProducts() {
       try {
         const productsRef = ref(storage, "products");
         const res = await listAll(productsRef);
 
-        const bucketMap: Record<string, string[]> = {
-          meurte: [],
-          limit: [],
-          "k-pop": [],
-          bird: [],
-        };
+        const discoveredProducts: DynamicProduct[] = [];
 
-        const categorize = (path: string, url: string) => {
-          const lower = path.toLowerCase();
-          if (lower.includes("meurte")) bucketMap.meurte.push(url);
-          else if (lower.includes("limit") || lower.includes("edition")) bucketMap.limit.push(url);
-          else if (lower.includes("k-pop") || lower.includes("kpop")) bucketMap["k-pop"].push(url);
-          else if (lower.includes("bird")) bucketMap.bird.push(url);
-        };
-
-        for (const itemRef of res.items) {
-          const url = await getDownloadURL(itemRef);
-          categorize(itemRef.fullPath, url);
-        }
-
+        // 1. Scan subfolders (prefixes) inside products/
         for (const prefixRef of res.prefixes) {
+          const folderName = prefixRef.name;
           const subRes = await listAll(prefixRef);
-          for (const subItemRef of subRes.items) {
-            const url = await getDownloadURL(subItemRef);
-            categorize(subItemRef.fullPath, url);
+          const urls: string[] = [];
+
+          for (const itemRef of subRes.items) {
+            const url = await getDownloadURL(itemRef);
+            urls.push(url);
+          }
+
+          if (urls.length > 0) {
+            discoveredProducts.push({
+              id: folderName.toLowerCase().replace(/\s+/g, "-"),
+              name: formatTitle(folderName),
+              category: folderName.toLowerCase().includes("limited") ? "LIMITED EDITION" : "COLLECTOR EDITION",
+              price: folderName.toLowerCase().includes("limited") ? "$229.00" : "$179.00",
+              description: "Precision-crafted smart enclosure featuring IoT telemetry and modular RFID tracking.",
+              imageUrls: urls,
+              status: "COMING SOON",
+            });
           }
         }
 
-        const matched = PRODUCTS_TEMPLATE.map((product) => ({
-          ...product,
-          imageUrls: bucketMap[product.keyword] || [],
-        }));
+        // 2. Scan loose files directly in products/ root
+        const looseFilesMap: Record<string, string[]> = {};
+        for (const itemRef of res.items) {
+          const fileName = itemRef.name;
+          const baseName = fileName.substring(0, fileName.lastIndexOf(".")) || fileName;
+          const url = await getDownloadURL(itemRef);
 
-        setProducts(matched);
+          if (!looseFilesMap[baseName]) {
+            looseFilesMap[baseName] = [];
+          }
+          looseFilesMap[baseName].push(url);
+        }
+
+        for (const [baseName, urls] of Object.entries(looseFilesMap)) {
+          // Avoid duplicates if already caught in prefixes
+          if (!discoveredProducts.some((p) => p.name.toLowerCase() === baseName.toLowerCase())) {
+            discoveredProducts.push({
+              id: baseName.toLowerCase().replace(/\s+/g, "-"),
+              name: formatTitle(baseName),
+              category: "COLLECTOR EDITION",
+              price: "$179.00",
+              description: "Precision-crafted smart enclosure featuring IoT telemetry and modular RFID tracking.",
+              imageUrls: urls,
+              status: "COMING SOON",
+            });
+          }
+        }
+
+        setProducts(discoveredProducts);
       } catch (err) {
-        console.error("Error scanning storage bucket:", err);
-        setProducts(PRODUCTS_TEMPLATE.map(p => ({ ...p, imageUrls: [] })));
+        console.error("Failed to dynamically load storage products:", err);
       } finally {
         setLoading(false);
       }
     }
 
-    fetchAndGroupBucketAssets();
+    loadDynamicStorageProducts();
   }, []);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>, productId: string, totalImages: number) => {
@@ -159,7 +148,7 @@ export default function BoxieShopPage() {
           SkoBoxies Shop
         </h1>
         <p className="text-zinc-400 uppercase tracking-[0.2em] text-xs mt-2 font-medium">
-          <span className="text-[#9A1B22]">●</span> {filteredProducts.length} Available
+          <span className="text-[#9A1B22]">●</span> {filteredProducts.length} Available in Storage
         </p>
       </div>
 
@@ -184,7 +173,12 @@ export default function BoxieShopPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20 text-zinc-500">
-          <Loader2 className="h-6 w-6 animate-spin mr-2" /> Indexing Multi-Angle Assets...
+          <Loader2 className="h-6 w-6 animate-spin mr-2" /> Syncing Storage Bucket Products...
+        </div>
+      ) : filteredProducts.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-zinc-500">
+          <ImageOff className="h-10 w-10 mb-2 opacity-40" />
+          <p className="text-xs uppercase tracking-widest">No product folders found under `products/` in storage.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
@@ -219,7 +213,7 @@ export default function BoxieShopPage() {
 
                   {/* Badges */}
                   <div className="absolute bottom-2 left-2 flex items-center gap-1 px-2 py-0.5 bg-black/80 border border-zinc-800 text-[8px] uppercase tracking-widest text-zinc-400 pointer-events-none">
-                    <RotateCw className="w-2.5 h-2.5 text-[#9A1B22] animate-spin-slow" /> 360° Hover to Spin ({currentIndex + 1}/{urls.length || 1})
+                    <RotateCw className="w-2.5 h-2.5 text-[#9A1B22]" /> 360° Hover to Spin ({currentIndex + 1}/{urls.length || 1})
                   </div>
 
                   <button 
