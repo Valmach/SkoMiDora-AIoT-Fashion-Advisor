@@ -26,6 +26,7 @@ const AnalyzeStyleDNAInputSchema = z.object({
   shoeCollectionData: z.string().min(1).catch('Assorted footwear'),
   accuWeatherInfo: AccuWeatherSchema.catch({ temperature: 20, condition: 'Clear' }),
   googleCalendarEvents: z.array(GoogleCalendarEventSchema).catch([]),
+  contextHint: z.string().optional().default(''), // Added path/filename context hint to resolve low-contrast vision items
 });
 
 export type AnalyzeStyleDNAInput = z.infer<typeof AnalyzeStyleDNAInputSchema>;
@@ -38,7 +39,7 @@ const FALLBACK_STYLE_DNA =
   'The client presents a refined, fashion-conscious aesthetic, favouring versatile pieces with an elevated, modern sensibility. Their wardrobe suggests thoughtful curation, balancing comfort and polish, with footwear choices that complement both professional and lifestyle settings.';
 
 /* ============================================================
-   PROMPT (SIMPLIFIED FOR STABILITY)
+   PROMPT (ENHANCED FOR CONTEXT & TEXTILE ACCURACY)
 ============================================================ */
 
 const stylePrompt = ai.definePrompt({
@@ -53,10 +54,12 @@ const stylePrompt = ai.definePrompt({
     - British English.
     - No bullet points, no JSON, no markdown code blocks.
     - Focus on how their footwear (Shoebox) matches their wardrobe.
+    - Overcome low-contrast visual hurdles (such as pristine whites, creams, and deep indigo or blue denim) by utilizing the provided context hints to ensure accurate material and color classification.
 
     INPUT DATA:
     Wardrobe: {{wardrobeData}}
     Footwear: {{shoeCollectionData}}
+    Context Hints: {{contextHint}}
     Weather: {{accuWeatherInfo.temperature}}°C, {{accuWeatherInfo.condition}}
     Events: {{#each googleCalendarEvents}}{{eventName}} ({{eventType}}), {{/each}}
   `,
