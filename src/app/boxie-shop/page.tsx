@@ -18,11 +18,11 @@ type BoxieProduct = {
   status: string;
 };
 
-const BUCKET = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "styleai-footwear.firebasestorage.app";
+const BUCKET = "styleai-footwear.firebasestorage.app";
 
+// Firebase Storage public REST media endpoint
 const getPublicStorageUrl = (path: string) => {
-  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
-  return `https://storage.googleapis.com/${BUCKET}/${encodedPath}`;
+  return `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/${encodeURIComponent(path)}?alt=media`;
 };
 
 const SKOBOXIE_PRODUCTS: BoxieProduct[] = [
