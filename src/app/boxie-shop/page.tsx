@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Bonheur_Royale, Playfair_Display, Inter } from "next/font/google";
 import { ImageOff, Loader2 } from "lucide-react";
-import { getStorage, ref, getDownloadURL } from "firebase/storage";
+import { getStorage, ref, listAll, getDownloadURL } from "firebase/storage";
 import { initializeApp, getApps } from "firebase/app";
 
 const firebaseConfig = {
@@ -30,18 +30,18 @@ type BoxieProduct = {
   category: string;
   price: string;
   description: string;
-  storagePath: string;
+  keyword: string;
   status: string;
 };
 
-const SKOBOXIE_PRODUCTS: BoxieProduct[] = [
+const PRODUCTS_TEMPLATE: BoxieProduct[] = [
   {
     id: "meurte-boxies",
     name: "Meurte Boxies",
     category: "COLLECTOR EDITION",
     price: "$179.00",
     description: "Deep red wave-pattern wraparound design, rendered in SketchUp + KeyShot Pro.",
-    storagePath: "products/meurte-boxies",
+    keyword: "meurte",
     status: "COMING SOON",
   },
   {
@@ -50,7 +50,7 @@ const SKOBOXIE_PRODUCTS: BoxieProduct[] = [
     category: "LIMITED EDITION",
     price: "$229.00",
     description: "Inspired by great minds and sustainability, these precision-crafted Boxies blend innovative design with eco-friendly materials.",
-    storagePath: "products/Limited edition",
+    keyword: "limit",
     status: "COMING SOON",
   },
   {
@@ -59,7 +59,7 @@ const SKOBOXIE_PRODUCTS: BoxieProduct[] = [
     category: "COLLECTOR EDITION",
     price: "$179.00",
     description: "Holographic K-Pop fan-edition wraparound design.",
-    storagePath: "products/k-pop",
+    keyword: "k-pop",
     status: "COMING SOON",
   },
   {
@@ -68,7 +68,7 @@ const SKOBOXIE_PRODUCTS: BoxieProduct[] = [
     category: "COLLECTOR EDITION",
     price: "$179.00",
     description: "Vivid tropical bird wraparound artwork, rendered in SketchUp + KeyShot Pro.",
-    storagePath: "products/bird-boxies",
+    keyword: "bird",
     status: "COMING SOON",
   },
 ];
@@ -79,23 +79,47 @@ export default function BoxieShopPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function resolveUrls() {
-      const updated = await Promise.all(
-        SKOBOXIE_PRODUCTS.map(async (product) => {
-          try {
-            const imageRef = ref(storage, product.storagePath);
-            const url = await getDownloadURL(imageRef);
-            return { ...product, resolvedImageUrl: url };
-          } catch (err) {
-            console.error(`Failed to load storage asset for ${product.name}:`, err);
-            return { ...product, resolvedImageUrl: undefined };
+    async function fetchAndMatchBucketAssets() {
+      try {
+        const productsRef = ref(storage, "products");
+        const res = await listAll(productsRef);
+
+        const allFiles: { fullPath: string; url: string }[] = [];
+
+        // Check files directly in products/
+        for (const itemRef of res.items) {
+          const url = await getDownloadURL(itemRef);
+          allFiles.push({ fullPath: itemRef.fullPath.toLowerCase(), url });
+        }
+
+        // Check files inside sub-folders/prefixes
+        for (const prefixRef of res.prefixes) {
+          const subRes = await listAll(prefixRef);
+          for (const subItemRef of subRes.items) {
+            const url = await getDownloadURL(subItemRef);
+            allFiles.push({ fullPath: subItemRef.fullPath.toLowerCase(), url });
           }
-        })
-      );
-      setProducts(updated);
-      setLoading(false);
+        }
+
+        // Match template products to discovered storage items dynamically
+        const matched = PRODUCTS_TEMPLATE.map((product) => {
+          const found = allFiles.find((f) => f.fullPath.includes(product.keyword));
+          return {
+            ...product,
+            resolvedImageUrl: found ? found.url : undefined,
+          };
+        });
+
+        setProducts(matched);
+      } catch (err) {
+        console.error("Error inspecting storage bucket:", err);
+        setProducts(PRODUCTS_TEMPLATE);
+      } finally {
+        setLoading(false);
+      }
     }
-    resolveUrls();
+
+    fetchAndMatchBucketAssets();
   }, []);
 
   const categories = ["ALL", "CLASSIC", "COLLECTOR EDITION", "LIMITED EDITION", "TRAVEL"];
@@ -139,7 +163,7 @@ export default function BoxieShopPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20 text-zinc-500">
-          <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading Storage Assets...
+          <Loader2 className="h-6 w-6 animate-spin mr-2" /> Scanning Storage Bucket...
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
