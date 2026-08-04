@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   collection,
   query,
@@ -8,7 +8,7 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import { Bonheur_Royale, Playfair_Display, Inter } from "next/font/google";
-import { ImageOff, Loader2, ZoomIn, X, Sparkles } from "lucide-react";
+import { ImageOff, Loader2, ZoomIn, X, Sparkles, Upload } from "lucide-react";
 
 import { useFirebase } from "@/firebase/provider";
 
@@ -58,6 +58,35 @@ export default function SkoMiDoraFashionPage() {
   const [loading, setLoading] = useState(true);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState("ALL");
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelected = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/skomidora-fashion-upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Upload failed (${res.status})`);
+      }
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   useEffect(() => {
     if (!firebase || !firebase.firestore) return;
@@ -111,11 +140,41 @@ export default function SkoMiDoraFashionPage() {
     >
       {/* Header */}
       <div className="flex flex-col mb-4">
-        <h1
-          className={`${bonheur.className} text-7xl font-bold tracking-wide text-white`}
-        >
-          SkoMiDora Fashion
-        </h1>
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <h1
+            className={`${bonheur.className} text-7xl font-bold tracking-wide text-white`}
+          >
+            SkoMiDora Fashion
+          </h1>
+          <div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelected}
+              className="hidden"
+              disabled={uploading}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="flex items-center gap-2 px-6 py-3 text-xs font-semibold tracking-[0.15em] uppercase bg-[#9A1B22] text-white hover:bg-[#7a1519] transition-all disabled:opacity-50"
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Analyzing...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" /> Upload Piece
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+        {uploadError && (
+          <p className="text-red-400 text-xs mt-2">{uploadError}</p>
+        )}
         <p className="text-zinc-400 uppercase tracking-[0.2em] text-xs mt-2 font-medium">
           <span className="text-[#9A1B22]">●</span> {filteredItems.length}{" "}
           Pieces in Collection
