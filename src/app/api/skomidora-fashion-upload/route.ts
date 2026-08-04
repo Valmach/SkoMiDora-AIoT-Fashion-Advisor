@@ -32,6 +32,40 @@ function publicStorageUrl(bucket: string, imagePath: string) {
     imagePath,
   ).replace(/%2F/g, "/")}`;
 }
+async function generateContentWithRetry(
+  model: ReturnType<GoogleGenerativeAI["getGenerativeModel"]>,
+  contentParts: Array<
+    { text: string } | { inlineData: { mimeType: string; data: string } }
+  >,
+  fileName: string,
+  maxRetries = 3,
+) {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await model.generateContent(contentParts);
+    } catch (error) {
+      lastError = error;
+      const message =
+        error instanceof Error ? error.message : String(error);
+      const isRateLimited =
+        message.includes("429") ||
+        message.includes("Too Many Requests") ||
+        message.includes("RESOURCE_EXHAUSTED");
+      if (!isRateLimited || attempt === maxRetries) {
+        throw error;
+      }
+      const delayMs = 2000 * Math.pow(2, attempt);
+      console.warn(
+        "[skomidora-fashion-upload] Vision AI rate-limited for",
+        fileName,
+        `- retrying (attempt ${attempt + 1}/${maxRetries}) in ${delayMs}ms`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw lastError;
+}
 async function analyzeFashionImage(
   imageBase64: string,
   contentType: string,
@@ -74,15 +108,19 @@ async function analyzeFashionImage(
       "The price estimate should reflect realistic resale/secondary-market value for a piece like this, not original retail - and should be clearly conservative when the designer is Unknown.",
       `Filename: ${fileName}`,
     ].join("\n");
-    const result = await model.generateContent([
-      { text: prompt },
-      {
-        inlineData: {
-          mimeType: contentType,
-          data: imageBase64,
+    const result = await generateContentWithRetry(
+      model,
+      [
+        { text: prompt },
+        {
+          inlineData: {
+            mimeType: contentType,
+            data: imageBase64,
+          },
         },
-      },
-    ]);
+      ],
+      fileName,
+    );
     const rawText = result.response.text();
     const parsed = extractJson(rawText);
     const isValid =
