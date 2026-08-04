@@ -15,6 +15,7 @@ import {
   PanelLeftClose,
   Menu,
   X,
+  Gem,
   ShoppingBag
 } from "lucide-react";
 
@@ -30,6 +31,7 @@ const MENU_ITEMS = [
   { name: "Outfits", icon: Sparkles, href: "/outfit-recommendations" }, 
   { name: "AI Stylist", icon: Sparkles, href: "/stylist" },
   { name: "Boxie Shop", icon: ShoppingBag, href: "/shop" },
+  { name: "SkoMiDora Fashion", icon: Gem, href: "/skomidora-fashion" },
   { name: "Inbox", icon: Mail, href: "/inbox" },
 ];
 
