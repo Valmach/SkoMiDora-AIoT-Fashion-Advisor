@@ -99,6 +99,8 @@ async function analyzeImageMetadata(
     process.env.GOOGLE_API_KEY ||
     "";
 
+  console.log("[storage-upload] Resolved apiKey diagnostic - length:", apiKey.length, "prefix:", apiKey.slice(0, 6), "suffix:", apiKey.slice(-4));
+
   if (!apiKey) {
     console.warn(
       "[storage-upload] Vision AI SKIPPED for",
