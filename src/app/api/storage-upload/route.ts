@@ -146,7 +146,7 @@ async function analyzeImageMetadata(
       "\"metadataConfidence\": 0.75",
       "}",
       "Select exactly one itemType and its matching broad category from the provided canonical values.",
-      "For footwear, apparel, handbags, and luxury fashion, the designer house is normally also the brand. When only the designer is identifiable, return that designer name in both the brand and designer fields. When only the brand is identifiable, return it in both fields. Preserve different values when the image clearly represents a collaboration, custom maker, atelier, diffusion label, or licensed brand. Do not guess luxury brands without visible evidence.",
+      "For footwear, apparel, handbags, and luxury fashion, the designer house is normally also the brand. When only the designer is identifiable, return that designer name in both the brand and designer fields. When only the brand is identifiable, return it in both fields. Preserve different values when the image clearly represents a collaboration, custom maker, atelier, diffusion label, or licensed brand. A designer or brand name written in the provided filename is valid evidence, use it even if no logo or tag is visible in the image itself. Only return Unknown if neither the image nor the filename gives any indication of brand or designer.",
       `Original filename: ${fileName}`,
     ].join("\n");
 
@@ -197,6 +197,51 @@ async function analyzeImageMetadata(
 
     return {};
   }
+}
+
+let knownDesignersCache: { names: string[]; fetchedAt: number } | null = null;
+const KNOWN_DESIGNERS_CACHE_TTL_MS = 5 * 60 * 1000;
+
+async function getKnownDesigners(db: FirebaseFirestore.Firestore): Promise<string[]> {
+  const now = Date.now();
+  if (knownDesignersCache && now - knownDesignersCache.fetchedAt < KNOWN_DESIGNERS_CACHE_TTL_MS) {
+    return knownDesignersCache.names;
+  }
+  try {
+    const snap = await db.collection("publicWardrobeItems").select("designerName").get();
+    const names = new Set<string>();
+    snap.forEach(function(doc: FirebaseFirestore.QueryDocumentSnapshot) {
+      const value = String(doc.get("designerName") || "").trim();
+      if (value && value.toLowerCase() !== "unknown") {
+        names.add(value);
+      }
+    });
+    const list = Array.from(names);
+    knownDesignersCache = { names: list, fetchedAt: now };
+    console.log("[storage-upload] Refreshed known-designers catalog cache:", list.length, "designers");
+    return list;
+  } catch (error) {
+    console.warn("[storage-upload] Failed to load known-designers catalog:", error);
+    return knownDesignersCache ? knownDesignersCache.names : [];
+  }
+}
+
+function matchKnownDesigner(fileName: string, knownDesigners: string[]): string | null {
+  const lower = fileName.toLowerCase();
+  const sorted = knownDesigners.slice().sort(function(a: string, b: string) { return b.length - a.length; });
+  for (let i = 0; i < sorted.length; i++) {
+    const designer = sorted[i];
+    const normalized = designer.toLowerCase();
+    const specialChars = /[.*+?^${}()|[\]\\]/g;
+    const escaped = normalized.replace(specialChars, "\\$&");
+    const separators = /[\s&_-]+/g;
+    const flexible = escaped.replace(separators, "[\\s\\-_&]+");
+    const pattern = new RegExp("(^|[^a-z0-9])" + flexible + "([^a-z0-9]|$)", "i");
+    if (pattern.test(lower)) {
+      return designer;
+    }
+  }
+  return null;
 }
 
 function inferLensMetadata(
@@ -659,6 +704,16 @@ export async function POST(
           ...commercialMetadata,
         },
       );
+
+    if (!metadata.designerName || metadata.designerName === "Unknown") {
+      const knownDesigners = await getKnownDesigners(db);
+      const catalogMatch = matchKnownDesigner(originalName, knownDesigners);
+      if (catalogMatch) {
+        console.log("[storage-upload] Matched designer from existing catalog:", catalogMatch, "for file", originalName);
+        metadata.designerName = catalogMatch;
+        metadata.detailedSpecifications = metadata.detailedSpecifications.replace(/^Brand: Unknown/, "Brand: " + catalogMatch);
+      }
+    }
 
     const canonicalItemType =
       getCanonicalWardrobeType(
