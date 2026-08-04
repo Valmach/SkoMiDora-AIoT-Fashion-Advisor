@@ -230,7 +230,7 @@ export default function SkoMiDoraFashionPage() {
                   <img
                     src={item.imageUrl}
                     alt={item.itemName || "Fashion item"}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
                   />
                 ) : (
                   <div className="flex flex-col items-center justify-center text-zinc-700">
