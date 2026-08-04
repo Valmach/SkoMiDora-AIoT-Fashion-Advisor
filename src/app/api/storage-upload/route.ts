@@ -99,7 +99,14 @@ async function analyzeImageMetadata(
     process.env.GOOGLE_API_KEY ||
     "";
 
-  if (!apiKey) return {};
+  if (!apiKey) {
+    console.warn(
+      "[storage-upload] Vision AI SKIPPED for",
+      fileName,
+      "- reason: no API key found in GEMINI_API_KEY / GOOGLE_GENERATIVE_AI_API_KEY / GOOGLE_API_KEY env vars.",
+    );
+    return {};
+  }
 
   try {
     const base64Data =
@@ -154,20 +161,37 @@ async function analyzeImageMetadata(
         },
       ]);
 
-    const parsed = extractJson(
-      result.response.text(),
-    );
+    const rawText = result.response.text();
+    const parsed = extractJson(rawText);
 
-    return (
+    const isValid =
       parsed &&
       typeof parsed === "object" &&
-      !Array.isArray(parsed)
-    )
-      ? parsed
-      : {};
+      !Array.isArray(parsed);
+
+    if (!isValid) {
+      console.warn(
+        "[storage-upload] Vision AI FAILED for",
+        fileName,
+        "- reason: model responded but JSON parsing failed. Raw response (first 500 chars):",
+        rawText.slice(0, 500),
+      );
+      return {};
+    }
+
+    console.log(
+      "[storage-upload] Vision AI SUCCEEDED for",
+      fileName,
+      "- keys returned:",
+      Object.keys(parsed).join(", "),
+    );
+
+    return parsed;
   } catch (error) {
     console.warn(
-      "SkoMiDora upload image metadata analysis skipped:",
+      "[storage-upload] Vision AI FAILED for",
+      fileName,
+      "- reason: API call threw an error:",
       error,
     );
 
