@@ -581,6 +581,12 @@ export async function POST(
       ),
     };
 
+    const commercialMetadataClean = Object.fromEntries(
+      Object.entries(commercialMetadata).filter(
+        ([, value]) => value !== undefined,
+      ),
+    );
+
     if (!imageBase64) {
       return NextResponse.json(
         {
@@ -703,7 +709,7 @@ export async function POST(
         ),
         {
           ...aiMetadata,
-          ...commercialMetadata,
+          ...commercialMetadataClean,
         },
       );
 
