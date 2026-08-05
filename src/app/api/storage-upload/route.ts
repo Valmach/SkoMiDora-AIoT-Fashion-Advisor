@@ -121,7 +121,7 @@ async function analyzeImageMetadata(
 
     const model =
       genAI.getGenerativeModel({
-        model: "gemini-3.6-flash",
+        model: "gemini-2.5-flash",
       });
 
     const prompt = [
