@@ -88,6 +88,44 @@ function extractJson(text: string) {
   }
 }
 
+async function generateContentWithRetry(
+  model: ReturnType<GoogleGenerativeAI["getGenerativeModel"]>,
+  contentParts: Array<
+    string | { inlineData: { data: string; mimeType: string } }
+  >,
+  fileName: string,
+  maxRetries = 3,
+) {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await model.generateContent(contentParts);
+    } catch (error) {
+      lastError = error;
+      const message =
+        error instanceof Error ? error.message : String(error);
+      const isRetryable =
+        message.includes("429") ||
+        message.includes("Too Many Requests") ||
+        message.includes("RESOURCE_EXHAUSTED") ||
+        message.includes("503") ||
+        message.includes("Service Unavailable") ||
+        message.includes("currently experiencing high demand");
+      if (!isRetryable || attempt === maxRetries) {
+        throw error;
+      }
+      const delayMs = 2000 * Math.pow(2, attempt);
+      console.warn(
+        "[storage-upload] Vision AI transient error for",
+        fileName,
+        `- retrying (attempt ${attempt + 1}/${maxRetries}) in ${delayMs}ms`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw lastError;
+}
+
 async function analyzeImageMetadata(
   imageBase64: string,
   mimeType: string,
@@ -153,15 +191,19 @@ async function analyzeImageMetadata(
     ].join("\n");
 
     const result =
-      await model.generateContent([
-        prompt,
-        {
-          inlineData: {
-            data: base64Data,
-            mimeType,
+      await generateContentWithRetry(
+        model,
+        [
+          prompt,
+          {
+            inlineData: {
+              data: base64Data,
+              mimeType,
+            },
           },
-        },
-      ]);
+        ],
+        fileName,
+      );
 
     const rawText = result.response.text();
     const parsed = extractJson(rawText);
