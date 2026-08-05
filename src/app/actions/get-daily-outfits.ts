@@ -903,7 +903,7 @@ ${laneInventory}
 
   try {
     generated = await generateObject({
-      model: google('gemini-2.5-flash'),
+      model: google('gemini-3.6-flash'),
       schema: recommendationSchema,
       prompt,
       temperature: 0.65,
