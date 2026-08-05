@@ -48,16 +48,19 @@ async function generateContentWithRetry(
       lastError = error;
       const message =
         error instanceof Error ? error.message : String(error);
-      const isRateLimited =
+      const isRetryable =
         message.includes("429") ||
         message.includes("Too Many Requests") ||
-        message.includes("RESOURCE_EXHAUSTED");
-      if (!isRateLimited || attempt === maxRetries) {
+        message.includes("RESOURCE_EXHAUSTED") ||
+        message.includes("503") ||
+        message.includes("Service Unavailable") ||
+        message.includes("currently experiencing high demand");
+      if (!isRetryable || attempt === maxRetries) {
         throw error;
       }
       const delayMs = 2000 * Math.pow(2, attempt);
       console.warn(
-        "[skomidora-fashion-upload] Vision AI rate-limited for",
+        "[skomidora-fashion-upload] Vision AI transient error for",
         fileName,
         `- retrying (attempt ${attempt + 1}/${maxRetries}) in ${delayMs}ms`,
       );
@@ -87,7 +90,7 @@ async function analyzeFashionImage(
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.6-flash",
     });
     const prompt = [
       "You are a luxury fashion cataloger writing for an online storefront.",
