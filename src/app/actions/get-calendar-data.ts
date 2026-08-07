@@ -96,7 +96,7 @@ export async function getUpcomingEventsStyleAdviceAction(closetItems: any[]) {
       cityBg: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?q=80&w=1200&auto=format&fit=crop"
     },
     {
-      name: "Oslo Spring Summit",
+      name: "Oslo Summit",
       city: "Oslo, Norway",
       dateObj: tomorrow,
       date: formatDate(tomorrow, "11:30 AM"), 
