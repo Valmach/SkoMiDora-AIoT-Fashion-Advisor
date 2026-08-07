@@ -33,7 +33,7 @@ function getPreferredBritishFemaleVoice() {
 
 
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { MapPin, Calendar, CloudSun, Volume2, Square, ArrowRight, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,6 +66,42 @@ const CITY_IMAGES: Record<string, string> = {
 export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, cardIndex }: AdviceProps) {
   const { toast } = useToast();
 
+  // NOTE: all hooks are declared here, unconditionally, BEFORE the
+  // `if (!eventAdvice) return null;` early return below. Hooks must run in
+  // the same order on every render — declaring them after an early return
+  // breaks that guarantee the moment eventAdvice is ever null on some
+  // renders and truthy on others for the same component instance.
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  // Refs, not state: state updates are async and batched, so a rapid second
+  // click could read stale `isSpeaking`/`audioElement` values and start a
+  // SECOND independent audio stream on top of the first one still playing.
+  // Refs are updated synchronously, so the guard below is race-safe.
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const isBusyRef = useRef(false); // true from the moment of click until playback actually starts (or fails)
+  const playTokenRef = useRef(0); // invalidates a stale in-flight fetch if the user stops/re-clicks before it resolves
+
+  const stopPlayback = () => {
+    playTokenRef.current += 1; // any in-flight fetch/response for a prior click is now stale and will be ignored
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+      audioRef.current = null;
+    }
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    isBusyRef.current = false;
+    setIsSpeaking(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      stopPlayback();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (!eventAdvice) return null;
 
   // --- SAFE DATA FALLBACKS ---
@@ -80,30 +116,20 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
     : (typeof eventAdvice.styleKeywords === 'string' ? eventAdvice.styleKeywords.split(', ') : []);
 
   const animationDelay = `${cardIndex * 150}ms`;
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (audioElement) {
-        audioElement.pause();
-      }
-      window.speechSynthesis.cancel();
-    };
-  }, [audioElement]);
 
   const handleSpeak = async () => {
-    if (isSpeaking) {
-      if (audioElement) {
-        audioElement.pause();
-        audioElement.src = "";
-        setAudioElement(null);
-      }
+    // Covers BOTH cases: already playing (isSpeaking true), and mid-fetch
 
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
+    // before playback has started (isBusyRef true but isSpeaking still
+    // false). The second case is exactly the gap that let a second click
+    // sneak a parallel audio stream through before.
+    if (isSpeaking || isBusyRef.current) {
+      stopPlayback();
       return;
     }
+
+    isBusyRef.current = true;
+    const myToken = ++playTokenRef.current;
 
     const rawText = `${safeEventName}. ${safeWeather}. Stylist Notes: ${safeReasoning}`;
 
@@ -115,6 +141,7 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
       .slice(0, 900);
 
     if (!cleanTextToRead) {
+      isBusyRef.current = false;
       toast({
         title: "Nothing to read",
         description: "No event advice text was available.",
@@ -134,23 +161,39 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
         }),
       });
 
+      // The user stopped, or clicked again, while this fetch was in flight.
+      // Discard this response instead of starting a stream nobody asked for anymore.
+      if (myToken !== playTokenRef.current) {
+        return;
+      }
+
       if (response.ok) {
         const audioBlob = await response.blob();
+
+        if (myToken !== playTokenRef.current) {
+          return; // stopped/superseded while the blob was downloading
+        }
+
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
 
-        setAudioElement(audio);
+        audioRef.current = audio;
+        isBusyRef.current = false;
         setIsSpeaking(true);
 
         audio.onended = () => {
           URL.revokeObjectURL(audioUrl);
-          setAudioElement(null);
+          if (audioRef.current === audio) {
+            audioRef.current = null;
+          }
           setIsSpeaking(false);
         };
 
         audio.onerror = () => {
           URL.revokeObjectURL(audioUrl);
-          setAudioElement(null);
+          if (audioRef.current === audio) {
+            audioRef.current = null;
+          }
           setIsSpeaking(false);
           console.warn("Google TTS audio playback failed. Falling back to browser speech.");
         };
@@ -164,7 +207,13 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
       console.warn("Google TTS unavailable. Falling back to browser speech:", error);
     }
 
+    if (myToken !== playTokenRef.current) {
+      isBusyRef.current = false;
+      return;
+    }
+
     if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      isBusyRef.current = false;
       toast({
         title: "Audio unavailable",
         description: "This browser does not support built-in speech playback.",
@@ -187,8 +236,12 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
     }
     utterance.volume = 1;
 
-    utterance.onend = () => setIsSpeaking(false);
+    utterance.onend = () => {
+      isBusyRef.current = false;
+      setIsSpeaking(false);
+    };
     utterance.onerror = () => {
+      isBusyRef.current = false;
       setIsSpeaking(false);
       toast({
         title: "Playback error",
@@ -197,12 +250,14 @@ export default function UpcomingEventAdviceCard({ eventAdvice, analyzedItems, ca
       });
     };
 
+    isBusyRef.current = false;
     setIsSpeaking(true);
 
     let started = false;
 
     const speakNow = () => {
       if (started) return;
+      if (myToken !== playTokenRef.current) return; // superseded before the browser voice list was ready
       started = true;
 
       const preferredVoice = getPreferredBritishFemaleVoice();
