@@ -19,6 +19,55 @@ function findBestItems(items: any[], keywords: string[], limit: number = 3) {
     .slice(0, limit);
 }
 
+// Builds Stylist Notes from the ACTUAL fetched weather, instead of a
+// hardcoded per-city string. This is the piece that was previously static
+// and out of sync with the live temperature shown on the card.
+function buildForecastReasoning(input: {
+  cityLabel: string;
+  tempC: number;
+  condition: string;
+  precipitationChance: number;
+  windKph: number;
+}): string {
+  let clothingAdvice: string;
+
+  if (input.tempC >= 27) {
+    clothingAdvice =
+      "Prioritize breathable linen, cotton, silk, lightweight dresses, refined separates, sandals, mules, and warm-weather footwear.";
+  } else if (input.tempC >= 19) {
+    clothingAdvice =
+      "Prioritize breathable tailoring, lightweight shirts, dresses, refined trousers or skirts, loafers, flats, or mules.";
+  } else if (input.tempC >= 12) {
+    clothingAdvice =
+      "Use light layering: tailored trousers, shirts, knitwear, a blazer or light jacket, and closed-toe footwear.";
+  } else {
+    clothingAdvice =
+      "Use warm structured layers, insulated outerwear, knitwear, and weather-appropriate closed footwear. Avoid sandals, mules, and lightweight linen pieces.";
+  }
+
+  const adjustments: string[] = [];
+
+  if (/\b(rain|drizzle|storm|snow)\b/i.test(input.condition) || input.precipitationChance >= 45) {
+    adjustments.push("Add a water-resistant layer and weather-tolerant footwear.");
+  }
+
+  if (input.windKph >= 25) {
+    adjustments.push("Favor secure layers and garments that hold their shape in the wind.");
+  }
+
+  if (input.tempC >= 24) {
+    adjustments.push("Avoid heavy coats, thermal layers, cashmere wraps, and winter-weight outerwear.");
+  } else if (input.tempC < 8) {
+    adjustments.push("Avoid lightweight linen, sandals, and warm-weather resort pieces.");
+  }
+
+  return (
+    `${input.cityLabel} is being styled for the live forecast: ${input.tempC}°C, ${input.condition}. ` +
+    clothingAdvice +
+    (adjustments.length ? ` ${adjustments.join(" ")}` : "")
+  );
+}
+
 export async function getUpcomingEventsStyleAdviceAction(closetItems: any[]) {
   // 1. DYNAMIC DATE ENGINE
   const now = new Date();
@@ -33,45 +82,59 @@ export async function getUpcomingEventsStyleAdviceAction(closetItems: any[]) {
     return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} • ${time}`;
   };
 
-  // 2. Define specific city "Vibe" keywords with EXPLICIT Landmark Backgrounds
+  // 2. Define specific city "Vibe" keywords with EXPLICIT Landmark Backgrounds.
+  //    NOTE: `reasoning` is no longer defined here — it's generated below from
+  //    the live weather fetch, using `dateObj` to match the right forecast window.
   const cityConfigs = [
     {
       name: "Paris Fashion Week",
       city: "Paris, France",
+      dateObj: now,
       date: formatDate(now, "9:00 AM"), 
       keywords: ["leather", "wide-leg", "silk", "chic", "tweed", "square-toe", "beret", "foulard"],
-      reasoning: "Paris spring fashion is embracing 'Sporty Chic' with wide-leg silhouettes. Layering a light tweed blazer over silk is essential for transitioning from brisk mornings to clear afternoon skies.",
       // Iconic Eiffel Tower 
       cityBg: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?q=80&w=1200&auto=format&fit=crop"
     },
     {
       name: "Oslo Spring Summit",
       city: "Oslo, Norway",
+      dateObj: tomorrow,
       date: formatDate(tomorrow, "11:30 AM"), 
-      keywords: ["linen", "cotton", "silk", "shirt", "blouse", "trousers", "skirt", "sandal", "loafer", "mule", "lightweight", "tailored"],
-      reasoning: "Oslo is being styled for live June weather. Prioritize breathable tailoring, lightweight shirts, refined trousers, skirts, loafers, mules, or sandals. Avoid boots, heavy coats, cashmere wraps, thermal layers, and winter-weight outerwear when temperatures are warm.",
+      keywords: ["linen", "cotton", "silk", "shirt", "blouse", "trousers", "skirt", "sandal", "loafer", "mule", "lightweight", "tailored", "blazer", "cardigan", "coat", "sweater", "boots"],
       // Oslo Cityscape
       cityBg: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?q=80&w=1200&auto=format&fit=crop"
     },
     {
       name: "Rome Cultural Tour",
       city: "Rome, Italy",
+      dateObj: weekend,
       date: formatDate(weekend, "6:00 PM"), 
       keywords: ["linen", "silk", "dress", "skirt", "shorts", "swimwear", "resort", "sandal", "mule", "slide", "sleeveless", "halter"],
-      reasoning: "Rome is being styled for hot Mediterranean summer. Prioritize linen, silk, lightweight dresses, skirts, refined shorts, resort pieces, sandals, mules, and breathable evening polish. Avoid boots, trenches, heavy knits, and winter-weight layering in high heat.",
       // The Colosseum
       cityBg: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?q=80&w=1200&auto=format&fit=crop"
     }
   ];
 
-  // 3. Fetch live OpenWeather data concurrently and map recommendations
+  // 3. Fetch live OpenWeather forecast (matched to each event's actual date)
+  //    concurrently, and build reasoning FROM that same fetched data so the
+  //    Stylist Notes text can never drift out of sync with the temperature badge.
   const eventsWithWeather = await Promise.all(cityConfigs.map(async (config) => {
     
-    const weatherData = await getWeatherForLocation(config.city);
+    const weatherResult = await getWeatherForLocation(config.city, config.dateObj);
     
     let liveWeatherString = "Weather data unavailable";
-    if (weatherData.success && weatherData.current) {
-      liveWeatherString = `${weatherData.current.temp_c}°C (${weatherData.current.temp_f}°F) | ${weatherData.current.condition}`;
+    let reasoning = `${config.name} styling will update once live weather data is available for ${config.city}.`;
+
+    if (weatherResult.success) {
+      const { temp_c, temp_f, condition, precipitation_probability, wind_kph } = weatherResult.forecast;
+      liveWeatherString = `${temp_c}°C (${temp_f}°F) | ${condition}`;
+      reasoning = buildForecastReasoning({
+        cityLabel: config.name,
+        tempC: temp_c,
+        condition,
+        precipitationChance: precipitation_probability,
+        windKph: wind_kph,
+      });
     }
 
     const recommendations = findBestItems(closetItems, config.keywords, 1);
@@ -81,7 +144,7 @@ export async function getUpcomingEventsStyleAdviceAction(closetItems: any[]) {
       eventName: config.name,
       date: config.date,
       weatherForecast: liveWeatherString, 
-      reasoning: config.reasoning,
+      reasoning,
       styleKeywords: config.keywords.slice(0, 5),
       suggestedItemName: topItem?.itemName || "Curated Wardrobe Item",
       suggestedItemImage: topItem?.imageUrl || null,
